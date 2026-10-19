@@ -1,9 +1,20 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { signIn } from "../actions";
 
-export default function Login() {
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <Login />
+    </Suspense>
+  );
+}
+
+function Login() {
+  const linkError = useSearchParams().get("error");
   const [state, action, pending] = useActionState(signIn, null as null | { error?: string; ok?: string });
   return (
     <div className="mx-auto max-w-sm px-4 pt-24">
@@ -19,6 +30,7 @@ export default function Login() {
           <input id="password" name="password" type="password" className="input" autoComplete="current-password" />
         </div>
         <button disabled={pending} className="btn btn-primary w-full">{pending ? "Signing in…" : "Sign in"}</button>
+        {!state && linkError && <p className="text-sm text-danger">{linkError}</p>}
         {state?.error && <p className="text-sm text-danger">{state.error}</p>}
         {state?.ok && <p className="text-sm text-green">{state.ok}</p>}
       </form>
