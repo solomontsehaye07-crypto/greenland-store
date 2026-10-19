@@ -14,12 +14,12 @@ import { getLang, ui } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-type P = Product & { description_de?: string | null };
+type P = Product & { description_de?: string | null; also_countries?: string[] | null };
 
 async function load(slug: string) {
   const { data } = await supabasePublic()
     .from("products")
-    .select("id, sku, slug, title, title_de, brand, description, description_de, category_id, price, compare_at_price, tax_rate, weight_g, size_qty, size_unit, image_url, images, country, is_frozen, age_restricted, is_dropship, status, featured, stock")
+    .select("id, sku, slug, title, title_de, brand, description, description_de, category_id, price, compare_at_price, tax_rate, weight_g, size_qty, size_unit, image_url, images, country, also_countries, is_frozen, age_restricted, is_dropship, status, featured, stock")
     .eq("slug", slug)
     .eq("status", "active")
     .maybeSingle();
@@ -97,11 +97,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             {p.brand && <span>{p.brand}</span>}
-            {p.country && (
-              <Link href={`/shop?country=${encodeURIComponent(p.country)}`} className="hover:text-ink">
-                <span aria-hidden>{countryFlag(p.country)}</span> {countryLabel(p.country, lang)}
-              </Link>
-            )}
+            {p.country &&
+              [p.country, ...(p.also_countries ?? [])].map((c) => (
+                <Link key={c} href={`/shop?country=${encodeURIComponent(c)}`} className="hover:text-ink">
+                  <span aria-hidden>{countryFlag(c)}</span> {countryLabel(c, lang)}
+                </Link>
+              ))}
           </div>
           <h1 className="display mt-2 text-2xl font-semibold leading-tight sm:text-[1.75rem]" style={{ textWrap: "balance" }}>{title}</h1>
           {de && p.title_de && p.title_de !== p.title && <p className="mt-1 text-xs text-muted">{p.title}</p>}

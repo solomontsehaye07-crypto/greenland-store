@@ -9,6 +9,8 @@ const NAV = [
   ["/admin", "Overview"],
   ["/admin/orders", "Orders"],
   ["/admin/products", "Products & stock"],
+  ["/admin/pricing", "Pricing"],
+  ["/admin/finance", "Profit & loss"],
   ["/admin/purchase-orders", "Refill orders"],
   ["/admin/suppliers", "Suppliers"],
   ["/admin/import", "Batch import"],

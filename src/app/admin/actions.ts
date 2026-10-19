@@ -52,6 +52,8 @@ export async function updateProduct(fd: FormData) {
   for (const k of ["price", "compare_at_price", "cost_price", "tax_rate", "weight_g", "reorder_point", "reorder_qty", "category_id", "supplier_id"])
     if (fd.has(k)) patch[k] = num(fd.get(k));
   for (const k of ["is_frozen", "age_restricted", "is_dropship", "featured"]) if (fd.has(`${k}__present`)) patch[k] = fd.get(k) === "on";
+  if (fd.has("also_countries"))
+    patch.also_countries = String(fd.get("also_countries") ?? "").split(",").map((x) => x.trim()).filter(Boolean);
   if (patch.image_url) patch.images = [patch.image_url];
   const { error } = await supabaseAdmin().from("products").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
@@ -62,8 +64,9 @@ export async function updateProduct(fd: FormData) {
 export async function adjustStock(fd: FormData) {
   const user = await assertStaff();
   const product_id = Number(fd.get("product_id"));
-  const mode = String(fd.get("mode")); // receive | adjust | damage | count
+  const mode = String(fd.get("mode")); // receive | adjust | count | damage | expired | spoiled
   const qty = Number(fd.get("qty"));
+  const cost = num(String(fd.get("cost") ?? "").replace(",", ".") || null);
   const sb = supabaseAdmin();
   if (!Number.isFinite(qty)) throw new Error("Enter a quantity");
 
@@ -71,20 +74,25 @@ export async function adjustStock(fd: FormData) {
     if (qty <= 0) throw new Error("Received quantity must be positive");
     const { data: b } = await sb
       .from("stock_batches")
-      .insert({ product_id, quantity_received: qty, quantity_left: qty, best_before: str(fd.get("best_before")), lot_code: str(fd.get("lot")), cost_price: num(fd.get("cost")) })
+      .insert({ product_id, quantity_received: qty, quantity_left: qty, best_before: str(fd.get("best_before")), lot_code: str(fd.get("lot")), cost_price: cost })
       .select("id")
       .single();
-    await sb.from("stock_movements").insert({ product_id, batch_id: b?.id, qty_change: qty, reason: "purchase", note: str(fd.get("note")), created_by: user.id });
+    await sb.from("stock_movements").insert({ product_id, batch_id: b?.id, qty_change: qty, reason: "purchase", unit_cost: cost, note: str(fd.get("note")), created_by: user.id });
+    if (cost !== null) {
+      const { getPricingSettings, applyRecommended } = await import("@/lib/pricing");
+      if ((await getPricingSettings()).autoApply) await applyRecommended([product_id], user.id, "auto (delivery)");
+    }
   } else if (mode === "count") {
     const { data: p } = await sb.from("products").select("stock").eq("id", product_id).single();
     const diff = qty - (p?.stock ?? 0);
     if (diff !== 0) await sb.from("stock_movements").insert({ product_id, qty_change: diff, reason: "adjustment", note: "Stock count", created_by: user.id });
   } else {
     if (qty === 0) return;
+    const loss = ["damage", "expired", "spoiled"].includes(mode);
     await sb.from("stock_movements").insert({
       product_id,
-      qty_change: mode === "damage" ? -Math.abs(qty) : qty,
-      reason: mode === "damage" ? "damage" : "adjustment",
+      qty_change: loss ? -Math.abs(qty) : qty,
+      reason: loss ? mode : "adjustment",
       note: str(fd.get("note")),
       created_by: user.id,
     });
@@ -92,6 +100,7 @@ export async function adjustStock(fd: FormData) {
   revalidateTag("catalog");
   revalidatePath(`/admin/products/${product_id}`);
   revalidatePath("/admin/products");
+  revalidatePath("/admin/finance");
 }
 
 // ---------- suppliers ----------

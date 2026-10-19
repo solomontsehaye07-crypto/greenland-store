@@ -163,6 +163,7 @@ export async function receivePo(id: number, lines: { product_id: number; qty: nu
       batch_id: batch?.id,
       qty_change: l.qty,
       reason: "purchase",
+      unit_cost: item?.unit_cost ?? null,
       reference: `po:${id}`,
       created_by: userId ?? null,
     });

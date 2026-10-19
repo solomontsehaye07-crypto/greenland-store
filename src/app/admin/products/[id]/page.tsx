@@ -34,6 +34,8 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
             <div className="sm:col-span-2"><label className="label">Title</label><input name="title" defaultValue={p.title} className="input" /></div>
             <div><label className="label">German title</label><input name="title_de" defaultValue={p.title_de ?? ""} className="input" /></div>
             <div><label className="label">Brand</label><input name="brand" defaultValue={p.brand ?? ""} className="input" /></div>
+            <div><label className="label">Country of origin</label><input name="country" defaultValue={p.country ?? ""} className="input" placeholder="e.g. Ethiopia" /></div>
+            <div><label className="label">Also show under (comma separated)</label><input name="also_countries" defaultValue={(p.also_countries ?? []).join(", ")} className="input" placeholder="e.g. Eritrea" /></div>
             <div><label className="label">Price (gross €)</label><input name="price" type="number" step="0.01" defaultValue={p.price} className="input" /></div>
             <div><label className="label">Compare-at price (sale)</label><input name="compare_at_price" type="number" step="0.01" defaultValue={p.compare_at_price ?? ""} className="input" /></div>
             <div><label className="label">Cost price (net €)</label><input name="cost_price" type="number" step="0.01" defaultValue={p.cost_price ?? ""} className="input" /></div>
@@ -86,10 +88,13 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
                   <option value="receive">Receive delivery</option>
                   <option value="count">Set counted stock</option>
                   <option value="adjust">Correct (+/−)</option>
-                  <option value="damage">Damaged / expired</option>
+                  <option value="spoiled">Spoiled / rotten (thrown away)</option>
+                  <option value="damage">Damaged</option>
+                  <option value="expired">Expired</option>
                 </select>
               </div>
               <div><label className="label">Quantity</label><input name="qty" type="number" required className="input" /></div>
+              <div><label className="label">Cost per item, net € (deliveries)</label><input name="cost" inputMode="decimal" placeholder={p.cost_price ? String(p.cost_price) : ""} className="input" /></div>
               <div><label className="label">Best before</label><input name="best_before" type="date" className="input" /></div>
               <div><label className="label">Lot</label><input name="lot" className="input" /></div>
               <div className="sm:col-span-2"><label className="label">Note</label><input name="note" className="input" /></div>

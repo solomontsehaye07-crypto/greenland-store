@@ -98,6 +98,12 @@ export async function getRecommended(limit = 10, excludeIds: number[] = []): Pro
   return out;
 }
 
+/** PostgREST filter: a product belongs to a country through its own country or a shared one (e.g. Habesha items: Ethiopia and Eritrea). */
+export function countryFilter(country: string) {
+  const v = country.replace(/[",{}()]/g, "");
+  return `country.eq."${v}",also_countries.cs.{"${v}"}`;
+}
+
 /** Products for a product row on the home page. A department (parent category) includes its subcategories. */
 export async function getRailProducts(source: string, categorySlug: string | undefined, limit = 10, country?: string) {
   const n = Math.min(Math.max(limit || 10, 1), 24);
@@ -112,7 +118,7 @@ export async function getRailProducts(source: string, categorySlug: string | und
   }
   let q = base();
   if (scope) q = q.in("category_id", scope.ids);
-  if (source === "country" && country) q = q.eq("country", country);
+  if (source === "country" && country) q = q.or(countryFilter(country));
   if (source === "category" && !scope) return [];
   if (source === "sale") q = q.not("compare_at_price", "is", null).order("id");
   else if (source === "newest") q = q.order("created_at", { ascending: false }).order("id", { ascending: false });
@@ -123,11 +129,12 @@ export async function getRailProducts(source: string, categorySlug: string | und
 
 /** Countries with the number of products in stock, optionally within a category scope. */
 export async function getCountryCounts(scopeIds?: number[]) {
-  let q = supabasePublic().from("products").select("country").eq("status", "active").gt("stock", 0).not("country", "is", null);
+  let q = supabasePublic().from("products").select("country, also_countries").eq("status", "active").gt("stock", 0).not("country", "is", null);
   if (scopeIds) q = q.in("category_id", scopeIds);
   const { data } = await q.limit(5000);
   const m = new Map<string, number>();
-  for (const r of (data ?? []) as { country: string }[]) m.set(r.country, (m.get(r.country) ?? 0) + 1);
+  for (const r of (data ?? []) as { country: string; also_countries: string[] | null }[])
+    for (const c of new Set([r.country, ...(r.also_countries ?? [])])) m.set(c, (m.get(c) ?? 0) + 1);
   return [...m.entries()].map(([country, count]) => ({ country, count })).sort((a, b) => b.count - a.count);
 }
 
@@ -139,7 +146,7 @@ export async function browseProducts(o: BrowseOpts) {
   const page = Math.max(1, o.page ?? 1);
   let q = supabasePublic().from("products").select(PRODUCT_CARD_FIELDS, { count: "exact" }).eq("status", "active");
   if (o.scopeIds) q = q.in("category_id", o.scopeIds);
-  if (o.country) q = q.eq("country", o.country);
+  if (o.country) q = q.or(countryFilter(o.country));
   if (o.inStock) q = q.gt("stock", 0);
   if (o.sale) q = q.not("compare_at_price", "is", null);
   if (o.sort === "price-asc") q = q.order("price", { ascending: true });

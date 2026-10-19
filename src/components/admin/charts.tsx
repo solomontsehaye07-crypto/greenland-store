@@ -93,7 +93,7 @@ export function Bars({ items, format = "number", color = "var(--terra)" }: { ite
             <span className="shrink-0 font-semibold tabular-nums">{f(it.value)}</span>
           </div>
           <div className="mt-1 h-2 rounded-full bg-surface">
-            <div className="h-2 rounded-full" style={{ width: `${(it.value / max) * 100}%`, background: color }} />
+            <div className="h-2 rounded-full" style={{ width: `${Math.max(0, (it.value / max) * 100)}%`, background: color }} />
           </div>
         </li>
       ))}
