@@ -25,9 +25,10 @@ export async function Header() {
     ...(saleCount ? [{ href: "/shop?sale=1", label: ui("offers", lang) }] : []),
     ...(site.navLinks ?? []).map((l) => ({ href: l.href || "/", label: tx(l.label, lang) })),
   ];
-  const logo = site.logo ? (
+  const logoSrc = site.icon || site.logo;
+  const logo = logoSrc ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={site.logo} alt={name} className="h-10 w-auto rounded-md sm:h-11" />
+    <img src={logoSrc} alt={name} className="h-9 w-auto sm:h-10" />
   ) : (
     <span className="display text-lg font-semibold tracking-tight">{name.split(" ")[0]}<span className="text-forest">.</span></span>
   );

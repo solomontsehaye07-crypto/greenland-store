@@ -22,7 +22,7 @@ export async function Footer() {
         <div className="max-w-xs">
           {site.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={site.logo} alt={name} className="h-14 w-auto rounded-lg" loading="lazy" />
+            <img src={site.logo} alt={name} className="h-20 w-auto" loading="lazy" />
           ) : (
             <span className="display text-base font-semibold">{name}</span>
           )}
