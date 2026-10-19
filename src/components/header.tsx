@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCategoryTree } from "@/lib/catalog";
 import { getSite } from "@/lib/content";
+import { supabasePublic } from "@/lib/supabase";
 import { getLang, tx, ui } from "@/lib/i18n";
 import { CartButton } from "./cart-button";
 import { Announce } from "./announce";
@@ -8,14 +9,20 @@ import { LangSwitch } from "./lang-switch";
 import { Icon } from "./icons";
 
 export async function Header() {
-  const [tree, { site }, lang] = await Promise.all([getCategoryTree(), getSite(), getLang()]);
+  const [tree, { site }, lang, { count: saleCount }] = await Promise.all([
+    getCategoryTree(),
+    getSite(),
+    getLang(),
+    supabasePublic().from("products").select("id", { count: "exact", head: true }).eq("status", "active").not("compare_at_price", "is", null),
+  ]);
   const name = site.name || "Greenland";
   const announcements = (site.announcements ?? []).map((a) => tx(a.text, lang)).filter(Boolean);
   const catTitle = (c: { title: string; title_de: string | null }) => (lang === "de" ? c.title_de || c.title : c.title);
   const extra = [
     { href: "/laender", label: ui("countries", lang) },
     { href: "/rezepte", label: ui("recipes", lang) },
-    { href: "/shop?sale=1", label: ui("offers", lang) },
+    // "Offers" appears as soon as at least one product has a compare-at (sale) price
+    ...(saleCount ? [{ href: "/shop?sale=1", label: ui("offers", lang) }] : []),
     ...(site.navLinks ?? []).map((l) => ({ href: l.href || "/", label: tx(l.label, lang) })),
   ];
   const logo = site.logo ? (
