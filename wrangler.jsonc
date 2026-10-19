@@ -11,6 +11,7 @@
   // Public, non-secret settings. Secrets (SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, …) are added in the
   // Cloudflare dashboard under Settings → Variables and Secrets, never here.
   "vars": {
+    "SITE_URL": "https://greenland-store.solomon-tsehaye07.workers.dev",
     "NEXT_PUBLIC_SUPABASE_URL": "https://prtstuzxigbntxoaoqkm.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_uQSqk18PnC-dFanVRCMN7A_VADZW3mx"
   }
