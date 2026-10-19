@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#1D5C3F"/>
+  <!-- G built from a bold arc -->
+  <path transform="translate(-14,6)" d="M362 196 A128 128 0 1 0 384 268 L384 286 L282 286" fill="none" stroke="#F6F7F2" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- leaf sprouting from the G -->
+  <g transform="translate(30,-8)"><path d="M300 176 C312 112 360 86 420 92 C420 152 386 196 318 196 Z" fill="#F2C14E"/>
+  <path d="M318 192 C342 160 372 134 408 104" fill="none" stroke="#1D5C3F" stroke-width="7" stroke-linecap="round"/></g>
+</svg>

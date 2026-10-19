@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360">
+  <rect width="1200" height="360" fill="#F6F7F2"/>
+  <g transform="translate(40,40) scale(0.5625)">
+    <rect width="512" height="512" rx="112" fill="#1D5C3F"/>
+    <path transform="translate(-14,6)" d="M362 196 A128 128 0 1 0 384 268 L384 286 L282 286" fill="none" stroke="#F6F7F2" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(30,-8)"><path d="M300 176 C312 112 360 86 420 92 C420 152 386 196 318 196 Z" fill="#F2C14E"/>
+    <path d="M318 192 C342 160 372 134 408 104" fill="none" stroke="#1D5C3F" stroke-width="7" stroke-linecap="round"/></g>
+  </g>
+  <text x="380" y="190" font-family="Bricolage Grotesque Variable, sans-serif" font-weight="800" font-size="132" fill="#1D5C3F" letter-spacing="-3">Greenland</text>
+  <text x="386" y="262" font-family="Public Sans Variable, sans-serif" font-weight="500" font-size="46" fill="#14211B" letter-spacing="6">AFRO ASIA STORE</text>
+</svg>
