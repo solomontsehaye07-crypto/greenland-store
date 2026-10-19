@@ -20,7 +20,12 @@ export async function Footer() {
     <footer className="mt-28 border-t border-line">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
         <div className="max-w-xs">
-          <span className="display text-base font-semibold">{name}</span>
+          {site.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={site.logo} alt={name} className="h-14 w-auto rounded-lg" loading="lazy" />
+          ) : (
+            <span className="display text-base font-semibold">{name}</span>
+          )}
           {tx(site.about, lang) && <p className={`mt-2 ${col} leading-relaxed`}>{tx(site.about, lang)}</p>}
           {site.whatsapp && (
             <a href={`https://wa.me/${site.whatsapp}`} rel="noopener" className="mt-4 inline-flex items-center gap-2 text-[0.8125rem] font-medium text-forest hover:underline">

@@ -27,7 +27,7 @@ export async function Header() {
   ];
   const logo = site.logo ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={site.logo} alt={name} className="h-8 w-auto" />
+    <img src={site.logo} alt={name} className="h-10 w-auto rounded-md sm:h-11" />
   ) : (
     <span className="display text-lg font-semibold tracking-tight">{name.split(" ")[0]}<span className="text-forest">.</span></span>
   );
