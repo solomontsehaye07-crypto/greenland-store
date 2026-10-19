@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import Stripe from "stripe";
 import { stripe } from "@/lib/payments";
 import { onOrderPaid } from "@/lib/orders";
 
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
   const body = await req.text();
   let event;
   try {
-    event = stripe().webhooks.constructEvent(body, sig!, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = await stripe().webhooks.constructEventAsync(body, sig!, process.env.STRIPE_WEBHOOK_SECRET!, undefined, Stripe.createSubtleCryptoProvider());
   } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }

@@ -8,7 +8,8 @@ import { AddToCart } from "@/components/add-to-cart";
 import { ProductCard } from "@/components/product-card";
 import type { Product } from "@/lib/types";
 
-export const revalidate = 300;
+// Always rendered fresh, so prices and stock are current (Cloudflare has no page cache configured).
+export const dynamic = "force-dynamic";
 
 async function load(slug: string) {
   const { data } = await supabasePublic().from("products").select("id, sku, slug, title, title_de, brand, description, category_id, price, compare_at_price, tax_rate, weight_g, size_qty, size_unit, image_url, images, country, is_frozen, age_restricted, is_dropship, status, featured, stock").eq("slug", slug).eq("status", "active").maybeSingle();

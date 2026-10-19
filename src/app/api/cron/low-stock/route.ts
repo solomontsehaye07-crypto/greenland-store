@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { draftRefillOrders } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
+import { siteUrl } from "@/lib/site";
 
-// Runs daily (see vercel.json). Creates alerts, drafts refill orders per supplier and emails a digest.
+// Runs daily (Cloudflare cron trigger in wrangler.jsonc, or vercel.json on Vercel). Creates alerts, drafts refill orders per supplier and emails a digest.
 export async function GET(req: Request) {
   if (process.env.CRON_SECRET && req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
 
   const to = process.env.ALERT_EMAIL_TO;
   if (to && ((low?.length ?? 0) > 0 || (expiring?.length ?? 0) > 0)) {
-    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+    const site = siteUrl();
     const li = (low ?? []).map((p) => `<li>${p.title} (${p.sku}) – <b>${p.stock}</b> left${p.on_order ? " · on order" : ""}</li>`).join("");
     const le = (expiring ?? []).map((b) => `<li>${b.title} – ${b.quantity_left} expire ${b.best_before}</li>`).join("");
     await sendEmail({

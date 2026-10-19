@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { siteUrl } from "./site";
 
 export type Provider = "stripe" | "paypal" | "viva" | "cash";
 
@@ -24,7 +24,7 @@ export interface PayableOrder {
 
 // ---------------- Stripe (cards, Apple/Google Pay, Klarna, SEPA – per your Stripe dashboard) ----------------
 export function stripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+  return new Stripe(process.env.STRIPE_SECRET_KEY!, { httpClient: Stripe.createFetchHttpClient() });
 }
 
 export async function stripeCheckout(o: PayableOrder) {
@@ -43,8 +43,8 @@ export async function stripeCheckout(o: PayableOrder) {
     line_items: items,
     client_reference_id: o.id,
     metadata: { order_id: o.id },
-    success_url: `${SITE}/order/${o.id}?paid=1`,
-    cancel_url: `${SITE}/checkout?cancelled=1`,
+    success_url: `${siteUrl()}/order/${o.id}?paid=1`,
+    cancel_url: `${siteUrl()}/checkout?cancelled=1`,
   });
   return session.url!;
 }
@@ -77,8 +77,8 @@ export async function paypalCheckout(o: PayableOrder) {
       application_context: {
         brand_name: "Greenland Afro Asia Store",
         user_action: "PAY_NOW",
-        return_url: `${SITE}/api/payments/paypal/return?order=${o.id}`,
-        cancel_url: `${SITE}/checkout?cancelled=1`,
+        return_url: `${siteUrl()}/api/payments/paypal/return?order=${o.id}`,
+        cancel_url: `${siteUrl()}/checkout?cancelled=1`,
       },
     }),
   });

@@ -6,6 +6,7 @@ import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
 import { draftRefillOrders, receivePo, renderPoPdf, sendPo } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
+import { siteUrl } from "@/lib/site";
 
 const num = (v: FormDataEntryValue | null) => (v === null || v === "" ? null : Number(v));
 const str = (v: FormDataEntryValue | null) => (v === null || String(v).trim() === "" ? null : String(v).trim());
@@ -22,7 +23,7 @@ export async function signIn(_: unknown, fd: FormData) {
   }
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/admin/auth/callback` },
+    options: { emailRedirectTo: `${siteUrl()}/admin/auth/callback` },
   });
   if (error) return { error: error.message };
   return { ok: "Check your inbox for a sign-in link." };

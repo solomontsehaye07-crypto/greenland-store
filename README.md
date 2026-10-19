@@ -1,6 +1,6 @@
 # Greenland Afro Asia Store
 
-The online shop and back office for Greenland Afro Asia Store in Kaiserslautern. It is built with Next.js 15 and Supabase and is hosted on Vercel.
+The online shop and back office for Greenland Afro Asia Store in Kaiserslautern. It is built with Next.js 15 and Supabase and is hosted on Cloudflare Workers.
 
 ## What it does
 
@@ -42,19 +42,30 @@ A payment method only shows up at checkout once its keys are set.
 - Upload a CSV or Excel file for products, stock counts or deliveries, price lists, or supplier price lists.
 - You match the columns and see a preview before anything is saved.
 
-## Deploy (about 10 minutes)
+## Deploy on Cloudflare (about 10 minutes)
 
-1. Go to **Vercel → Add New → Project → Import** and choose `solomontsehaye07-crypto/greenland-store`. Keep the framework as Next.js.
-2. Add the environment variables from `.env.example`. The minimum is:
-   - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (copy them from `.env.example`)
-   - `SUPABASE_SERVICE_ROLE_KEY` (in Supabase: Project Settings → API Keys → secret key)
-   - `NEXT_PUBLIC_SITE_URL` (your Vercel URL or domain)
-   - `CRON_SECRET` (any long random string)
-3. Click Deploy.
-4. In Supabase, go to **Authentication → URL Configuration** and add `https://<your-site>/admin/auth/callback` to the redirect URLs.
-5. Open `/admin/login` and sign in with **solomon.tsehaye07@gmail.com**. Leave the password empty to get a magic link by email. That account becomes admin automatically.
+The shop runs as a Cloudflare Worker, built with OpenNext (`@opennextjs/cloudflare`).
 
-### Payment setup
+1. In Cloudflare go to **Workers & Pages → Create → Import a repository** and choose `solomontsehaye07-crypto/greenland-store`, branch `main`.
+2. Build settings:
+   - Build command: `npx opennextjs-cloudflare build`
+   - Deploy command: `npx wrangler deploy`
+3. Deploy once. Cloudflare gives the shop an address like `https://greenland-store.<your-subdomain>.workers.dev`.
+4. In the Worker go to **Settings → Variables and Secrets** and add:
+   - `SITE_URL` (text): the shop address from step 3, later your own domain
+   - `SUPABASE_SERVICE_ROLE_KEY` (secret): in Supabase, Project Settings → API Keys → secret key
+   - `CRON_SECRET` (secret): any long random string
+   Then redeploy (Deployments → Retry, or push to `main`).
+5. In Supabase go to **Authentication → URL Configuration** and add `https://<your-shop-address>/admin/auth/callback` to the redirect URLs.
+6. Open `/admin/login` and sign in with **solomon.tsehaye07@gmail.com**. Leave the password empty to get a magic link by email. That account becomes admin automatically.
+
+The daily stock and expiry check runs at 06:00 UTC through the cron trigger in `wrangler.jsonc`. Every push to `main` deploys automatically.
+
+To use your own domain, open the Worker → **Settings → Domains & Routes → Add → Custom domain**, then update `SITE_URL` and the Supabase redirect URL.
+
+Local test on the Cloudflare runtime: `npm run preview`.
+
+### Payment setup (add these as secrets in Cloudflare)
 - **Stripe:** add `STRIPE_SECRET_KEY`. Then create a webhook pointing to `https://<site>/api/webhooks/stripe` for the events `checkout.session.completed` and `checkout.session.async_payment_succeeded`, and add its secret as `STRIPE_WEBHOOK_SECRET`.
 - **PayPal:** add `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`, and set `PAYPAL_ENV=live` when you go live.
 - **Viva Wallet:** add `VIVA_CLIENT_ID`, `VIVA_CLIENT_SECRET` and `VIVA_SOURCE_CODE`. In Viva, set the payment source's Success URL to `https://<site>/api/payments/viva/return`.

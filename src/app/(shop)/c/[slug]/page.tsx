@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { getCategories, getProductsInCategories } from "@/lib/catalog";
 import { ProductGrid } from "@/components/product-card";
 
-export const revalidate = 300;
+// Always rendered fresh, so prices and stock are current (Cloudflare has no page cache configured).
+export const dynamic = "force-dynamic";
 const PAGE = 48;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

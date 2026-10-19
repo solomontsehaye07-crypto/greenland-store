@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "greenland-store",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  // Daily stock and expiry check at 06:00 UTC (08:00 Berlin in summer, 07:00 in winter)
+  "triggers": { "crons": ["0 6 * * *"] },
+  // Public, non-secret settings. Secrets (SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, …) are added in the
+  // Cloudflare dashboard under Settings → Variables and Secrets, never here.
+  "vars": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://prtstuzxigbntxoaoqkm.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_uQSqk18PnC-dFanVRCMN7A_VADZW3mx"
+  }
+}

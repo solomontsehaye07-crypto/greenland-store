@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getCategoryTree, getHomeShelves, type CardProduct } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
 
-export const revalidate = 300;
+// Always rendered fresh, so prices and stock are current (Cloudflare has no page cache configured).
+export const dynamic = "force-dynamic";
 
 function Shelf({ title, href, products }: { title: string; href: string; products: CardProduct[] }) {
   if (!products.length) return null;
