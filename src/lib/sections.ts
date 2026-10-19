@@ -35,6 +35,22 @@ export const ACCENTS = [
   { value: "sand", label: "Sand" },
 ];
 
+/** Background band of a section. Light bands hold product cards; dark ones suit text and feature sections. */
+const BAND: Field = {
+  key: "color",
+  label: "Background band",
+  kind: "select",
+  options: [
+    { value: "none", label: "Paper (plain)" },
+    { value: "sand", label: "Sand" },
+    { value: "saffron", label: "Saffron" },
+    { value: "forest", label: "Forest green" },
+    { value: "indigo", label: "Indigo" },
+    { value: "terra", label: "Terracotta" },
+    { value: "ink", label: "Dark (ink)" },
+  ],
+};
+
 const ICONS = [
   { value: "truck", label: "Delivery truck" },
   { value: "bag", label: "Shopping bag / pickup" },
@@ -61,7 +77,7 @@ export const SECTION_DEFS: SectionDef[] = [
   {
     type: "hero",
     label: "Hero",
-    description: "The opening area: a short headline, two buttons and a slowly moving strip of product photos.",
+    description: "The opening area on deep green: a big headline, two buttons, live shop numbers and three slowly moving columns of product photos.",
     fields: [
       { key: "title", label: "Headline", kind: "text" },
       { key: "text", label: "Intro text", kind: "textarea" },
@@ -103,6 +119,7 @@ export const SECTION_DEFS: SectionDef[] = [
     fields: [
       { key: "title", label: "Title", kind: "text" },
       { key: "text", label: "Text", kind: "textarea" },
+      BAND,
       { key: "shape", label: "Tile shape", kind: "select", options: [{ value: "square", label: "Square" }, { value: "portrait", label: "Portrait" }, { value: "circle", label: "Circle" }] },
       {
         key: "items",
@@ -118,7 +135,7 @@ export const SECTION_DEFS: SectionDef[] = [
         ],
       },
     ],
-    defaults: { shape: "square", items: [] },
+    defaults: { shape: "square", items: [], color: "none" },
   },
   {
     type: "products",
@@ -146,7 +163,7 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "layout", label: "Layout", kind: "select", options: [{ value: "row", label: "Scrollable row" }, { value: "grid", label: "Grid" }] },
       { key: "linkLabel", label: "Link text on the right (optional)", kind: "text" },
       { key: "linkHref", label: "Link (optional, e.g. /shop?sort=new)", kind: "plain" },
-      { key: "color", label: "Background", kind: "select", options: [{ value: "none", label: "None" }, ...ACCENTS] },
+      { ...BAND, help: "Green, indigo and terracotta show here as a light tint so the product cards stay readable." },
     ],
     defaults: { source: "bestsellers", limit: 10, layout: "row", color: "none" },
   },
@@ -176,9 +193,10 @@ export const SECTION_DEFS: SectionDef[] = [
   {
     type: "usp",
     label: "Why shop with us",
-    description: "Short promises with icons: delivery, pickup, freshness, support.",
+    description: "A trust bar with icons: delivery, pickup, freshness, support. Works best right under the hero.",
     fields: [
-      { key: "title", label: "Title (optional)", kind: "text" },
+      { key: "title", label: "Title (optional, only read out by screen readers)", kind: "text" },
+      BAND,
       {
         key: "items",
         label: "Promises",
@@ -205,9 +223,9 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "ctaLabel", label: "Button text", kind: "text" },
       { key: "ctaHref", label: "Button link", kind: "plain" },
       { key: "imageSide", label: "Photo side", kind: "select", options: [{ value: "left", label: "Left" }, { value: "right", label: "Right" }] },
-      { key: "color", label: "Background", kind: "select", options: [{ value: "none", label: "None" }, ...ACCENTS] },
+      BAND,
     ],
-    defaults: { imageSide: "left", color: "sand" },
+    defaults: { imageSide: "left", color: "forest" },
   },
   {
     type: "faq",
@@ -215,6 +233,7 @@ export const SECTION_DEFS: SectionDef[] = [
     description: "Frequently asked questions that open on click.",
     fields: [
       { key: "title", label: "Title", kind: "text" },
+      BAND,
       { key: "items", label: "Questions", kind: "list", itemLabel: "Question", max: 20, item: [{ key: "q", label: "Question", kind: "text" }, { key: "a", label: "Answer", kind: "textarea" }] },
     ],
     defaults: { items: [] },
@@ -228,19 +247,20 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "text", label: "Text", kind: "textarea" },
       { key: "buttonLabel", label: "Button text", kind: "text" },
       { key: "note", label: "Small print", kind: "textarea" },
-      { key: "color", label: "Background", kind: "select", options: ACCENTS },
+      BAND,
     ],
-    defaults: { color: "indigo" },
+    defaults: { color: "ink" },
   },
   {
     type: "countries",
     label: "Shop by country",
-    description: "Small chips with a flag for every country of origin, linking to the filtered shop.",
+    description: "A spotlight for Ethiopia & Eritrea plus a flag for every country of origin, linking to the filtered shop.",
     fields: [
       { key: "title", label: "Title", kind: "text" },
       { key: "text", label: "Text", kind: "textarea" },
+      BAND,
     ],
-    defaults: {},
+    defaults: { color: "indigo" },
   },
   {
     type: "recipes",
@@ -250,8 +270,9 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "title", label: "Title", kind: "text" },
       { key: "text", label: "Text", kind: "textarea" },
       { key: "limit", label: "How many", kind: "number" },
+      BAND,
     ],
-    defaults: { limit: 4 },
+    defaults: { limit: 4, color: "saffron" },
   },
   {
     type: "text",
@@ -260,6 +281,7 @@ export const SECTION_DEFS: SectionDef[] = [
     fields: [
       { key: "title", label: "Title", kind: "text" },
       { key: "body", label: "Text", kind: "markdown" },
+      BAND,
     ],
     defaults: {},
   },

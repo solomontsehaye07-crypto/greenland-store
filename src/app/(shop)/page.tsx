@@ -7,5 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const [sections, lang] = await Promise.all([getHomeSections(), getLang()]);
-  return <Sections sections={sections} lang={lang} />;
+  return (
+    <div className="home">
+      <Sections sections={sections} lang={lang} />
+    </div>
+  );
 }
