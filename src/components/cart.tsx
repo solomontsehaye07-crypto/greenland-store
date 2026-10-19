@@ -12,6 +12,9 @@ interface CartCtx {
   remove: (id: number) => void;
   clear: () => void;
   ready: boolean;
+  /** The slide-in cart panel */
+  drawerOpen: boolean;
+  setDrawerOpen: (open: boolean) => void;
 }
 
 const Ctx = createContext<CartCtx | null>(null);
@@ -20,6 +23,7 @@ const KEY = "greenland.cart.v1";
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -64,8 +68,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setQty,
       remove,
       clear,
+      drawerOpen,
+      setDrawerOpen,
     }),
-    [lines, ready, add, setQty, remove, clear]
+    [lines, ready, add, setQty, remove, clear, drawerOpen]
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

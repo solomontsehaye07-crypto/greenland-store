@@ -67,7 +67,7 @@ export default async function LegalPage({ params }: { params: Promise<{ page: st
   if (cms)
     return (
       <article className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="display text-4xl font-extrabold">{tx(cms.title, lang)}</h1>
+        <h1 className="h-section">{tx(cms.title, lang)}</h1>
         <Markdown text={tx(cms.body, lang)} className="mt-8" />
       </article>
     );
@@ -75,7 +75,7 @@ export default async function LegalPage({ params }: { params: Promise<{ page: st
   if (!p) notFound();
   return (
     <article className="mx-auto max-w-3xl px-4 pt-12">
-      <h1 className="text-4xl font-extrabold">{p.title}</h1>
+      <h1 className="h-section">{p.title}</h1>
       <div
         className="mt-8 space-y-4 text-[0.98rem] leading-relaxed [&_h3]:mt-8 [&_h3]:text-xl [&_h3]:font-bold"
         dangerouslySetInnerHTML={{ __html: p.body }}

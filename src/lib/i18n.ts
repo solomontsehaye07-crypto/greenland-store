@@ -59,6 +59,21 @@ const UI = {
   language: { de: "Sprache", en: "Language" },
   menu: { de: "Menü", en: "Menu" },
   close: { de: "Schließen", en: "Close" },
+  shopAll: { de: "Alle Produkte", en: "Shop all" },
+  countries: { de: "Länder", en: "Countries" },
+  recipes: { de: "Rezepte", en: "Recipes" },
+  offers: { de: "Angebote", en: "Offers" },
+  filter: { de: "Filter", en: "Filter" },
+  category: { de: "Kategorie", en: "Category" },
+  country: { de: "Herkunft", en: "Origin" },
+  allCountries: { de: "Alle Länder", en: "All countries" },
+  allCategories: { de: "Alle Kategorien", en: "All categories" },
+  onlyInStock: { de: "Nur verfügbare", en: "In stock only" },
+  sortNew: { de: "Neueste", en: "Newest" },
+  reset: { de: "Zurücksetzen", en: "Reset" },
+  bestseller: { de: "Beliebt", en: "Popular" },
+  youMayLike: { de: "Das könnte dir auch gefallen", en: "You may also like" },
+  favourites: { de: "Kundenlieblinge", en: "Customer favourites" },
 } satisfies Record<string, Required<L10n>>;
 
 export type UIKey = keyof typeof UI;

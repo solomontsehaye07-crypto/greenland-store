@@ -47,7 +47,7 @@ const ICONS = [
   { value: "gift", label: "Gift" },
 ];
 
-export type SectionType = "hero" | "marquee" | "tiles" | "products" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text";
+export type SectionType = "hero" | "marquee" | "tiles" | "products" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text" | "countries" | "recipes";
 
 export interface SectionDef {
   type: SectionType;
@@ -61,7 +61,7 @@ export const SECTION_DEFS: SectionDef[] = [
   {
     type: "hero",
     label: "Hero",
-    description: "The big opening area: headline, two buttons and a collage of product photos.",
+    description: "The opening area: a short headline, two buttons and a slowly moving strip of product photos.",
     fields: [
       { key: "title", label: "Headline", kind: "text" },
       { key: "text", label: "Intro text", kind: "textarea" },
@@ -71,23 +71,24 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "cta2Href", label: "Second button link", kind: "plain" },
       {
         key: "images",
-        label: "Collage photos",
+        label: "Photos in the moving strip",
         kind: "list",
         itemLabel: "Photo",
-        max: 5,
+        max: 16,
         item: [
           { key: "image", label: "Photo", kind: "image" },
           { key: "href", label: "Link (optional)", kind: "plain" },
         ],
       },
+      { key: "autoFill", label: "Fill the strip with recommended products when there are fewer than 10 photos", kind: "toggle" },
       { key: "facts", label: "Small facts under the buttons", kind: "list", itemLabel: "Fact", max: 4, item: [{ key: "text", label: "Fact", kind: "text" }] },
     ],
-    defaults: { title: { de: "", en: "" }, images: [], facts: [] },
+    defaults: { title: { de: "", en: "" }, images: [], facts: [], autoFill: true },
   },
   {
     type: "marquee",
-    label: "Moving ribbon",
-    description: "A slowly scrolling strip with short messages like free delivery or pickup.",
+    label: "Moving text line",
+    description: "A thin, slowly scrolling line with short messages like free delivery or pickup.",
     fields: [
       { key: "items", label: "Messages", kind: "list", itemLabel: "Message", max: 8, item: [{ key: "text", label: "Message", kind: "text" }] },
       { key: "color", label: "Colour", kind: "select", options: ACCENTS },
@@ -97,12 +98,12 @@ export const SECTION_DEFS: SectionDef[] = [
   },
   {
     type: "tiles",
-    label: "Picture tiles",
-    description: "A row of image tiles that link anywhere: categories, regions, offers.",
+    label: "Category tiles",
+    description: "A grid of small image tiles that link anywhere: categories, regions, offers.",
     fields: [
       { key: "title", label: "Title", kind: "text" },
       { key: "text", label: "Text", kind: "textarea" },
-      { key: "shape", label: "Tile shape", kind: "select", options: [{ value: "arch", label: "Arch" }, { value: "circle", label: "Circle" }, { value: "square", label: "Rounded square" }] },
+      { key: "shape", label: "Tile shape", kind: "select", options: [{ value: "square", label: "Square" }, { value: "portrait", label: "Portrait" }, { value: "circle", label: "Circle" }] },
       {
         key: "items",
         label: "Tiles",
@@ -117,12 +118,12 @@ export const SECTION_DEFS: SectionDef[] = [
         ],
       },
     ],
-    defaults: { shape: "arch", items: [] },
+    defaults: { shape: "square", items: [] },
   },
   {
     type: "products",
-    label: "Product row",
-    description: "A scrollable row of products from a category, your featured products, new arrivals or offers.",
+    label: "Product section",
+    description: "Customer favourites, recommendations, new arrivals, offers, a category or a country, as a row or a grid.",
     fields: [
       { key: "title", label: "Title", kind: "text" },
       { key: "text", label: "Text", kind: "textarea" },
@@ -131,17 +132,23 @@ export const SECTION_DEFS: SectionDef[] = [
         label: "Which products",
         kind: "select",
         options: [
-          { value: "category", label: "From a category" },
-          { value: "featured", label: "Featured products" },
-          { value: "newest", label: "Newest products" },
+          { value: "bestsellers", label: "Customer favourites (best sellers, topped up with your recommendations)" },
+          { value: "recommended", label: "Recommendations (products marked Featured)" },
+          { value: "newest", label: "New products" },
           { value: "sale", label: "Products on offer" },
+          { value: "category", label: "From a category" },
+          { value: "country", label: "From a country" },
         ],
       },
-      { key: "category", label: "Category (if 'From a category')", kind: "category" },
+      { key: "category", label: "Category (also narrows favourites and recommendations)", kind: "category" },
+      { key: "country", label: "Country (if 'From a country'), e.g. Ghana", kind: "plain" },
       { key: "limit", label: "How many", kind: "number" },
+      { key: "layout", label: "Layout", kind: "select", options: [{ value: "row", label: "Scrollable row" }, { value: "grid", label: "Grid" }] },
+      { key: "linkLabel", label: "Link text on the right (optional)", kind: "text" },
+      { key: "linkHref", label: "Link (optional, e.g. /shop?sort=new)", kind: "plain" },
       { key: "color", label: "Background", kind: "select", options: [{ value: "none", label: "None" }, ...ACCENTS] },
     ],
-    defaults: { source: "category", limit: 10, color: "none" },
+    defaults: { source: "bestsellers", limit: 10, layout: "row", color: "none" },
   },
   {
     type: "banners",
@@ -226,6 +233,27 @@ export const SECTION_DEFS: SectionDef[] = [
     defaults: { color: "indigo" },
   },
   {
+    type: "countries",
+    label: "Shop by country",
+    description: "Small chips with a flag for every country of origin, linking to the filtered shop.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "textarea" },
+    ],
+    defaults: {},
+  },
+  {
+    type: "recipes",
+    label: "Recipe ideas",
+    description: "Cards for your recipes, each linking to its ingredients. Manage recipes under Admin → Recipes.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "textarea" },
+      { key: "limit", label: "How many", kind: "number" },
+    ],
+    defaults: { limit: 4 },
+  },
+  {
     type: "text",
     label: "Text block",
     description: "A heading and free text.",
@@ -275,9 +303,9 @@ export const THEME_FIELDS: Field[] = [
 ];
 
 export const DEFAULT_THEME = {
-  paper: "#FCF8F1",
-  sand: "#F2E3CB",
-  ink: "#231B16",
+  paper: "#FBFAF7",
+  sand: "#EFE9DF",
+  ink: "#1C1915",
   terra: "#B5482A",
   saffron: "#E5A532",
   forest: "#1D5C3F",

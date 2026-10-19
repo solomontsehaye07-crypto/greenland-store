@@ -7,83 +7,97 @@ import { Announce } from "./announce";
 import { LangSwitch } from "./lang-switch";
 import { Icon } from "./icons";
 
-const DEPT_COLOR: Record<string, string> = { food: "bg-terra", beauty: "bg-indigo", home: "bg-forest" };
-
 export async function Header() {
   const [tree, { site }, lang] = await Promise.all([getCategoryTree(), getSite(), getLang()]);
   const name = site.name || "Greenland";
-  const tagline = tx(site.tagline, lang) || "Afro Asia Store";
   const announcements = (site.announcements ?? []).map((a) => tx(a.text, lang)).filter(Boolean);
   const catTitle = (c: { title: string; title_de: string | null }) => (lang === "de" ? c.title_de || c.title : c.title);
+  const extra = [
+    { href: "/laender", label: ui("countries", lang) },
+    { href: "/rezepte", label: ui("recipes", lang) },
+    { href: "/shop?sale=1", label: ui("offers", lang) },
+    ...(site.navLinks ?? []).map((l) => ({ href: l.href || "/", label: tx(l.label, lang) })),
+  ];
+  const logo = site.logo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={site.logo} alt={name} className="h-8 w-auto" />
+  ) : (
+    <span className="display text-lg font-semibold tracking-tight">{name.split(" ")[0]}<span className="text-forest">.</span></span>
+  );
   return (
     <>
       <Announce items={announcements} />
-      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:gap-6">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5 leading-none" aria-label={`${name} – ${ui("home", lang)}`}>
-            {site.logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={site.logo} alt="" className="h-10 w-auto" />
-            ) : (
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-forest text-lg font-extrabold text-paper display">G</span>
-            )}
-            <span>
-              <span className="display block text-[1.45rem] font-extrabold text-forest">{name.split(" ")[0]}</span>
-              <span className="block text-[0.7rem] font-medium text-muted">{tagline}</span>
-            </span>
-          </Link>
-          <form action="/search" className="relative hidden flex-1 md:block" role="search">
-            <label htmlFor="q" className="sr-only">{ui("search", lang)}</label>
-            <input id="q" name="q" placeholder={ui("searchPlaceholder", lang)} className="input rounded-full border-transparent bg-surface pl-10" />
-            <Icon name="search" size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
-          </form>
-          <div className="ml-auto flex items-center gap-2 md:ml-0">
-            <Link href="/search" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface md:hidden" aria-label={ui("search", lang)}>
-              <Icon name="search" size={20} />
-            </Link>
-            <LangSwitch lang={lang} />
-            <CartButton />
-          </div>
-        </div>
-        <nav className="mx-auto max-w-7xl overflow-x-auto px-4 lg:overflow-visible" aria-label="Kategorien">
-          <ul className="flex gap-1 pb-2 text-[0.95rem] font-medium">
-            {tree.map((d) => (
-              <li key={d.id} className="group relative">
-                <Link href={`/c/${d.slug}`} className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 hover:bg-surface">
-                  <span className={`h-2 w-2 rounded-full ${DEPT_COLOR[d.department] ?? "bg-forest"}`} aria-hidden />
-                  {catTitle(d)}
-                </Link>
-                <div className="invisible absolute left-0 top-full z-40 hidden w-[36rem] max-w-[90vw] rounded-2xl border border-line bg-paper p-4 opacity-0 shadow-xl transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100 lg:block">
-                  <ul className="grid grid-cols-2 gap-x-6 gap-y-1">
+      <header className="site-header sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur-md transition-shadow">
+        <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
+          {/* mobile menu, works without JavaScript */}
+          <details className="group lg:hidden">
+            <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full hover:bg-surface" aria-label={ui("menu", lang)}>
+              <Icon name="menu" size={20} />
+            </summary>
+            <nav className="fixed inset-x-0 top-[6.25rem] z-40 max-h-[calc(100vh-6.25rem)] overflow-y-auto border-t border-line bg-paper px-4 pb-10 pt-4 shadow-lg" aria-label={ui("menu", lang)}>
+              <Link href="/shop" className="block py-2.5 text-sm font-medium">{ui("shopAll", lang)}</Link>
+              {tree.map((d) => (
+                <div key={d.id} className="border-t border-line py-2">
+                  <Link href={`/c/${d.slug}`} className="block py-1.5 text-sm font-medium">{catTitle(d)}</Link>
+                  <ul className="grid grid-cols-2 gap-x-4 pb-1">
                     {d.children.map((c) => (
-                      <li key={c.id}>
-                        <Link href={`/c/${c.slug}`} className="flex items-center gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-surface">
-                          {c.image_url && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={c.image_url} alt="" className="h-9 w-9 rounded-lg bg-white object-cover" loading="lazy" />
-                          )}
-                          {catTitle(c)}
-                        </Link>
-                      </li>
+                      <li key={c.id}><Link href={`/c/${c.slug}`} className="block py-1 text-[0.8125rem] text-muted">{catTitle(c)}</Link></li>
                     ))}
                   </ul>
                 </div>
-              </li>
-            ))}
-            {(site.navLinks ?? []).map((l, i) => (
-              <li key={i}>
-                <Link href={l.href || "/"} className="block whitespace-nowrap rounded-full px-3 py-1.5 hover:bg-surface">
-                  {tx(l.label, lang)}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link href="/info/lieferung" className="block whitespace-nowrap rounded-full px-3 py-1.5 text-muted hover:bg-surface">
-                {ui("deliveryPickup", lang)}
-              </Link>
-            </li>
-          </ul>
-        </nav>
+              ))}
+              <div className="border-t border-line pt-2">
+                {extra.map((l) => <Link key={l.href} href={l.href} className="block py-2 text-sm">{l.label}</Link>)}
+              </div>
+            </nav>
+          </details>
+
+          <Link href="/" className="flex shrink-0 items-center" aria-label={`${name} – ${ui("home", lang)}`}>{logo}</Link>
+
+          <nav className="hidden flex-1 lg:block" aria-label={ui("shop", lang)}>
+            <ul className="flex items-center gap-1 text-[0.8125rem]">
+              <li><Link href="/shop" className="rounded-full px-3 py-2 hover:bg-surface">{ui("shopAll", lang)}</Link></li>
+              {tree.map((d) => (
+                <li key={d.id} className="group relative">
+                  <Link href={`/c/${d.slug}`} className="rounded-full px-3 py-2 hover:bg-surface">{catTitle(d)}</Link>
+                  <div className="invisible absolute left-0 top-full z-40 pt-3 opacity-0 transition-opacity duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                    <ul className="grid w-[30rem] grid-cols-2 gap-x-6 gap-y-0.5 rounded-xl border border-line bg-white p-4 shadow-[0_20px_40px_-24px_rgba(0,0,0,.25)]">
+                      {d.children.map((c) => (
+                        <li key={c.id}>
+                          <Link href={`/c/${c.slug}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[0.8125rem] hover:bg-surface">
+                            {c.image_url && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={c.image_url} alt="" className="h-8 w-8 rounded-md bg-surface object-cover" loading="lazy" />
+                            )}
+                            {catTitle(c)}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </li>
+              ))}
+              <li aria-hidden className="mx-2 h-4 w-px bg-line" />
+              {extra.map((l) => (
+                <li key={l.href}><Link href={l.href} className="rounded-full px-3 py-2 text-muted hover:bg-surface hover:text-ink">{l.label}</Link></li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="ml-auto flex items-center gap-1 lg:ml-0">
+            <details className="group relative">
+              <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full hover:bg-surface" aria-label={ui("search", lang)}>
+                <Icon name="search" size={19} />
+              </summary>
+              <form action="/search" role="search" className="fixed inset-x-0 top-[6.25rem] z-40 border-b border-line bg-paper px-4 py-4 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:rounded-xl sm:border sm:shadow-lg">
+                <label htmlFor="q" className="sr-only">{ui("search", lang)}</label>
+                <input id="q" name="q" autoFocus placeholder={ui("searchPlaceholder", lang)} className="input rounded-full" />
+              </form>
+            </details>
+            <div className="px-2"><LangSwitch lang={lang} /></div>
+            <CartButton label={ui("cart", lang)} />
+          </div>
+        </div>
       </header>
     </>
   );

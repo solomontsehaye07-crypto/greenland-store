@@ -1,17 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useCart } from "./cart";
 
-export function CartButton() {
-  const { count, ready } = useCart();
+export function CartButton({ label }: { label: string }) {
+  const { count, ready, setDrawerOpen } = useCart();
+  const n = ready ? count : 0;
   return (
-    <Link href="/cart" className="relative flex h-11 items-center gap-2 rounded-full bg-green px-4 text-white hover:bg-green-deep" aria-label={`Cart, ${count} items`}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-        <path d="M5 7h14l-1.5 11h-11z" />
-        <path d="M9 7a3 3 0 016 0" />
+    <button type="button" onClick={() => setDrawerOpen(true)} className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-surface" aria-label={`${label}, ${n}`}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+        <path d="M5 8h14l-1.2 11.2a1 1 0 01-1 .8H7.2a1 1 0 01-1-.8z" />
+        <path d="M9 8V6.5a3 3 0 016 0V8" />
       </svg>
-      <span className="text-sm font-semibold">{ready ? count : 0}</span>
-    </Link>
+      {n > 0 && <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-forest px-1 text-[0.625rem] font-semibold text-white">{n}</span>}
+    </button>
   );
 }

@@ -17,10 +17,10 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
   const page = await getPage(slug);
   if (!page) notFound();
   return (
-    <article className="mx-auto max-w-3xl px-4 py-14">
-      <h1 className="display text-4xl font-extrabold sm:text-5xl" style={{ textWrap: "balance" }}>{tx(page.title, lang)}</h1>
-      <div className="weave-thin my-8 w-24" aria-hidden />
-      <Markdown text={tx(page.body, lang)} className="text-[1.05rem]" />
+    <article className="mx-auto max-w-2xl px-4 py-14">
+      <h1 className="h-section" style={{ textWrap: "balance" }}>{tx(page.title, lang)}</h1>
+      <div className="my-6" />
+      <Markdown text={tx(page.body, lang)} className="" />
     </article>
   );
 }

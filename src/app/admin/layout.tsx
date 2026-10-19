@@ -13,6 +13,7 @@ const NAV = [
   ["/admin/suppliers", "Suppliers"],
   ["/admin/import", "Batch import"],
   ["/admin/website", "Website"],
+  ["/admin/recipes", "Recipes"],
   ["/admin/subscribers", "Subscribers"],
   ["/admin/settings", "Settings"],
 ];

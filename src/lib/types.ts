@@ -88,4 +88,4 @@ export interface CartLine {
 }
 
 export const PRODUCT_CARD_FIELDS =
-  "id, sku, slug, title, title_de, brand, price, compare_at_price, image_url, size_qty, size_unit, stock, is_frozen, age_restricted, weight_g, category_id";
+  "id, sku, slug, title, title_de, brand, price, compare_at_price, image_url, size_qty, size_unit, stock, is_frozen, age_restricted, weight_g, category_id, country, featured";

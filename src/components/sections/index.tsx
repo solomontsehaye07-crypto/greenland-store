@@ -1,16 +1,18 @@
 import Link from "next/link";
 import type { HomeSection } from "@/lib/content";
-import { getRailProducts, getCategories } from "@/lib/catalog";
+import { getCategories, getCountryCounts, getRailProducts, getRecommended } from "@/lib/catalog";
+import { supabasePublic } from "@/lib/supabase";
+import { countryFlag, countryLabel } from "@/lib/countries";
 import { tx, ui, type L10n, type Lang } from "@/lib/i18n";
 import { Icon } from "../icons";
 import { Markdown } from "../markdown";
-import { ProductCard } from "../product-card";
+import { ProductCard, ProductGrid } from "../product-card";
 import { Rail } from "./rail";
 import { NewsletterForm } from "./newsletter-form";
 
 type D = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const L = (v: unknown, lang: Lang) => tx(v as L10n, lang);
-const accent = (c?: string) => `accent-${c || "sand"}`;
+const WRAP = "mx-auto max-w-7xl px-4";
 
 function SmartLink({ href, className, children, ...rest }: { href?: string; className?: string; children: React.ReactNode; "aria-label"?: string }) {
   const h = href || "/";
@@ -21,112 +23,105 @@ function SmartLink({ href, className, children, ...rest }: { href?: string; clas
 function Head({ title, text, lang, link }: { title?: unknown; text?: unknown; lang: Lang; link?: { href: string; label: string } }) {
   const t = L(title, lang);
   const p = L(text, lang);
-  if (!t && !p) return null;
+  if (!t && !p && !link) return null;
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div className="max-w-2xl">
-        {t && <h2 className="text-3xl font-extrabold sm:text-[2.6rem]" style={{ textWrap: "balance" }}>{t}</h2>}
-        {p && <p className="mt-2 text-muted">{p}</p>}
+    <div className="mb-7 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+      <div className="max-w-xl">
+        {t && <h2 className="h-section" style={{ textWrap: "balance" }}>{t}</h2>}
+        {p && <p className="mt-1.5 text-sm text-muted">{p}</p>}
       </div>
-      {link && <Link href={link.href} className="rounded-full border border-current px-4 py-2 text-sm font-semibold hover:bg-ink hover:text-paper">{link.label}</Link>}
+      {link && <Link href={link.href} className="link-more">{link.label}</Link>}
     </div>
   );
 }
 
-// ---------- hero ----------
-function Hero({ d, lang }: { d: D; lang: Lang }) {
-  const imgs: { image?: string; href?: string }[] = (d.images ?? []).filter((x: D) => x.image).slice(0, 5);
-  const shapes = ["arch", "rounded-full", "rounded-[2rem]", "arch", "rounded-full"];
-  const tones = ["bg-terra", "bg-saffron", "bg-indigo", "bg-forest", "bg-sand"];
-  // a staggered 2-column collage, the middle column offset to feel like market stalls
+// ---------- hero: short headline + endless product strip ----------
+async function Hero({ d, lang }: { d: D; lang: Lang }) {
+  let strip: { image: string; href?: string }[] = (d.images ?? []).filter((x: D) => x.image);
+  if (d.autoFill !== false && strip.length < 10) {
+    const rec = await getRecommended(14 - strip.length);
+    strip = [...strip, ...rec.filter((p) => p.image_url).map((p) => ({ image: p.image_url as string, href: `/p/${p.slug}` }))];
+  }
+  const tile = (im: { image: string; href?: string }, i: number, hidden: boolean) => {
+    const img = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={im.image} alt="" loading={i < 6 ? "eager" : "lazy"} className="h-full w-full object-cover mix-blend-multiply transition-transform duration-700 group-hover:scale-[1.04]" />
+    );
+    return (
+      <li key={`${hidden ? "b" : "a"}${i}`} className="group mr-4 h-44 w-44 shrink-0 overflow-hidden rounded-xl bg-surface sm:h-56 sm:w-56" aria-hidden={hidden}>
+        {im.href ? <SmartLink href={im.href} className="block h-full" aria-label={hidden ? undefined : `${i + 1}`}>{img}</SmartLink> : img}
+      </li>
+    );
+  };
   return (
-    <section className="relative overflow-hidden">
-      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-14 pt-10 lg:grid-cols-[1.05fr_1fr] lg:pb-20 lg:pt-16">
-        <div className="relative z-10">
-          <h1 className="display text-[2.9rem] font-extrabold leading-[0.98] sm:text-6xl lg:text-[4.6rem]" style={{ textWrap: "balance" }}>
-            {L(d.title, lang)}
-          </h1>
-          {L(d.text, lang) && <p className="mt-6 max-w-xl text-lg text-muted">{L(d.text, lang)}</p>}
-          <div className="mt-8 flex flex-wrap gap-3">
-            {L(d.cta1Label, lang) && (
-              <SmartLink href={d.cta1Href} className="btn bg-terra px-7 py-3.5 text-base text-white hover:brightness-110">{L(d.cta1Label, lang)}</SmartLink>
-            )}
-            {L(d.cta2Label, lang) && (
-              <SmartLink href={d.cta2Href} className="btn border-2 border-ink px-7 py-3.5 text-base hover:bg-ink hover:text-paper">{L(d.cta2Label, lang)}</SmartLink>
-            )}
-          </div>
-          {(d.facts ?? []).length > 0 && (
-            <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
-              {(d.facts as D[]).map((f, i) => (
-                <li key={i} className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-saffron" aria-hidden />{L(f.text, lang)}</li>
-              ))}
-            </ul>
-          )}
+    <section className="overflow-hidden pb-16 pt-14 sm:pt-20">
+      <div className={`${WRAP} animate-[fade_.9s_ease-out_both]`}>
+        <h1 className="display max-w-3xl text-[2.1rem] font-semibold leading-[1.08] tracking-tight sm:text-5xl" style={{ textWrap: "balance" }}>
+          {L(d.title, lang)}
+        </h1>
+        {L(d.text, lang) && <p className="mt-5 max-w-xl text-[0.9375rem] leading-relaxed text-muted">{L(d.text, lang)}</p>}
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          {L(d.cta1Label, lang) && <SmartLink href={d.cta1Href} className="btn btn-primary px-6">{L(d.cta1Label, lang)}</SmartLink>}
+          {L(d.cta2Label, lang) && <SmartLink href={d.cta2Href} className="btn btn-ghost px-6">{L(d.cta2Label, lang)}</SmartLink>}
         </div>
-        {imgs.length > 0 && (
-          <div className="relative grid grid-cols-3 items-end gap-3 sm:gap-4" aria-hidden={false}>
-            {imgs.map((im, i) => {
-              const big = i === 1;
-              const el = (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={im.image} alt="" className="h-full w-full object-cover mix-blend-multiply" loading={i < 3 ? "eager" : "lazy"} />
-              );
-              return (
-                <div
-                  key={i}
-                  className={`rise relative overflow-hidden ${shapes[i]} ${tones[i]} ${big ? "row-span-2 aspect-[3/5]" : "aspect-[3/4]"} ${i % 2 ? "drift" : ""}`}
-                  style={{ animationDelay: `${120 + i * 110}ms` }}
-                >
-                  <div className="absolute inset-[6px] overflow-hidden rounded-[inherit] bg-white">{im.href ? <SmartLink href={im.href} className="block h-full">{el}</SmartLink> : el}</div>
-                </div>
-              );
-            })}
-          </div>
+        {(d.facts ?? []).length > 0 && (
+          <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-muted">
+            {(d.facts as D[]).map((f, i) => (
+              <li key={i} className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-forest" aria-hidden />{L(f.text, lang)}</li>
+            ))}
+          </ul>
         )}
       </div>
+      {strip.length > 0 && (
+        <div className="marquee mt-14" style={{ ["--marquee-s" as string]: `${Math.max(40, strip.length * 6)}s` }}>
+          <ul className="marquee-track">
+            {strip.map((im, i) => tile(im, i, false))}
+            {strip.map((im, i) => tile(im, i, true))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
 
-// ---------- marquee ----------
+// ---------- thin moving text line ----------
 function Marquee({ d, lang }: { d: D; lang: Lang }) {
   const items: string[] = (d.items ?? []).map((x: D) => L(x.text, lang)).filter(Boolean);
   if (!items.length) return null;
   const row = (hidden: boolean) => (
     <ul className="flex shrink-0 items-center" aria-hidden={hidden}>
       {items.map((t, i) => (
-        <li key={i} className="flex items-center whitespace-nowrap px-6 text-lg font-bold display sm:text-xl">
-          {t}
-          <span className="ml-12 inline-block h-3 w-3 rotate-45 bg-current opacity-60" aria-hidden />
+        <li key={i} className="flex items-center whitespace-nowrap px-8 text-xs text-muted">
+          {t}<span className="ml-16 h-1 w-1 rounded-full bg-line" aria-hidden />
         </li>
       ))}
     </ul>
   );
   return (
-    <section className={`marquee overflow-hidden py-4 ${accent(d.color)}`} style={{ ["--marquee-s" as string]: `${Number(d.seconds) || 40}s` }}>
+    <section className="marquee overflow-hidden border-y border-line py-3" style={{ ["--marquee-s" as string]: `${Number(d.seconds) || 45}s` }}>
       <div className="marquee-track">{row(false)}{row(true)}</div>
     </section>
   );
 }
 
-// ---------- tiles ----------
+// ---------- category tiles ----------
 function Tiles({ d, lang }: { d: D; lang: Lang }) {
   const items: D[] = d.items ?? [];
-  const shape = d.shape === "circle" ? "rounded-full aspect-square" : d.shape === "square" ? "rounded-[1.6rem] aspect-square" : "arch aspect-[4/5]";
+  const shape = d.shape === "circle" ? "rounded-full aspect-square" : d.shape === "portrait" ? "rounded-xl aspect-[4/5]" : "rounded-xl aspect-square";
   return (
-    <section className="mx-auto max-w-7xl px-4 py-14">
+    <section className={`${WRAP} reveal py-14`}>
       <Head title={d.title} text={d.text} lang={lang} />
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-4 lg:grid-cols-6">
+      <ul className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-6">
         {items.map((t, i) => (
           <li key={i}>
-            <SmartLink href={t.href} className="group block text-center">
-              <div className={`relative overflow-hidden ${shape} ${accent(t.color)}`}>
+            <SmartLink href={t.href} className="group block">
+              <div className={`overflow-hidden bg-surface ${shape}`}>
                 {t.image && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={t.image} alt="" loading="lazy" className="absolute inset-[7px] h-[calc(100%-14px)] w-[calc(100%-14px)] rounded-[inherit] object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <img src={t.image} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply transition-transform duration-700 group-hover:scale-[1.04]" />
                 )}
               </div>
-              <span className="mt-3 block text-[0.95rem] font-semibold leading-tight group-hover:text-terra">{L(t.label, lang)}</span>
+              <span className="mt-2.5 block text-center text-xs text-ink group-hover:underline sm:text-[0.8125rem]">{L(t.label, lang)}</span>
             </SmartLink>
           </li>
         ))}
@@ -135,47 +130,52 @@ function Tiles({ d, lang }: { d: D; lang: Lang }) {
   );
 }
 
-// ---------- product rail ----------
+// ---------- product sections ----------
+const DEFAULT_LINK: Record<string, string> = { bestsellers: "/shop", recommended: "/shop", newest: "/shop?sort=new", sale: "/shop?sale=1" };
+
 async function Products({ d, lang }: { d: D; lang: Lang }) {
-  const products = await getRailProducts(d.source, d.category, Number(d.limit) || 10);
+  const products = await getRailProducts(d.source, d.category || undefined, Number(d.limit) || 10, d.country || undefined);
   if (!products.length) return null;
-  let link: { href: string; label: string } | undefined;
-  if (d.source === "category" && d.category) link = { href: `/c/${d.category}`, label: ui("seeAll", lang) };
+  let href: string | undefined = d.linkHref || DEFAULT_LINK[d.source];
+  if (!d.linkHref && d.source === "category" && d.category) href = `/c/${d.category}`;
+  if (!d.linkHref && d.source === "country" && d.country) href = `/shop?country=${encodeURIComponent(d.country)}`;
+  const link = href ? { href, label: L(d.linkLabel, lang) || ui("seeAll", lang) } : undefined;
   const tinted = d.color && d.color !== "none";
+  const badge = d.source === "bestsellers" ? ui("bestseller", lang) : undefined;
   return (
-    <section className={tinted ? `${accent(d.color)} py-14` : "py-12"}>
-      <div className="mx-auto max-w-7xl px-4">
+    <section className={`reveal ${tinted ? "bg-surface py-16" : "py-12"}`}>
+      <div className={WRAP}>
         <Head title={d.title} text={d.text} lang={lang} link={link} />
-        <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }}>
-          {products.map((p) => <ProductCard key={p.id} p={p} lang={lang} />)}
-        </Rail>
+        {d.layout === "grid" ? (
+          <ProductGrid products={products} lang={lang} />
+        ) : (
+          <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }}>
+            {products.map((p, i) => <ProductCard key={p.id} p={p} lang={lang} badge={badge && i < 3 ? badge : undefined} />)}
+          </Rail>
+        )}
       </div>
     </section>
   );
 }
 
-// ---------- banners ----------
+// ---------- banners (editorial cards) ----------
 function Banners({ d, lang }: { d: D; lang: Lang }) {
   const items: D[] = d.items ?? [];
   if (!items.length) return null;
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10">
-      <div className={`grid gap-4 ${items.length > 1 ? "md:grid-cols-2" : ""} ${items.length > 2 ? "lg:grid-cols-3" : ""}`}>
+    <section className={`${WRAP} reveal py-12`}>
+      <div className={`grid gap-6 ${items.length > 1 ? "md:grid-cols-2" : ""} ${items.length > 2 ? "lg:grid-cols-3" : ""}`}>
         {items.map((b, i) => (
-          <SmartLink key={i} href={b.href} className={`group relative flex min-h-[18rem] overflow-hidden rounded-[2rem] ${accent(b.color)}`}>
-            <div className="relative z-10 flex max-w-[60%] flex-col justify-end p-7">
-              <h3 className="display text-2xl font-extrabold leading-tight sm:text-3xl" style={{ textWrap: "balance" }}>{L(b.title, lang)}</h3>
-              {L(b.text, lang) && <p className="mt-2 text-sm opacity-85">{L(b.text, lang)}</p>}
-              {L(b.ctaLabel, lang) && (
-                <span className="mt-5 inline-flex w-fit rounded-full bg-paper px-5 py-2.5 text-sm font-semibold text-ink transition-transform group-hover:translate-x-1">{L(b.ctaLabel, lang)}</span>
+          <SmartLink key={i} href={b.href} className="group block">
+            <div className="aspect-[16/10] overflow-hidden rounded-xl bg-surface">
+              {b.image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={b.image} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply transition-transform duration-700 group-hover:scale-[1.03]" />
               )}
             </div>
-            {b.image && (
-              <div className="absolute -right-6 bottom-0 top-6 w-[52%] overflow-hidden arch bg-paper/20 p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.image} alt="" loading="lazy" className="h-full w-full rounded-[inherit] object-cover transition-transform duration-700 group-hover:scale-105" />
-              </div>
-            )}
+            <h3 className="mt-4 text-base font-semibold">{L(b.title, lang)}</h3>
+            {L(b.text, lang) && <p className="mt-1 text-sm text-muted">{L(b.text, lang)}</p>}
+            {L(b.ctaLabel, lang) && <span className="link-more mt-2 inline-block">{L(b.ctaLabel, lang)}</span>}
           </SmartLink>
         ))}
       </div>
@@ -183,20 +183,19 @@ function Banners({ d, lang }: { d: D; lang: Lang }) {
   );
 }
 
-// ---------- usp ----------
+// ---------- promises ----------
 function Usp({ d, lang }: { d: D; lang: Lang }) {
   const items: D[] = d.items ?? [];
-  const tones = ["text-terra", "text-forest", "text-indigo", "text-saffron"];
   return (
-    <section className="mx-auto max-w-7xl px-4 py-12">
-      <Head title={d.title} lang={lang} />
-      <ul className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+    <section className={`${WRAP} reveal py-12`}>
+      {L(d.title, lang) && <h2 className="sr-only">{L(d.title, lang)}</h2>}
+      <ul className="grid gap-x-8 gap-y-6 border-y border-line py-8 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((u, i) => (
-          <li key={i} className="flex gap-4">
-            <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-full bg-surface ${tones[i % 4]}`}><Icon name={u.icon} size={24} /></span>
+          <li key={i} className="flex gap-3">
+            <Icon name={u.icon} size={20} className="mt-0.5 shrink-0 text-forest" />
             <div>
-              <h3 className="font-bold">{L(u.title, lang)}</h3>
-              <p className="mt-1 text-sm text-muted">{L(u.text, lang)}</p>
+              <h3 className="text-[0.8125rem] font-semibold">{L(u.title, lang)}</h3>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted">{L(u.text, lang)}</p>
             </div>
           </li>
         ))}
@@ -208,64 +207,56 @@ function Usp({ d, lang }: { d: D; lang: Lang }) {
 // ---------- story ----------
 function Story({ d, lang }: { d: D; lang: Lang }) {
   const right = d.imageSide === "right";
-  const tinted = d.color && d.color !== "none";
   return (
-    <section className={tinted ? `${accent(d.color)} my-10` : "my-10"}>
-      <div className={`mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 md:grid-cols-2`}>
+    <section className={`${WRAP} reveal py-16`}>
+      <div className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
         {d.image && (
-          <div className={`relative ${right ? "md:order-2" : ""}`}>
-            <div className="arch overflow-hidden bg-paper p-2.5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={d.image} alt="" loading="lazy" className="aspect-[4/5] w-full rounded-[inherit] object-cover" />
-            </div>
+          <div className={`aspect-[4/5] overflow-hidden rounded-xl bg-surface md:aspect-square ${right ? "md:order-2" : ""}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={d.image} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply" />
           </div>
         )}
-        <div className="max-w-xl">
-          <h2 className="display text-3xl font-extrabold sm:text-[2.6rem]" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h2>
-          <Markdown text={L(d.text, lang)} className="mt-5 text-[1.05rem]" />
-          {L(d.ctaLabel, lang) && <SmartLink href={d.ctaHref} className="btn mt-7 bg-ink text-paper hover:brightness-125">{L(d.ctaLabel, lang)}</SmartLink>}
+        <div className="max-w-md">
+          <h2 className="h-section" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h2>
+          <Markdown text={L(d.text, lang)} className="mt-4 text-muted" />
+          {L(d.ctaLabel, lang) && <SmartLink href={d.ctaHref} className="btn btn-ghost mt-6">{L(d.ctaLabel, lang)}</SmartLink>}
         </div>
       </div>
     </section>
   );
 }
 
-// ---------- faq ----------
 function Faq({ d, lang }: { d: D; lang: Lang }) {
   const items: D[] = d.items ?? [];
   return (
-    <section className="mx-auto max-w-3xl px-4 py-14">
-      <Head title={d.title} lang={lang} />
-      <div className="divide-y divide-line border-y border-line">
-        {items.map((f, i) => (
-          <details key={i} className="group py-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-semibold">
-              {L(f.q, lang)}
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface text-xl transition-transform group-open:rotate-45" aria-hidden>+</span>
-            </summary>
-            <p className="mt-3 whitespace-pre-line text-muted">{L(f.a, lang)}</p>
-          </details>
-        ))}
+    <section className={`${WRAP} reveal py-14`}>
+      <div className="grid gap-8 md:grid-cols-[1fr_2fr]">
+        <Head title={d.title} lang={lang} />
+        <div className="divide-y divide-line border-y border-line">
+          {items.map((f, i) => (
+            <details key={i} className="group py-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium">
+                {L(f.q, lang)}
+                <span className="text-lg leading-none text-muted transition-transform duration-300 group-open:rotate-45" aria-hidden>+</span>
+              </summary>
+              <p className="mt-2 whitespace-pre-line pr-8 text-sm leading-relaxed text-muted">{L(f.a, lang)}</p>
+            </details>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-// ---------- newsletter ----------
 function Newsletter({ d, lang }: { d: D; lang: Lang }) {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10">
-      <div className={`relative overflow-hidden rounded-[2rem] px-6 py-12 sm:px-12 ${accent(d.color || "indigo")}`}>
-        <div className="weave absolute inset-x-0 top-0" aria-hidden />
-        <div className="grid items-center gap-8 md:grid-cols-2">
-          <div>
-            <h2 className="display text-3xl font-extrabold sm:text-4xl" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h2>
-            {L(d.text, lang) && <p className="mt-3 opacity-85">{L(d.text, lang)}</p>}
-          </div>
-          <div>
-            <NewsletterForm lang={lang} button={L(d.buttonLabel, lang) || ui("subscribe", lang)} placeholder={ui("emailAddress", lang)} thanks={ui("thanksSubscribed", lang)} />
-            {L(d.note, lang) && <p className="mt-3 text-xs opacity-75">{L(d.note, lang)}</p>}
-          </div>
+    <section className={`${WRAP} reveal py-12`}>
+      <div className="rounded-2xl bg-surface px-6 py-12 text-center sm:px-12">
+        <h2 className="h-section mx-auto max-w-lg" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h2>
+        {L(d.text, lang) && <p className="mt-2 text-sm text-muted">{L(d.text, lang)}</p>}
+        <div className="mx-auto mt-6 max-w-md">
+          <NewsletterForm lang={lang} button={L(d.buttonLabel, lang) || ui("subscribe", lang)} placeholder={ui("emailAddress", lang)} thanks={ui("thanksSubscribed", lang)} />
+          {L(d.note, lang) && <p className="mt-3 text-[0.6875rem] text-muted">{L(d.note, lang)}</p>}
         </div>
       </div>
     </section>
@@ -274,15 +265,75 @@ function Newsletter({ d, lang }: { d: D; lang: Lang }) {
 
 function TextBlock({ d, lang }: { d: D; lang: Lang }) {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-12">
-      {L(d.title, lang) && <h2 className="display mb-4 text-3xl font-extrabold">{L(d.title, lang)}</h2>}
+    <section className="reveal mx-auto max-w-2xl px-4 py-12">
+      {L(d.title, lang) && <h2 className="h-section mb-4">{L(d.title, lang)}</h2>}
       <Markdown text={L(d.body, lang)} />
     </section>
   );
 }
 
+// ---------- shop by country ----------
+async function Countries({ d, lang }: { d: D; lang: Lang }) {
+  const list = await getCountryCounts();
+  if (!list.length) return null;
+  return (
+    <section className={`${WRAP} reveal py-12`}>
+      <Head title={d.title} text={d.text} lang={lang} link={{ href: "/laender", label: ui("seeAll", lang) }} />
+      <ul className="flex flex-wrap gap-2">
+        {list.slice(0, 18).map((c) => {
+          const flag = countryFlag(c.country);
+          const name = countryLabel(c.country, lang);
+          return (
+            <li key={c.country}>
+              <Link href={`/shop?country=${encodeURIComponent(c.country)}`} className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-[0.8125rem] transition-colors hover:border-ink">
+                <span aria-hidden>{flag}</span>{name}<span className="text-xs text-muted">{c.count}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+// ---------- recipe ideas ----------
+async function Recipes({ d, lang }: { d: D; lang: Lang }) {
+  const { data } = await supabasePublic()
+    .from("recipes")
+    .select("slug, title, intro, image_url, country, recipe_items(count)")
+    .eq("published", true)
+    .order("sort")
+    .limit(Math.min(Number(d.limit) || 4, 8));
+  const rows = (data ?? []) as { slug: string; title: L10n; intro: L10n; image_url: string | null; country: string | null; recipe_items: { count: number }[] }[];
+  if (!rows.length) return null;
+  return (
+    <section className={`${WRAP} reveal py-14`}>
+      <Head title={d.title} text={d.text} lang={lang} link={{ href: "/rezepte", label: ui("seeAll", lang) }} />
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4">
+        {rows.map((r) => (
+          <li key={r.slug}>
+            <Link href={`/rezepte/${r.slug}`} className="group block">
+              <div className="aspect-[4/3] overflow-hidden rounded-xl bg-surface">
+                {r.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={r.image_url} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply transition-transform duration-700 group-hover:scale-[1.04]" />
+                )}
+              </div>
+              <h3 className="mt-3 text-sm font-semibold group-hover:underline">{tx(r.title, lang)}</h3>
+              <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">{tx(r.intro, lang)}</p>
+              <p className="mt-1.5 text-[0.6875rem] text-muted">
+                {[r.country ? countryLabel(r.country, lang) : null, `${r.recipe_items?.[0]?.count ?? 0} ${lang === "de" ? "Zutaten im Shop" : "ingredients in store"}`].filter(Boolean).join(" · ")}
+              </p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export async function Sections({ sections, lang }: { sections: HomeSection[]; lang: Lang }) {
-  await getCategories(); // warm the category cache once for all product rows
+  await getCategories(); // warm the category cache once for all product sections
   return (
     <>
       {sections.map((s) => {
@@ -298,6 +349,8 @@ export async function Sections({ sections, lang }: { sections: HomeSection[]; la
           case "faq": return <Faq key={s.id} d={d} lang={lang} />;
           case "newsletter": return <Newsletter key={s.id} d={d} lang={lang} />;
           case "text": return <TextBlock key={s.id} d={d} lang={lang} />;
+          case "countries": return <Countries key={s.id} d={d} lang={lang} />;
+          case "recipes": return <Recipes key={s.id} d={d} lang={lang} />;
           default: return null;
         }
       })}
