@@ -1,0 +1,307 @@
+// Describes every editable thing on the website: the home page sections, the site settings and the theme.
+// The admin editor builds its forms from these field lists, so adding a field here makes it editable there.
+
+import type { L10n } from "./i18n";
+
+export type FieldKind =
+  | "text" // one line, both languages
+  | "textarea" // a few lines, both languages
+  | "markdown" // long text with simple formatting, both languages
+  | "plain" // one line, same in both languages (links, numbers as text)
+  | "image"
+  | "number"
+  | "color"
+  | "toggle"
+  | "select"
+  | "category"
+  | "list";
+
+export interface Field {
+  key: string;
+  label: string;
+  kind: FieldKind;
+  help?: string;
+  options?: { value: string; label: string }[];
+  item?: Field[]; // for lists
+  itemLabel?: string;
+  max?: number;
+}
+
+export const ACCENTS = [
+  { value: "terra", label: "Terracotta" },
+  { value: "saffron", label: "Saffron" },
+  { value: "forest", label: "Forest green" },
+  { value: "indigo", label: "Indigo" },
+  { value: "sand", label: "Sand" },
+];
+
+const ICONS = [
+  { value: "truck", label: "Delivery truck" },
+  { value: "bag", label: "Shopping bag / pickup" },
+  { value: "bike", label: "Local delivery" },
+  { value: "snow", label: "Frozen" },
+  { value: "leaf", label: "Fresh" },
+  { value: "chat", label: "Chat / WhatsApp" },
+  { value: "shield", label: "Guarantee" },
+  { value: "star", label: "Star" },
+  { value: "gift", label: "Gift" },
+];
+
+export type SectionType = "hero" | "marquee" | "tiles" | "products" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text";
+
+export interface SectionDef {
+  type: SectionType;
+  label: string;
+  description: string;
+  fields: Field[];
+  defaults: Record<string, unknown>;
+}
+
+export const SECTION_DEFS: SectionDef[] = [
+  {
+    type: "hero",
+    label: "Hero",
+    description: "The big opening area: headline, two buttons and a collage of product photos.",
+    fields: [
+      { key: "title", label: "Headline", kind: "text" },
+      { key: "text", label: "Intro text", kind: "textarea" },
+      { key: "cta1Label", label: "Main button text", kind: "text" },
+      { key: "cta1Href", label: "Main button link", kind: "plain", help: "For example /c/food" },
+      { key: "cta2Label", label: "Second button text", kind: "text" },
+      { key: "cta2Href", label: "Second button link", kind: "plain" },
+      {
+        key: "images",
+        label: "Collage photos",
+        kind: "list",
+        itemLabel: "Photo",
+        max: 5,
+        item: [
+          { key: "image", label: "Photo", kind: "image" },
+          { key: "href", label: "Link (optional)", kind: "plain" },
+        ],
+      },
+      { key: "facts", label: "Small facts under the buttons", kind: "list", itemLabel: "Fact", max: 4, item: [{ key: "text", label: "Fact", kind: "text" }] },
+    ],
+    defaults: { title: { de: "", en: "" }, images: [], facts: [] },
+  },
+  {
+    type: "marquee",
+    label: "Moving ribbon",
+    description: "A slowly scrolling strip with short messages like free delivery or pickup.",
+    fields: [
+      { key: "items", label: "Messages", kind: "list", itemLabel: "Message", max: 8, item: [{ key: "text", label: "Message", kind: "text" }] },
+      { key: "color", label: "Colour", kind: "select", options: ACCENTS },
+      { key: "seconds", label: "Speed (seconds per loop, higher is slower)", kind: "number" },
+    ],
+    defaults: { items: [], color: "saffron", seconds: 40 },
+  },
+  {
+    type: "tiles",
+    label: "Picture tiles",
+    description: "A row of image tiles that link anywhere: categories, regions, offers.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "textarea" },
+      { key: "shape", label: "Tile shape", kind: "select", options: [{ value: "arch", label: "Arch" }, { value: "circle", label: "Circle" }, { value: "square", label: "Rounded square" }] },
+      {
+        key: "items",
+        label: "Tiles",
+        kind: "list",
+        itemLabel: "Tile",
+        max: 16,
+        item: [
+          { key: "image", label: "Image", kind: "image" },
+          { key: "label", label: "Label", kind: "text" },
+          { key: "href", label: "Link", kind: "plain" },
+          { key: "color", label: "Background", kind: "select", options: ACCENTS },
+        ],
+      },
+    ],
+    defaults: { shape: "arch", items: [] },
+  },
+  {
+    type: "products",
+    label: "Product row",
+    description: "A scrollable row of products from a category, your featured products, new arrivals or offers.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "textarea" },
+      {
+        key: "source",
+        label: "Which products",
+        kind: "select",
+        options: [
+          { value: "category", label: "From a category" },
+          { value: "featured", label: "Featured products" },
+          { value: "newest", label: "Newest products" },
+          { value: "sale", label: "Products on offer" },
+        ],
+      },
+      { key: "category", label: "Category (if 'From a category')", kind: "category" },
+      { key: "limit", label: "How many", kind: "number" },
+      { key: "color", label: "Background", kind: "select", options: [{ value: "none", label: "None" }, ...ACCENTS] },
+    ],
+    defaults: { source: "category", limit: 10, color: "none" },
+  },
+  {
+    type: "banners",
+    label: "Promo banners",
+    description: "One to three large banners with a photo, a short text and a button.",
+    fields: [
+      {
+        key: "items",
+        label: "Banners",
+        kind: "list",
+        itemLabel: "Banner",
+        max: 3,
+        item: [
+          { key: "image", label: "Photo", kind: "image" },
+          { key: "title", label: "Title", kind: "text" },
+          { key: "text", label: "Text", kind: "textarea" },
+          { key: "ctaLabel", label: "Button text", kind: "text" },
+          { key: "href", label: "Link", kind: "plain" },
+          { key: "color", label: "Colour", kind: "select", options: ACCENTS },
+        ],
+      },
+    ],
+    defaults: { items: [] },
+  },
+  {
+    type: "usp",
+    label: "Why shop with us",
+    description: "Short promises with icons: delivery, pickup, freshness, support.",
+    fields: [
+      { key: "title", label: "Title (optional)", kind: "text" },
+      {
+        key: "items",
+        label: "Promises",
+        kind: "list",
+        itemLabel: "Promise",
+        max: 6,
+        item: [
+          { key: "icon", label: "Icon", kind: "select", options: ICONS },
+          { key: "title", label: "Title", kind: "text" },
+          { key: "text", label: "Text", kind: "textarea" },
+        ],
+      },
+    ],
+    defaults: { items: [] },
+  },
+  {
+    type: "story",
+    label: "Story",
+    description: "A photo with a longer text: who you are, a recipe, a special product.",
+    fields: [
+      { key: "image", label: "Photo", kind: "image" },
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "markdown" },
+      { key: "ctaLabel", label: "Button text", kind: "text" },
+      { key: "ctaHref", label: "Button link", kind: "plain" },
+      { key: "imageSide", label: "Photo side", kind: "select", options: [{ value: "left", label: "Left" }, { value: "right", label: "Right" }] },
+      { key: "color", label: "Background", kind: "select", options: [{ value: "none", label: "None" }, ...ACCENTS] },
+    ],
+    defaults: { imageSide: "left", color: "sand" },
+  },
+  {
+    type: "faq",
+    label: "Questions & answers",
+    description: "Frequently asked questions that open on click.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "items", label: "Questions", kind: "list", itemLabel: "Question", max: 20, item: [{ key: "q", label: "Question", kind: "text" }, { key: "a", label: "Answer", kind: "textarea" }] },
+    ],
+    defaults: { items: [] },
+  },
+  {
+    type: "newsletter",
+    label: "Newsletter sign-up",
+    description: "Collects email addresses. You find them under Admin → Subscribers.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "textarea" },
+      { key: "buttonLabel", label: "Button text", kind: "text" },
+      { key: "note", label: "Small print", kind: "textarea" },
+      { key: "color", label: "Background", kind: "select", options: ACCENTS },
+    ],
+    defaults: { color: "indigo" },
+  },
+  {
+    type: "text",
+    label: "Text block",
+    description: "A heading and free text.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "body", label: "Text", kind: "markdown" },
+    ],
+    defaults: {},
+  },
+];
+
+export function sectionDef(type: string) {
+  return SECTION_DEFS.find((d) => d.type === type);
+}
+
+// ---------- site settings & theme ----------
+
+export const SITE_FIELDS: Field[] = [
+  { key: "logo", label: "Logo (leave empty to use the name as text)", kind: "image" },
+  { key: "name", label: "Shop name", kind: "plain" },
+  { key: "tagline", label: "Short line under the name", kind: "text" },
+  { key: "announcements", label: "Top bar messages (rotate)", kind: "list", itemLabel: "Message", max: 5, item: [{ key: "text", label: "Message", kind: "text" }] },
+  { key: "whatsapp", label: "WhatsApp number (international, digits only, e.g. 4915213945662)", kind: "plain" },
+  { key: "phone", label: "Phone (as shown)", kind: "plain" },
+  { key: "email", label: "Email", kind: "plain" },
+  { key: "address", label: "Shop address", kind: "textarea" },
+  { key: "hours", label: "Opening hours", kind: "textarea" },
+  { key: "about", label: "Footer: about the shop", kind: "textarea" },
+  { key: "instagram", label: "Instagram link", kind: "plain" },
+  { key: "facebook", label: "Facebook link", kind: "plain" },
+  { key: "tiktok", label: "TikTok link", kind: "plain" },
+  { key: "navLinks", label: "Extra menu links", kind: "list", itemLabel: "Link", max: 5, item: [{ key: "label", label: "Text", kind: "text" }, { key: "href", label: "Link", kind: "plain" }] },
+  { key: "seoTitle", label: "Search engine title", kind: "text" },
+  { key: "seoDescription", label: "Search engine description", kind: "textarea" },
+  { key: "showWhatsappButton", label: "Show floating WhatsApp button", kind: "toggle" },
+];
+
+export const THEME_FIELDS: Field[] = [
+  { key: "paper", label: "Page background", kind: "color" },
+  { key: "sand", label: "Soft band colour", kind: "color" },
+  { key: "ink", label: "Text colour", kind: "color" },
+  { key: "terra", label: "Terracotta (food)", kind: "color" },
+  { key: "saffron", label: "Saffron (highlights)", kind: "color" },
+  { key: "forest", label: "Forest green (brand, buttons)", kind: "color" },
+  { key: "indigo", label: "Indigo (beauty)", kind: "color" },
+  { key: "pattern", label: "Show woven stripe pattern", kind: "toggle" },
+];
+
+export const DEFAULT_THEME = {
+  paper: "#FCF8F1",
+  sand: "#F2E3CB",
+  ink: "#231B16",
+  terra: "#B5482A",
+  saffron: "#E5A532",
+  forest: "#1D5C3F",
+  indigo: "#2C3A73",
+  pattern: true,
+};
+export type Theme = typeof DEFAULT_THEME;
+
+export interface SiteSettings {
+  logo?: string;
+  name?: string;
+  tagline?: L10n;
+  announcements?: { text: L10n }[];
+  whatsapp?: string;
+  phone?: string;
+  email?: string;
+  address?: L10n;
+  hours?: L10n;
+  about?: L10n;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+  navLinks?: { label: L10n; href: string }[];
+  seoTitle?: L10n;
+  seoDescription?: L10n;
+  showWhatsappButton?: boolean;
+}

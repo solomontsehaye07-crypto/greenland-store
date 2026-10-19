@@ -4,7 +4,13 @@ import { useState } from "react";
 import { useCart } from "./cart";
 import type { CardProduct } from "@/lib/catalog";
 
-export function AddToCart({ product, disabled, compact }: { product: CardProduct; disabled?: boolean; compact?: boolean }) {
+const T = {
+  de: { add: (t: string) => `${t} in den Warenkorb`, out: "Ausverkauft", added: "Im Warenkorb", cta: "In den Warenkorb", less: "Weniger", more: "Mehr" },
+  en: { add: (t: string) => `Add ${t} to cart`, out: "Out of stock", added: "Added to cart", cta: "Add to cart", less: "Decrease quantity", more: "Increase quantity" },
+};
+
+export function AddToCart({ product, disabled, compact, lang = "de" }: { product: CardProduct; disabled?: boolean; compact?: boolean; lang?: "de" | "en" }) {
+  const t = T[lang];
   const { add } = useCart();
   const [added, setAdded] = useState(false);
   const [qty, setQty] = useState(1);
@@ -34,8 +40,8 @@ export function AddToCart({ product, disabled, compact }: { product: CardProduct
         type="button"
         onClick={onAdd}
         disabled={disabled}
-        aria-label={`Add ${product.title} to cart`}
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-green text-white transition-colors hover:bg-green-deep disabled:opacity-40"
+        aria-label={t.add(product.title)}
+        className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-white transition-all hover:scale-105 disabled:opacity-40 ${added ? "bg-saffron text-ink" : "bg-forest"}`}
       >
         {added ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
@@ -52,18 +58,18 @@ export function AddToCart({ product, disabled, compact }: { product: CardProduct
   return (
     <div className="flex items-center gap-3">
       <div className="flex items-center rounded-full border border-line bg-white">
-        <button type="button" className="h-11 w-11 text-lg" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">
+        <button type="button" className="h-11 w-11 text-lg" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label={t.less}>
           −
         </button>
         <span className="w-8 text-center font-semibold" aria-live="polite">
           {qty}
         </span>
-        <button type="button" className="h-11 w-11 text-lg" onClick={() => setQty((q) => Math.min(99, q + 1))} aria-label="Increase quantity">
+        <button type="button" className="h-11 w-11 text-lg" onClick={() => setQty((q) => Math.min(99, q + 1))} aria-label={t.more}>
           +
         </button>
       </div>
       <button type="button" onClick={onAdd} disabled={disabled} className="btn btn-primary h-11 flex-1 sm:flex-none sm:px-8">
-        {disabled ? "Out of stock" : added ? "Added to cart" : "Add to cart"}
+        {disabled ? t.out : added ? t.added : t.cta}
       </button>
     </div>
   );

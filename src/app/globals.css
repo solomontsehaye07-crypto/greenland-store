@@ -3,23 +3,34 @@
 :root {
   --font-bricolage: "Bricolage Grotesque Variable", system-ui, sans-serif;
   --font-public-sans: "Public Sans Variable", system-ui, sans-serif;
-  --paper: #f6f7f2;
-  --surface: #e3ece5;
-  --ink: #14211b;
-  --muted: #5d6b63;
-  --line: #d3ddd5;
-  --green: #1d5c3f;
-  --green-deep: #123d29;
-  --gold: #f2c14e;
+  /* Warm market palette. The website editor can override these (see themeCss). */
+  --paper: #fcf8f1;
+  --sand: #f2e3cb;
+  --ink: #231b16;
+  --terra: #b5482a;
+  --saffron: #e5a532;
+  --forest: #1d5c3f;
+  --indigo: #2c3a73;
+  --muted: color-mix(in oklab, var(--ink) 62%, var(--paper));
+  --line: color-mix(in oklab, var(--ink) 14%, var(--paper));
+  --surface: color-mix(in oklab, var(--sand) 55%, var(--paper));
+  --green: var(--forest);
+  --green-deep: color-mix(in oklab, var(--forest) 78%, black);
+  --gold: var(--saffron);
   --danger: #b3261e;
 }
 
 @theme inline {
   --color-paper: var(--paper);
+  --color-sand: var(--sand);
   --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-terra: var(--terra);
+  --color-saffron: var(--saffron);
+  --color-forest: var(--forest);
+  --color-indigo: var(--indigo);
   --color-green: var(--green);
   --color-green-deep: var(--green-deep);
   --color-gold: var(--gold);
@@ -126,8 +137,56 @@ h3,
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
   * {
     animation: none !important;
     transition: none !important;
   }
 }
+
+/* ---------- storefront motifs ---------- */
+
+/* Woven stripe band, after strip-woven cloth: used as a thin divider, never as a background for text. */
+.weave {
+  height: 10px;
+  background:
+    repeating-linear-gradient(90deg,
+      var(--terra) 0 18px, var(--saffron) 18px 30px, var(--forest) 30px 48px,
+      var(--paper) 48px 52px, var(--indigo) 52px 70px, var(--saffron) 70px 76px);
+}
+.weave-thin { height: 5px; }
+
+.arch { border-radius: 999px 999px 18px 18px; }
+
+.accent-terra { background: var(--terra); color: #fff; }
+.accent-saffron { background: var(--saffron); color: var(--ink); }
+.accent-forest { background: var(--forest); color: #fff; }
+.accent-indigo { background: var(--indigo); color: #fff; }
+.accent-sand { background: var(--sand); color: var(--ink); }
+.accent-none { background: transparent; }
+
+/* Ribbon of benefits */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { display: flex; width: max-content; animation: marquee var(--marquee-s, 40s) linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+/* The one orchestrated moment: hero photos rise into place on load */
+@keyframes rise { from { opacity: 0; transform: translateY(28px) scale(.97); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .8s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes drift { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.drift { animation: drift 7s ease-in-out infinite; }
+
+/* Horizontal product rows */
+.rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(11.5rem, 1fr); gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: thin; padding-bottom: .5rem; }
+.rail > * { scroll-snap-align: start; }
+@media (min-width: 1024px) { .rail { grid-auto-columns: calc((100% - 4rem) / 5); } }
+
+/* Long texts from the website editor */
+.prose-shop { line-height: 1.65; }
+.prose-shop > * + * { margin-top: .9em; }
+.prose-shop h2 { font-family: var(--font-bricolage); font-size: 1.6rem; font-weight: 800; line-height: 1.15; margin-top: 1.4em; }
+.prose-shop h3 { font-family: var(--font-bricolage); font-size: 1.25rem; font-weight: 700; margin-top: 1.2em; }
+.prose-shop h4 { font-weight: 700; margin-top: 1em; }
+.prose-shop ul { list-style: disc; padding-left: 1.3em; }
+.prose-shop ol { list-style: decimal; padding-left: 1.3em; }
+.prose-shop li + li { margin-top: .25em; }

@@ -3,18 +3,27 @@ import "@fontsource-variable/bricolage-grotesque";
 import "@fontsource-variable/public-sans";
 import "./globals.css";
 import { CartProvider } from "@/components/cart";
+import { getSite, themeCss } from "@/lib/content";
+import { getLang, tx } from "@/lib/i18n";
+import { siteUrl } from "@/lib/site";
 
+export async function generateMetadata(): Promise<Metadata> {
+  const [{ site }, lang] = await Promise.all([getSite(), getLang()]);
+  const name = site.name || "Greenland Afro Asia Store";
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: { default: tx(site.seoTitle, lang) || name, template: `%s · ${name}` },
+    description: tx(site.seoDescription, lang) || undefined,
+  };
+}
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: { default: "Greenland Afro Asia Store – African & Asian groceries in Kaiserslautern", template: "%s · Greenland Afro Asia Store" },
-  description:
-    "Authentic African, Asian and Latin American groceries, hair & skin care and home décor. Delivery across Germany, local delivery and pickup in Kaiserslautern.",
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const [{ theme }, lang] = await Promise.all([getSite(), getLang()]);
   return (
-    <html lang="en">
+    <html lang={lang}>
+      <head>
+        <style>{themeCss(theme)}</style>
+      </head>
       <body>
         <CartProvider>{children}</CartProvider>
       </body>

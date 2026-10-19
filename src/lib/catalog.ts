@@ -20,7 +20,7 @@ export async function getCategoryTree() {
 
 export type CardProduct = Pick<
   Product,
-  "id" | "sku" | "slug" | "title" | "brand" | "price" | "compare_at_price" | "image_url" | "size_qty" | "size_unit" | "stock" | "is_frozen" | "age_restricted" | "weight_g" | "category_id"
+  "id" | "sku" | "slug" | "title" | "title_de" | "brand" | "price" | "compare_at_price" | "image_url" | "size_qty" | "size_unit" | "stock" | "is_frozen" | "age_restricted" | "weight_g" | "category_id"
 >;
 
 export async function getProductsInCategories(ids: number[], opts: { sort?: string; limit?: number; offset?: number } = {}) {
@@ -81,3 +81,21 @@ export const getHomeShelves = unstable_cache(
   ["home-shelves"],
   { revalidate: 300, tags: ["catalog"] }
 );
+
+/** Products for a product row on the home page. A department (parent category) includes its subcategories. */
+export async function getRailProducts(source: string, categorySlug: string | undefined, limit = 10) {
+  const sb = supabasePublic();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q: any = sb.from("products").select(PRODUCT_CARD_FIELDS).eq("status", "active").not("image_url", "is", null).gt("stock", 0);
+  if (source === "category" && categorySlug) {
+    const cats = await getCategories();
+    const c = cats.find((x) => x.slug === categorySlug);
+    if (!c) return [];
+    const ids = [c.id, ...cats.filter((x) => x.parent_id === c.id).map((x) => x.id)];
+    q = q.in("category_id", ids).order("featured", { ascending: false }).order("id");
+  } else if (source === "featured") q = q.eq("featured", true).order("id");
+  else if (source === "sale") q = q.not("compare_at_price", "is", null).order("id");
+  else q = q.order("created_at", { ascending: false });
+  const { data } = await q.limit(Math.min(Math.max(limit || 10, 1), 24));
+  return (data ?? []) as CardProduct[];
+}

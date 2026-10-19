@@ -1,4 +1,9 @@
 import { notFound } from "next/navigation";
+import { getPage } from "@/lib/content";
+import { getLang, tx } from "@/lib/i18n";
+import { Markdown } from "@/components/markdown";
+
+export const dynamic = "force-dynamic";
 
 // Templates only – have them checked (e.g. Händlerbund, IT-Recht Kanzlei, or a lawyer) and fill in [brackets].
 const PAGES: Record<string, { title: string; body: string }> = {
@@ -55,12 +60,17 @@ const PAGES: Record<string, { title: string; body: string }> = {
   },
 };
 
-export function generateStaticParams() {
-  return Object.keys(PAGES).map((page) => ({ page }));
-}
-
 export default async function LegalPage({ params }: { params: Promise<{ page: string }> }) {
-  const { page } = await params;
+  const [{ page }, lang] = await Promise.all([params, getLang()]);
+  // A page written in the website editor (same slug) replaces the built-in template.
+  const cms = await getPage(page);
+  if (cms)
+    return (
+      <article className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="display text-4xl font-extrabold">{tx(cms.title, lang)}</h1>
+        <Markdown text={tx(cms.body, lang)} className="mt-8" />
+      </article>
+    );
   const p = PAGES[page];
   if (!p) notFound();
   return (
