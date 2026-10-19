@@ -12,6 +12,8 @@ const NAV = [
   ["/admin/purchase-orders", "Refill orders"],
   ["/admin/suppliers", "Suppliers"],
   ["/admin/import", "Batch import"],
+  ["/admin/website", "Website"],
+  ["/admin/subscribers", "Subscribers"],
   ["/admin/settings", "Settings"],
 ];
 
@@ -24,7 +26,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-paper lg:grid lg:grid-cols-[15rem_1fr]">
       <aside className="border-b border-line bg-white px-4 py-4 lg:min-h-screen lg:border-b-0 lg:border-r">
-        <Link href="/admin" className="display block text-xl font-extrabold text-green">
+        <Link href="/admin" className="display block text-xl font-extrabold text-forest">
           Greenland admin
         </Link>
         <nav className="mt-4 flex gap-1 overflow-x-auto lg:flex-col" aria-label="Admin">
@@ -37,9 +39,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="mt-6 hidden text-xs text-muted lg:block">
           {user.email}
           <form action={signOut}>
-            <button className="mt-2 text-green underline">Sign out</button>
+            <button className="mt-2 text-forest underline">Sign out</button>
           </form>
-          <Link href="/" className="mt-2 block text-green underline">View shop</Link>
+          <Link href="/" className="mt-2 block text-forest underline">View shop</Link>
         </div>
       </aside>
       <main className="min-w-0 px-4 py-8 sm:px-8">{children}</main>
