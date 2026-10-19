@@ -21,7 +21,7 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/admin/products" className="text-sm text-green">← Products</Link>
+        <Link href="/admin/products" className="text-sm text-forest">← Products</Link>
         <h1 className="mt-2 text-3xl font-extrabold">{p.title}</h1>
         <p className="text-sm text-muted">{p.sku} · <Link href={`/p/${p.slug}`} className="underline">view in shop</Link></p>
       </div>
@@ -54,8 +54,15 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
             <div><label className="label">Weight incl. packaging (g)</label><input name="weight_g" type="number" defaultValue={p.weight_g} className="input" /></div>
             <div><label className="label">Reorder point</label><input name="reorder_point" type="number" defaultValue={p.reorder_point} className="input" /></div>
             <div><label className="label">Reorder quantity</label><input name="reorder_qty" type="number" defaultValue={p.reorder_qty} className="input" /></div>
-            <div className="sm:col-span-2"><label className="label">Image URL</label><input name="image_url" defaultValue={p.image_url ?? ""} className="input" /></div>
-            <div className="sm:col-span-2"><label className="label">Description (HTML allowed)</label><textarea name="description" rows={4} defaultValue={p.description ?? ""} className="input" /></div>
+            <div className="flex items-end gap-3 sm:col-span-2">
+              {p.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.image_url} alt="" className="h-16 w-16 shrink-0 rounded-xl bg-surface object-cover" />
+              )}
+              <div className="flex-1"><label className="label">Image URL</label><input name="image_url" defaultValue={p.image_url ?? ""} className="input" /></div>
+            </div>
+            <div className="sm:col-span-2"><label className="label">Description, English (HTML allowed)</label><textarea name="description" rows={4} defaultValue={p.description ?? ""} className="input" /></div>
+            <div className="sm:col-span-2"><label className="label">Beschreibung, Deutsch (shown when the shop is in German; leave empty to use the English text)</label><textarea name="description_de" rows={4} defaultValue={p.description_de ?? ""} className="input" /></div>
           </div>
           <div className="flex flex-wrap gap-5 text-sm">
             {[["is_frozen", "Frozen"], ["age_restricted", "18+"], ["is_dropship", "Dropship (supplier ships)"], ["featured", "Featured"]].map(([k, l]) => (
@@ -117,7 +124,7 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
               <input name="cost_price" type="number" step="0.01" placeholder="Cost €" className="input" />
               <button className="btn btn-ghost">Set preferred</button>
             </form>
-            {!sups?.length && <p className="mt-2 text-sm text-muted"><Link href="/admin/suppliers/new" className="text-green underline">Add your first supplier</Link></p>}
+            {!sups?.length && <p className="mt-2 text-sm text-muted"><Link href="/admin/suppliers/new" className="text-forest underline">Add your first supplier</Link></p>}
           </section>
 
           <section className="rounded-2xl bg-white p-5">

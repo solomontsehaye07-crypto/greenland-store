@@ -48,7 +48,7 @@ export async function updateProduct(fd: FormData) {
   await assertStaff();
   const id = Number(fd.get("id"));
   const patch: Record<string, unknown> = {};
-  for (const k of ["title", "title_de", "brand", "description", "image_url", "status", "country"]) if (fd.has(k)) patch[k] = str(fd.get(k));
+  for (const k of ["title", "title_de", "brand", "description", "description_de", "image_url", "status", "country"]) if (fd.has(k)) patch[k] = str(fd.get(k));
   for (const k of ["price", "compare_at_price", "cost_price", "tax_rate", "weight_g", "reorder_point", "reorder_qty", "category_id", "supplier_id"])
     if (fd.has(k)) patch[k] = num(fd.get(k));
   for (const k of ["is_frozen", "age_restricted", "is_dropship", "featured"]) if (fd.has(`${k}__present`)) patch[k] = fd.get(k) === "on";
