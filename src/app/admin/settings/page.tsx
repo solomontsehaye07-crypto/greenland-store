@@ -2,6 +2,7 @@ import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { enabledProviders } from "@/lib/payments";
 import { saveStoreSettings } from "../actions";
+import { PasswordForm } from "./password-form";
 
 export default async function Settings() {
   await requireStaff();
@@ -19,6 +20,7 @@ export default async function Settings() {
   return (
     <div className="max-w-3xl space-y-8">
       <h1 className="text-3xl font-extrabold">Settings</h1>
+      <PasswordForm />
       <form action={saveStoreSettings} className="grid gap-4 rounded-2xl bg-white p-5 sm:grid-cols-2">
         <h2 className="text-xl font-bold sm:col-span-2">Store details (used on refill-order PDFs)</h2>
         {[["name", "Store name"], ["owner", "Owner"], ["street", "Street and number"], ["postal", "Postcode"], ["city", "City"], ["phone", "Phone"], ["whatsapp", "WhatsApp (49…)"], ["email", "Email"], ["vat_id", "VAT ID"]].map(([k, l]) => (

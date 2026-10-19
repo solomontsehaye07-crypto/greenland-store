@@ -7,6 +7,7 @@ import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
 import { draftRefillOrders, receivePo, renderPoPdf, sendPo } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
 import { siteUrl } from "@/lib/site";
+import { createClient } from "@supabase/supabase-js";
 
 const num = (v: FormDataEntryValue | null) => (v === null || v === "" ? null : Number(v));
 const str = (v: FormDataEntryValue | null) => (v === null || String(v).trim() === "" ? null : String(v).trim());
@@ -21,11 +22,18 @@ export async function signIn(_: unknown, fd: FormData) {
     if (error) return { error: "Wrong email or password." };
     redirect("/admin");
   }
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: `${siteUrl()}/admin/auth/callback` },
+  // Implicit flow: the session travels inside the email link, so it can be opened on any device.
+  const mailer = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { flowType: "implicit", persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
-  if (error) return { error: error.message };
+  const { error } = await mailer.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: `${siteUrl()}/admin/auth/confirm`, shouldCreateUser: false },
+  });
+  if (error) {
+    if (error.status === 429) return { error: "Too many sign-in emails in a short time. Please wait a few minutes and try again." };
+    return { error: error.message };
+  }
   return { ok: "Check your inbox for a sign-in link." };
 }
 
@@ -265,4 +273,17 @@ export async function saveStoreSettings(fd: FormData) {
   const value = Object.fromEntries(["name", "street", "postal", "city", "phone", "whatsapp", "email", "vat_id", "owner"].map((k) => [k, String(fd.get(k) ?? "")]));
   await supabaseAdmin().from("settings").upsert({ key: "public.store", value });
   revalidatePath("/admin/settings");
+}
+
+// ---------- own password (so signing in doesn't depend on email) ----------
+export async function setOwnPassword(_: unknown, fd: FormData) {
+  const sb = await supabaseServer();
+  const { data } = await sb.auth.getUser();
+  if (!data.user) return { error: "Please sign in again." };
+  const pw = String(fd.get("password") ?? "");
+  if (pw.length < 10) return { error: "Use at least 10 characters." };
+  if (pw !== String(fd.get("confirm") ?? "")) return { error: "The two passwords don't match." };
+  const { error } = await sb.auth.updateUser({ password: pw });
+  if (error) return { error: error.message };
+  return { ok: "Password saved. Next time, sign in with your email and this password." };
 }
