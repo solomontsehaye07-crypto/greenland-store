@@ -22,14 +22,14 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
     <div className="space-y-8">
       <div>
         <Link href="/admin/products" className="text-sm text-forest">← Products</Link>
-        <h1 className="mt-2 text-3xl font-extrabold">{p.title}</h1>
+        <h1 className="display mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">{p.title}</h1>
         <p className="text-sm text-muted">{p.sku} · <Link href={`/p/${p.slug}`} className="underline">view in shop</Link></p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-        <form action={updateProduct} className="space-y-4 rounded-2xl bg-white p-5">
+        <form action={updateProduct} className="space-y-4 rounded-2xl border border-line bg-white p-5">
           <input type="hidden" name="id" value={p.id} />
-          <h2 className="text-xl font-bold">Details</h2>
+          <h2 className="text-[0.9375rem] font-semibold">Details</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2"><label className="label">Title</label><input name="title" defaultValue={p.title} className="input" /></div>
             <div><label className="label">German title</label><input name="title_de" defaultValue={p.title_de ?? ""} className="input" /></div>
@@ -78,8 +78,8 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
         </form>
 
         <div className="space-y-6">
-          <section className="rounded-2xl bg-white p-5">
-            <h2 className="text-xl font-bold">Stock: {p.stock}</h2>
+          <section className="rounded-2xl border border-line bg-white p-5">
+            <h2 className="text-[0.9375rem] font-semibold">Stock: {p.stock}</h2>
             <form action={adjustStock} className="mt-4 grid gap-3 sm:grid-cols-2">
               <input type="hidden" name="product_id" value={p.id} />
               <div>
@@ -112,8 +112,8 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
             )}
           </section>
 
-          <section className="rounded-2xl bg-white p-5">
-            <h2 className="text-xl font-bold">Supplier</h2>
+          <section className="rounded-2xl border border-line bg-white p-5">
+            <h2 className="text-[0.9375rem] font-semibold">Supplier</h2>
             <ul className="mt-2 text-sm">
               {(sp ?? []).map((s) => (
                 <li key={s.supplier_id}>{(s.suppliers as { name: string }).name}{s.is_preferred ? " (preferred)" : ""} {s.supplier_sku ? `· ${s.supplier_sku}` : ""} {s.cost_price ? `· ${s.cost_price} €` : ""}</li>
@@ -132,8 +132,8 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
             {!sups?.length && <p className="mt-2 text-sm text-muted"><Link href="/admin/suppliers/new" className="text-forest underline">Add your first supplier</Link></p>}
           </section>
 
-          <section className="rounded-2xl bg-white p-5">
-            <h2 className="text-xl font-bold">Stock history</h2>
+          <section className="rounded-2xl border border-line bg-white p-5">
+            <h2 className="text-[0.9375rem] font-semibold">Stock history</h2>
             <ul className="mt-2 text-sm">
               {(moves ?? []).map((m) => (
                 <li key={m.id} className="flex justify-between border-t border-line py-1.5">

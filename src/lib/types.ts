@@ -23,6 +23,7 @@ export interface Product {
   category_id: number | null;
   price: number;
   compare_at_price: number | null;
+  sale_ends_at?: string | null;
   cost_price?: number | null;
   tax_rate: number;
   weight_g: number;
@@ -88,4 +89,4 @@ export interface CartLine {
 }
 
 export const PRODUCT_CARD_FIELDS =
-  "id, sku, slug, title, title_de, brand, price, compare_at_price, image_url, size_qty, size_unit, stock, is_frozen, age_restricted, weight_g, category_id, country, featured";
+  "id, sku, slug, title, title_de, brand, price, compare_at_price, image_url, size_qty, size_unit, stock, is_frozen, age_restricted, weight_g, category_id, country, featured, sale_ends_at";

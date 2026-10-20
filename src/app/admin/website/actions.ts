@@ -49,7 +49,7 @@ export async function addSection(fd: FormData) {
     .single();
   if (error) throw new Error(error.message);
   done();
-  redirect(`/admin/website/section/${data.id}`);
+  redirect(`/admin/website?edit=${data.id}`);
 }
 
 export async function toggleSection(fd: FormData) {
@@ -194,9 +194,10 @@ export async function deletePage(fd: FormData) {
 
 export async function deleteMedia(fd: FormData) {
   await assertStaff();
-  const name = String(fd.get("name") ?? "");
-  if (!name || name.includes("..")) throw new Error("Invalid file name");
-  const { error } = await supabaseAdmin().storage.from(BUCKET).remove([name]);
+  const raw = String(fd.get("name") ?? "");
+  const [bucket, name] = raw.includes("/") ? [raw.slice(0, raw.indexOf("/")), raw.slice(raw.indexOf("/") + 1)] : [BUCKET, raw];
+  if (!name || name.includes("..") || !["site-media", "product-images"].includes(bucket)) throw new Error("Invalid file name");
+  const { error } = await supabaseAdmin().storage.from(bucket).remove([name]);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/website/media");
 }

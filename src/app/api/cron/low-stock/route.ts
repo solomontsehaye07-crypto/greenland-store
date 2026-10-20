@@ -10,6 +10,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sb = supabaseAdmin();
+  // offers whose end date has passed go back to the regular price
+  await sb.rpc("end_expired_offers");
   const { data: low } = await sb.from("low_stock").select("id, sku, title, stock, reorder_point, supplier_name, on_order");
   const { data: expiring } = await sb.from("expiring_batches").select("product_id, sku, title, best_before, quantity_left");
 

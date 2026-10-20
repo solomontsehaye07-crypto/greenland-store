@@ -67,7 +67,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <section className="rounded-2xl bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg font-bold">Statement for {monthLabel(from)}</h2>
           <table className="mt-3 w-full text-sm">
             <tbody>
@@ -88,7 +88,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           </div>
         </section>
 
-        <section className="rounded-2xl bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg font-bold">Last 6 months</h2>
           <p className="text-xs text-muted">Gross profit per month</p>
           <div className="mt-3">
@@ -102,7 +102,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg font-bold">Loss by category</h2>
           <p className="text-xs text-muted">Write-offs at cost divided by goods bought in the same month. Fresh produce usually runs highest.</p>
           <table className="mt-3 w-full text-sm">
@@ -135,7 +135,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-2xl bg-white p-5">
+          <div className="rounded-2xl border border-line bg-white p-5">
             <h2 className="text-lg font-bold">Throw away (write-off)</h2>
             <p className="text-xs text-muted">For rotten chillies, okra, broken jars or expired goods. Stock goes down and the cost counts as a loss.</p>
             <form action={recordWriteoff} className="mt-3 grid gap-3 sm:grid-cols-6">
@@ -152,7 +152,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
             </form>
           </div>
 
-          <div className="rounded-2xl bg-white p-5">
+          <div className="rounded-2xl border border-line bg-white p-5">
             <h2 className="text-lg font-bold">Goods received</h2>
             <p className="text-xs text-muted">Books stock in and updates the product&#39;s average purchase cost.</p>
             <form action={recordDelivery} className="mt-3 grid gap-3 sm:grid-cols-6">
@@ -168,7 +168,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg font-bold">In-store sales (till totals)</h2>
           <form action={addStoreSale} className="mt-3 grid gap-3 sm:grid-cols-4">
             <input type="hidden" name="return" value={here} />
@@ -180,7 +180,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           <EntryList table="store_sales" here={here} rows={(sales ?? []).map((s) => ({ id: s.id, day: s.day, label: `7 %: ${money(s.gross_7)} · 19 %: ${money(s.gross_19)}`, value: Number(s.gross_7) + Number(s.gross_19) }))} />
         </section>
 
-        <section className="rounded-2xl bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg font-bold">Running costs</h2>
           <form action={addExpense} className="mt-3 grid gap-3 sm:grid-cols-4">
             <input type="hidden" name="return" value={here} />
@@ -197,7 +197,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>
 
       {losses && losses.length > 0 && (
-        <section className="rounded-2xl bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg font-bold">Recent write-offs</h2>
           <ul className="mt-2 text-sm">
             {losses.map((l) => {
@@ -223,7 +223,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
 
 function Kpi({ label, value, detail, tone }: { label: string; value: string; detail: string; tone?: "good" | "bad" }) {
   return (
-    <div className="rounded-2xl bg-white p-5">
+    <div className="rounded-2xl border border-line bg-white p-5">
       <div className="text-xs text-muted">{label}</div>
       <div className={`mt-1 text-2xl font-bold ${tone === "bad" ? "text-danger" : tone === "good" ? "text-forest" : ""}`}>{value}</div>
       <div className="mt-1 text-xs text-muted">{detail}</div>

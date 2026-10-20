@@ -2,8 +2,11 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { SECTION_DEFS, sectionDef } from "@/lib/sections";
-import { addSection, deleteSection, moveSection, toggleSection } from "./actions";
+import { addSection, deleteSection, moveSection, saveSection, toggleSection } from "./actions";
 import { ConfirmButton, SubmitButton } from "@/components/admin/website/confirm-button";
+import { FieldEditor } from "@/components/admin/website/field-editor";
+import { PageHead, SidePanel } from "@/components/admin/ui";
+import { categoryOptions } from "./categories";
 
 export const dynamic = "force-dynamic";
 
@@ -22,73 +25,88 @@ function preview(s: Row): string {
   return "No title yet";
 }
 
-export default async function WebsiteHome() {
+export default async function WebsiteHome({ searchParams }: { searchParams: Promise<{ edit?: string; add?: string }> }) {
   await requireStaff();
+  const { edit, add } = await searchParams;
   const { data } = await supabaseAdmin().from("home_sections").select("id, position, type, enabled, data").order("position").order("id");
   const rows = (data ?? []) as Row[];
+  const editing = edit ? rows.find((r) => String(r.id) === edit) : undefined;
+  const editDef = editing ? sectionDef(editing.type) : undefined;
+  const categories = editDef?.fields.some((f) => f.kind === "category") ? await categoryOptions() : [];
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl bg-white p-5 sm:p-6">
-        <h2 className="text-xl font-bold">Home page sections</h2>
-        <p className="mt-1 text-sm text-muted">The home page shows these blocks from top to bottom. Hidden sections stay here but don’t appear on the shop.</p>
-        {rows.length === 0 && <p className="mt-6 rounded-xl bg-surface p-4 text-sm">The home page is empty. Add a section below to start.</p>}
-        <ol className="mt-5 divide-y divide-line">
-          {rows.map((s, i) => {
-            const def = sectionDef(s.type);
-            return (
-              <li key={s.id} className="flex flex-wrap items-center gap-3 py-3">
-                <div className="flex flex-col">
-                  <form action={moveSection}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <input type="hidden" name="dir" value="up" />
-                    <button disabled={i === 0} className="rounded px-2 text-sm leading-5 hover:bg-surface disabled:opacity-25" aria-label={`Move ${def?.label ?? s.type} up`}>↑</button>
-                  </form>
-                  <form action={moveSection}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <input type="hidden" name="dir" value="down" />
-                    <button disabled={i === rows.length - 1} className="rounded px-2 text-sm leading-5 hover:bg-surface disabled:opacity-25" aria-label={`Move ${def?.label ?? s.type} down`}>↓</button>
-                  </form>
-                </div>
-                <Link href={`/admin/website/section/${s.id}`} className={`min-w-0 flex-1 rounded-lg px-1 py-1 hover:bg-surface ${s.enabled ? "" : "opacity-55"}`}>
-                  <span className="block text-sm font-semibold">{def?.label ?? s.type}{!s.enabled && <span className="ml-2 rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-muted">Hidden</span>}</span>
-                  <span className="block truncate text-sm text-muted">{preview(s)}</span>
-                </Link>
-                <div className="flex items-center gap-1">
-                  <form action={toggleSection}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <input type="hidden" name="enabled" value={String(!s.enabled)} />
-                    <SubmitButton className="rounded-full px-3 py-1.5 text-sm font-semibold hover:bg-surface">{s.enabled ? "Hide" : "Show"}</SubmitButton>
-                  </form>
-                  <Link href={`/admin/website/section/${s.id}`} className="rounded-full bg-ink px-3 py-1.5 text-sm font-semibold text-paper">Edit</Link>
-                  <form action={deleteSection}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <ConfirmButton />
-                  </form>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+    <div>
+      <PageHead
+        title="Home page"
+        text="The blocks of the home page from top to bottom. Click a block to edit it on the right. Colours and seasonal looks are under Designs & seasons."
+        actions={
+          <>
+            <Link href="/" target="_blank" className="btn btn-ghost text-sm">Open the shop</Link>
+            <Link href="/admin/website?add=1" scroll={false} className="btn btn-primary text-sm">Add a section</Link>
+          </>
+        }
+      />
 
-      <section className="rounded-2xl bg-white p-5 sm:p-6">
-        <h2 className="text-xl font-bold">Add a section</h2>
-        <p className="mt-1 text-sm text-muted">New sections start hidden at the bottom, so you can fill them in before anyone sees them.</p>
-        <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-          {SECTION_DEFS.map((d) => (
-            <li key={d.type}>
-              <form action={addSection} className="h-full">
-                <input type="hidden" name="type" value={d.type} />
-                <button className="h-full w-full rounded-xl border border-line p-4 text-left hover:border-forest hover:bg-paper">
-                  <span className="block font-semibold">{d.label}</span>
-                  <span className="mt-1 block text-sm text-muted">{d.description}</span>
-                </button>
+      <ol className="divide-y divide-line rounded-2xl border border-line bg-white">
+        {rows.length === 0 && <li className="p-5 text-sm text-muted">The home page is empty. Add a section to start.</li>}
+        {rows.map((s, i) => {
+          const def = sectionDef(s.type);
+          return (
+            <li key={s.id} className={`flex items-center gap-2 px-3 py-2.5 ${String(s.id) === edit ? "bg-forest/5" : ""}`}>
+              <div className="flex flex-col">
+                <form action={moveSection}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <input type="hidden" name="dir" value="up" />
+                  <button disabled={i === 0} className="rounded px-2 text-sm leading-5 hover:bg-surface disabled:opacity-25" aria-label={`Move ${def?.label ?? s.type} up`}>↑</button>
+                </form>
+                <form action={moveSection}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <input type="hidden" name="dir" value="down" />
+                  <button disabled={i === rows.length - 1} className="rounded px-2 text-sm leading-5 hover:bg-surface disabled:opacity-25" aria-label={`Move ${def?.label ?? s.type} down`}>↓</button>
+                </form>
+              </div>
+              <Link href={`/admin/website?edit=${s.id}`} scroll={false} className={`min-w-0 flex-1 rounded-lg px-2 py-1 hover:bg-surface ${s.enabled ? "" : "opacity-55"}`}>
+                <span className="block truncate text-sm font-medium">{preview(s)}</span>
+                <span className="block text-xs text-muted">{def?.label ?? s.type}{!s.enabled && " · hidden"}</span>
+              </Link>
+              <form action={toggleSection}>
+                <input type="hidden" name="id" value={s.id} />
+                <input type="hidden" name="enabled" value={String(!s.enabled)} />
+                <SubmitButton className="rounded-full px-3 py-1.5 text-xs font-semibold hover:bg-surface">{s.enabled ? "Hide" : "Show"}</SubmitButton>
+              </form>
+              <form action={deleteSection}>
+                <input type="hidden" name="id" value={s.id} />
+                <ConfirmButton />
               </form>
             </li>
-          ))}
-        </ul>
-      </section>
+          );
+        })}
+      </ol>
+
+      {editing && editDef && (
+        <SidePanel title={editDef.label} subtitle={editDef.description} closeHref="/admin/website" wide>
+          {!editing.enabled && <p className="mb-4 rounded-xl bg-saffron/15 px-4 py-3 text-sm">This section is hidden on the shop. Choose Show in the list when it is ready.</p>}
+          <FieldEditor key={editing.id} fields={editDef.fields} initial={{ ...editDef.defaults, ...(editing.data ?? {}) }} action={saveSection.bind(null, editing.id)} categories={categories} />
+        </SidePanel>
+      )}
+
+      {add && (
+        <SidePanel title="Add a section" subtitle="New sections start hidden at the bottom, so you can fill them in first." closeHref="/admin/website">
+          <ul className="space-y-2">
+            {SECTION_DEFS.map((d) => (
+              <li key={d.type}>
+                <form action={addSection}>
+                  <input type="hidden" name="type" value={d.type} />
+                  <button className="w-full rounded-xl border border-line bg-white p-4 text-left hover:border-forest">
+                    <span className="block text-sm font-semibold">{d.label}</span>
+                    <span className="mt-0.5 block text-xs text-muted">{d.description}</span>
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </SidePanel>
+      )}
     </div>
   );
 }

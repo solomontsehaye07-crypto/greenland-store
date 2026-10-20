@@ -14,8 +14,8 @@ export default async function PagesList() {
   const rows = (data ?? []) as Row[];
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-white p-5 sm:p-6">
-        <h2 className="text-xl font-bold">Pages</h2>
+      <section className="rounded-2xl border border-line bg-white p-5 sm:p-6">
+        <h2 className="text-[0.9375rem] font-semibold">Pages</h2>
         <p className="mt-1 text-sm text-muted">
           Info pages such as delivery or about us appear at /info/address. A page with the address {LEGAL_SLUGS.join(", ")} replaces the built-in legal template at /legal/address.
         </p>

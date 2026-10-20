@@ -97,7 +97,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
         <Stat label="Average margin (where cost known)" value={avgMargin === null ? "–" : pct(avgMargin)} />
       </section>
 
-      <details className="rounded-2xl bg-white p-5" open={withCost.length === 0}>
+      <details className="rounded-2xl border border-line bg-white p-5" open={withCost.length === 0}>
         <summary className="cursor-pointer text-lg font-bold">Pricing rules</summary>
         <form action={savePricingRules} className="mt-4 space-y-5">
           <input type="hidden" name="return" value={here} />
@@ -135,7 +135,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
         </form>
       </details>
 
-      <details className="rounded-2xl bg-white p-5">
+      <details className="rounded-2xl border border-line bg-white p-5">
         <summary className="cursor-pointer text-lg font-bold">Import purchase costs</summary>
         <form action={importCosts} className="mt-4 space-y-3">
           <input type="hidden" name="return" value={here} />
@@ -145,7 +145,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
         </form>
       </details>
 
-      <section className="rounded-2xl bg-white p-5">
+      <section className="rounded-2xl border border-line bg-white p-5">
         <div className="flex flex-wrap items-center gap-2">
           {VIEWS.map(([v, label]) => (
             <Link key={v} href={qs({ view: v, page: 1 })} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${view === v ? "border-ink bg-ink text-white" : "border-line hover:border-ink"}`}>
@@ -243,7 +243,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "bad" }) {
   return (
-    <div className="rounded-2xl bg-white p-4">
+    <div className="rounded-2xl border border-line bg-white p-4">
       <div className="text-xs text-muted">{label}</div>
       <div className={`mt-1 text-2xl font-bold ${tone === "bad" ? "text-danger" : ""}`}>{value}</div>
     </div>

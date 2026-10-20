@@ -8,7 +8,7 @@ type State = null | { ok?: string; error?: string; link?: string; pdfUrl?: strin
 export function SendPanel({ poId, hasEmail, hasWhatsApp, preferred, status }: { poId: number; hasEmail: boolean; hasWhatsApp: boolean; preferred: string; status: string }) {
   const [state, action, pending] = useActionState<State, FormData>(sendPoAction, null);
   return (
-    <section className="rounded-2xl bg-white p-5">
+    <section className="rounded-2xl border border-line bg-white p-5">
       <h2 className="text-lg font-bold">Send to supplier</h2>
       <p className="mt-1 text-sm text-muted">The order is sent as a PDF. Preferred: {preferred}.{status !== "draft" ? " Already sent – sending again shares the latest version." : ""}</p>
       <form action={action} className="mt-4 grid gap-2">

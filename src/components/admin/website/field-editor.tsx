@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useState } from "react";
 import type { Field } from "@/lib/sections";
+import { ImageField } from "../media-picker";
+import { ProductPicker } from "../product-picker";
 import type { FormState } from "@/app/admin/website/actions";
 
 type Obj = Record<string, unknown>;
@@ -29,113 +31,9 @@ function emptyItem(fields: Field[]): Obj {
   return o;
 }
 
-// ---------- media: upload + picker ----------
+// ---------- media: upload + picker (shared with the rest of the admin) ----------
 
-type MediaFile = { name: string; url: string };
-
-export async function uploadImages(files: FileList | File[]): Promise<{ files: MediaFile[]; errors: string[] }> {
-  const fd = new FormData();
-  for (const f of Array.from(files)) fd.append("file", f);
-  try {
-    const res = await fetch("/admin/website/upload", { method: "POST", body: fd });
-    const j = await res.json().catch(() => ({}));
-    return { files: j.files ?? [], errors: j.errors ?? (res.ok ? [] : [j.error ?? "Upload failed."]) };
-  } catch {
-    return { files: [], errors: ["Upload failed. Check your connection and try again."] };
-  }
-}
-
-function MediaPicker({ onPick, onClose }: { onPick: (url: string) => void; onClose: () => void }) {
-  const [files, setFiles] = useState<MediaFile[] | null>(null);
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    fetch("/admin/website/upload")
-      .then((r) => r.json())
-      .then((j) => (j.files ? setFiles(j.files) : setErr(j.error ?? "Could not load the media library.")))
-      .catch(() => setErr("Could not load the media library."));
-  }, []);
-  return (
-    <div className="mt-2 rounded-xl border border-line bg-paper p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-semibold">Media library</span>
-        <button type="button" onClick={onClose} className="text-sm text-muted underline">Close</button>
-      </div>
-      {err && <p className="text-sm text-danger">{err}</p>}
-      {!files && !err && <p className="text-sm text-muted">Loading…</p>}
-      {files && !files.length && <p className="text-sm text-muted">No uploads yet. Use Upload to add the first image.</p>}
-      {files && files.length > 0 && (
-        <ul className="grid max-h-64 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-6">
-          {files.map((f) => (
-            <li key={f.name}>
-              <button type="button" onClick={() => onPick(f.url)} className="block w-full overflow-hidden rounded-lg bg-white ring-1 ring-line hover:ring-2 hover:ring-forest" title={f.name}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.url} alt={f.name} className="aspect-square w-full object-cover" loading="lazy" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function ImageInput({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const [picking, setPicking] = useState(false);
-  return (
-    <div>
-      <div className="flex gap-3">
-        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface ring-1 ring-line">
-          {value ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={value} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="px-1 text-center text-xs text-muted">No image</span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1 space-y-2">
-          <input id={id} type="url" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://…" className="input py-2 text-sm" />
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="btn btn-ghost px-3 py-1.5 text-sm">
-              {busy ? "Uploading…" : "Upload"}
-            </button>
-            <button type="button" onClick={() => setPicking((p) => !p)} className="btn btn-ghost px-3 py-1.5 text-sm">Choose from media</button>
-            {value && <button type="button" onClick={() => onChange("")} className="px-2 text-sm text-muted underline">Remove</button>}
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={async (e) => {
-              const f = e.target.files;
-              if (!f?.length) return;
-              setBusy(true);
-              setErr("");
-              const r = await uploadImages(f);
-              setBusy(false);
-              e.target.value = "";
-              if (r.files[0]) onChange(r.files[0].url);
-              if (r.errors.length) setErr(r.errors.join(" "));
-            }}
-          />
-          {err && <p className="text-sm text-danger" role="alert">{err}</p>}
-        </div>
-      </div>
-      {picking && (
-        <MediaPicker
-          onClose={() => setPicking(false)}
-          onPick={(url) => {
-            onChange(url);
-            setPicking(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
+export { uploadImages } from "../media-picker";
 
 // ---------- one field ----------
 
@@ -227,7 +125,8 @@ function FieldInput({ field, value, onChange, categories }: { field: Field; valu
   }
 
   let control: React.ReactNode;
-  if (k === "image") control = <ImageInput id={id} value={typeof value === "string" ? value : ""} onChange={onChange} />;
+  if (k === "image") control = <ImageField id={id} value={typeof value === "string" ? value : ""} onChange={onChange} />;
+  else if (k === "products") control = <ProductPicker value={(Array.isArray(value) ? value : []).map(Number).filter(Boolean)} onChange={onChange} max={field.max} />;
   else if (k === "number")
     control = (
       <input id={id} type="number" value={value === undefined || value === null || value === "" ? "" : Number(value)} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} className="input max-w-[10rem]" />
@@ -321,7 +220,7 @@ export function FieldEditor({
   return (
     <form action={formAction} className="space-y-5">
       <input type="hidden" name="data" value={JSON.stringify(data)} />
-      <div className="space-y-6 rounded-2xl bg-white p-5 sm:p-6">
+      <div className="space-y-6 rounded-2xl border border-line bg-white p-5 sm:p-6">
         {fields.map((f) => (
           <FieldInput key={f.key} field={f} value={data[f.key]} categories={categories} onChange={(v) => update({ ...data, [f.key]: v })} />
         ))}

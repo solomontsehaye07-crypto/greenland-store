@@ -26,7 +26,7 @@ export default async function PoDetail({ params }: { params: Promise<{ id: strin
     <div className="space-y-8">
       <div>
         <Link href="/admin/purchase-orders" className="text-sm text-green">← Refill orders</Link>
-        <h1 className="mt-2 text-3xl font-extrabold">PO-{po.number} · {sup.name}</h1>
+        <h1 className="display mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">PO-{po.number} · {sup.name}</h1>
         <p className="text-sm text-muted">
           {po.kind === "dropship" ? "Dropship order" : "Refill order"} · status {po.status.replace("_", " ")}
           {po.sent_at ? ` · sent ${new Date(po.sent_at).toLocaleString("de-DE")} via ${po.sent_via}` : ""}
@@ -34,8 +34,8 @@ export default async function PoDetail({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-        <section className="rounded-2xl bg-white p-5">
-          <h2 className="text-xl font-bold">Items</h2>
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <h2 className="text-[0.9375rem] font-semibold">Items</h2>
           <form action={receivable ? receivePoAction : undefined}>
             <input type="hidden" name="po_id" value={po.id} />
             <table className="table mt-3">
@@ -100,7 +100,7 @@ export default async function PoDetail({ params }: { params: Promise<{ id: strin
 
         <div className="space-y-6">
           <SendPanel poId={po.id} hasEmail={!!sup.email} hasWhatsApp={!!(sup.whatsapp || sup.phone)} preferred={sup.preferred_channel} status={po.status} />
-          <section className="rounded-2xl bg-white p-5 text-sm">
+          <section className="rounded-2xl border border-line bg-white p-5 text-sm">
             <h2 className="text-lg font-bold">PDF & status</h2>
             <form action={regeneratePdf} className="mt-3">
               <input type="hidden" name="po_id" value={po.id} />

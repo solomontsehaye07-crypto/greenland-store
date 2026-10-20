@@ -17,13 +17,13 @@ export default async function Orders({ searchParams }: { searchParams: Promise<{
   const tabs = [["", "All"], ["open", "To fulfil"], ["pending", "Awaiting payment"], ["shipped", "Shipped"], ["ready_for_pickup", "Ready for pickup"], ["delivered", "Done"]];
   return (
     <div>
-      <h1 className="text-3xl font-extrabold">Orders</h1>
+      <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Orders</h1>
       <div className="mt-4 flex flex-wrap gap-2">
         {tabs.map(([k, l]) => (
           <Link key={k} href={`?status=${k}`} className={`rounded-full px-3 py-1 text-sm ${status === k ? "bg-ink text-white" : "bg-white"}`}>{l}</Link>
         ))}
       </div>
-      <div className="mt-4 overflow-x-auto rounded-2xl bg-white">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white">
         <table className="table">
           <thead><tr><th>No.</th><th>Customer</th><th>Delivery</th><th>Payment</th><th>Status</th><th>Total</th><th>Date</th></tr></thead>
           <tbody>

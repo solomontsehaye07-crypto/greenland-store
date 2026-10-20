@@ -18,11 +18,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [{ theme }, lang] = await Promise.all([getSite(), getLang()]);
+  const [{ theme, design }, lang] = await Promise.all([getSite(), getLang()]);
   return (
     <html lang={lang}>
       <head>
-        <style>{themeCss(theme)}</style>
+        <style>{themeCss(theme, design)}</style>
       </head>
       <body>
         <CartProvider>{children}</CartProvider>

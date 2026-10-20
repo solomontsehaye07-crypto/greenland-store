@@ -15,7 +15,7 @@ const FULFIL_LABEL: Record<string, string> = { parcel: "Parcel", frozen: "Frozen
 
 function Card({ title, children, action, className = "" }: { title: string; children: React.ReactNode; action?: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl bg-white p-5 ${className}`}>
+    <section className={`rounded-2xl border border-line bg-white p-5 ${className}`}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">{title}</h2>
         {action}
@@ -120,7 +120,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-3xl font-extrabold">Overview</h1>
+        <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Overview</h1>
         <nav className="flex rounded-full bg-white p-1 text-sm" aria-label="Period">
           {RANGES.map((r) => (
             <Link key={r} href={`/admin?range=${r}`} aria-current={r === days ? "page" : undefined}
@@ -133,7 +133,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {kpis.map((k) => (
-          <Link key={k.label} href={k.href} className="rounded-2xl bg-white p-5 hover:ring-2 hover:ring-forest/20">
+          <Link key={k.label} href={k.href} className="rounded-2xl border border-line bg-white p-5 hover:ring-2 hover:ring-forest/20">
             <div className="text-sm text-muted">{k.label}</div>
             <div className="mt-1 text-3xl font-bold tabular-nums">{k.value}</div>
             <div className="mt-1 text-xs text-muted">{k.sub}</div>
@@ -192,9 +192,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </Card>
       </div>
 
-      <section className="rounded-2xl bg-white p-5">
+      <section className="rounded-2xl border border-line bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-bold">Low stock</h2>
+          <h2 className="text-[0.9375rem] font-semibold">Low stock</h2>
           <form action={createDrafts}>
             <button className="btn btn-primary">Create refill orders per supplier</button>
           </form>
@@ -220,8 +220,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl bg-white p-5">
-          <h2 className="text-xl font-bold">Expiring within 30 days</h2>
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <h2 className="text-[0.9375rem] font-semibold">Expiring within 30 days</h2>
           {expiring?.length ? (
             <ul className="mt-3 divide-y divide-line text-sm">
               {expiring.map((b) => (
@@ -232,8 +232,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <p className="mt-3 text-sm text-muted">No batches expire soon. Add best-before dates when you receive stock to track this.</p>
           )}
         </section>
-        <section className="rounded-2xl bg-white p-5">
-          <h2 className="text-xl font-bold">Alerts</h2>
+        <section className="rounded-2xl border border-line bg-white p-5">
+          <h2 className="text-[0.9375rem] font-semibold">Alerts</h2>
           {alerts?.length ? (
             <ul className="mt-3 divide-y divide-line text-sm">
               {alerts.map((a) => (

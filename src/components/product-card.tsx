@@ -40,7 +40,7 @@ export function ProductCard({ p, lang = "de", badge }: { p: CardProduct; lang?: 
         </Link>
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div className="leading-tight">
-            <span className="text-sm font-semibold">{money(p.price)}</span>
+            <span className={`text-sm font-semibold ${sale > 0 ? "text-terra" : ""}`}>{money(p.price)}</span>
             {sale > 0 && <span className="ml-1.5 text-xs text-muted line-through">{money(Number(p.compare_at_price))}</span>}
             {(base || size) && <div className="mt-0.5 text-[0.6875rem] text-muted">{[size, base].filter(Boolean).join(" · ")}</div>}
           </div>

@@ -18,7 +18,7 @@ function Login() {
   const [state, action, pending] = useActionState(signIn, null as null | { error?: string; ok?: string });
   return (
     <div className="mx-auto max-w-sm px-4 pt-24">
-      <h1 className="text-3xl font-extrabold">Staff sign in</h1>
+      <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Staff sign in</h1>
       <p className="mt-2 text-sm text-muted">Use your password, or leave it empty to get a sign-in link by email.</p>
       <form action={action} className="mt-6 space-y-4">
         <div>

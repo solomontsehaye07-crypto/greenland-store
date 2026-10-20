@@ -16,10 +16,10 @@ export default async function Suppliers() {
   return (
     <div className="space-y-8">
       <div className="flex items-end justify-between">
-        <h1 className="text-3xl font-extrabold">Suppliers</h1>
+        <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Suppliers</h1>
         <Link href="/admin/suppliers/new" className="btn btn-primary">Add supplier</Link>
       </div>
-      <div className="overflow-x-auto rounded-2xl bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white">
         <table className="table">
           <thead><tr><th>Name</th><th>Contact</th><th>Sends via</th><th>Lead time</th><th>Products</th><th></th></tr></thead>
           <tbody>
@@ -38,7 +38,7 @@ export default async function Suppliers() {
         </table>
       </div>
       {!!sups?.length && (
-        <form action={assignSupplierToCategory} className="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-5">
+        <form action={assignSupplierToCategory} className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-5">
           <div><label className="label">Assign supplier</label><select name="supplier_id" className="input">{sups.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
           <div><label className="label">to every product in</label><select name="category_id" className="input">{(cats ?? []).map((c) => <option key={c.id} value={c.id}>{c.parent_id ? "— " : ""}{c.title}</option>)}</select></div>
           <button className="btn btn-ghost">Assign</button>

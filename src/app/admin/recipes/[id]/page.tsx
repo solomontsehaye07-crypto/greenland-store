@@ -30,11 +30,11 @@ export default async function AdminRecipe({ params, searchParams }: { params: Pr
     <div className="space-y-8">
       <div>
         <Link href="/admin/recipes" className="text-sm text-forest">← Recipes</Link>
-        <h1 className="mt-2 text-3xl font-extrabold">{title.de || title.en || r.slug}</h1>
+        <h1 className="display mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">{title.de || title.en || r.slug}</h1>
         <p className="text-sm text-muted"><Link href={`/rezepte/${r.slug}`} className="underline">/rezepte/{r.slug}</Link>{!r.published && " · draft, not visible to customers"}</p>
       </div>
 
-      <form action={saveRecipe} className="space-y-4 rounded-2xl bg-white p-5">
+      <form action={saveRecipe} className="space-y-4 rounded-2xl border border-line bg-white p-5">
         <input type="hidden" name="id" value={r.id} />
         <div className="grid gap-4 sm:grid-cols-2">
           <div><label className="label" htmlFor="t-de">Name, Deutsch</label><input id="t-de" name="title_de" defaultValue={title.de ?? ""} className="input" /></div>
@@ -61,8 +61,8 @@ export default async function AdminRecipe({ params, searchParams }: { params: Pr
         <button className="btn btn-primary">Save recipe</button>
       </form>
 
-      <section className="rounded-2xl bg-white p-5">
-        <h2 className="text-xl font-bold">Ingredients ({rows.length})</h2>
+      <section className="rounded-2xl border border-line bg-white p-5">
+        <h2 className="text-[0.9375rem] font-semibold">Ingredients ({rows.length})</h2>
         <p className="mt-1 text-sm text-muted">Unticked &ldquo;main ingredient&rdquo; shows as optional. Out-of-stock products are hidden from customers automatically.</p>
         <ul className="mt-4 divide-y divide-line">
           {rows.map((x) => (
@@ -122,7 +122,7 @@ export default async function AdminRecipe({ params, searchParams }: { params: Pr
         )}
       </section>
 
-      <form action={deleteRecipe} className="rounded-2xl bg-white p-5">
+      <form action={deleteRecipe} className="rounded-2xl border border-line bg-white p-5">
         <input type="hidden" name="id" value={r.id} />
         <p className="text-sm text-muted">Deleting removes the recipe and its ingredient list. Products stay untouched.</p>
         <button className="mt-3 text-sm text-danger underline">Delete this recipe</button>

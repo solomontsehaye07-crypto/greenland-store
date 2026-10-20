@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { HomeSection } from "@/lib/content";
-import { getCategories, getCountryCounts, getRailProducts, getRecommended } from "@/lib/catalog";
+import { getCategories, getCountryCounts, getOffers, getRailProducts, getRecommended } from "@/lib/catalog";
+import { money } from "@/lib/format";
+import { AddToCart } from "../add-to-cart";
+import { productTitle } from "../product-card";
+import { Scene } from "./scene";
 import { supabasePublic } from "@/lib/supabase";
 import { countryFlag, countryLabel } from "@/lib/countries";
 import { tx, ui, type L10n, type Lang } from "@/lib/i18n";
@@ -69,64 +73,77 @@ function Head({ title, text, lang, link, center }: { title?: unknown; text?: unk
 // ---------- hero: headline on deep green, three columns of products drifting past ----------
 async function Hero({ d, lang }: { d: D; lang: Lang }) {
   let strip: { image: string; href?: string; label?: string }[] = (d.images ?? []).filter((x: D) => x.image);
-  const [rec, countries, { count }] = await Promise.all([
-    d.autoFill !== false && strip.length < 18 ? getRecommended(24 - strip.length) : Promise.resolve([]),
+  const showProducts = d.showProducts !== false;
+  const [rec, countries, { count }, { data: ship }] = await Promise.all([
+    showProducts && d.autoFill !== false && strip.length < 18 ? getRecommended(24 - strip.length) : Promise.resolve([]),
     getCountryCounts(),
     supabasePublic().from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
+    supabasePublic().from("shipping_methods").select("free_from, type").eq("active", true).not("free_from", "is", null),
   ]);
   strip = [...strip, ...rec.filter((p) => p.image_url).map((p) => ({ image: p.image_url as string, href: `/p/${p.slug}`, label: lang === "de" ? p.title_de || p.title : p.title }))];
   const cols = [0, 1, 2].map((c) => strip.filter((_, i) => i % 3 === c));
   const products = count ?? 0;
+  const freeFrom = Math.min(...(ship ?? []).filter((m) => m.type !== "pickup").map((m) => Number(m.free_from)));
   const stats = [
     { n: products > 50 ? `${Math.floor(products / 50) * 50}+` : String(products), l: lang === "de" ? "Produkte" : "products" },
     { n: String(countries.length), l: lang === "de" ? "Herkunftsländer" : "countries of origin" },
-    { n: "69 €", l: lang === "de" ? "ab hier versandkostenfrei" : "free delivery from here" },
+    ...(Number.isFinite(freeFrom) ? [{ n: `${freeFrom.toLocaleString("de-DE")} €`, l: lang === "de" ? "ab hier versandkostenfrei" : "free delivery from here" }] : []),
   ];
 
-  const tile = (im: { image: string; href?: string; label?: string }, key: string, hidden: boolean) => (
-    <li key={key} className="mb-4 aspect-square overflow-hidden rounded-2xl bg-white" aria-hidden={hidden || undefined}>
+  const tile = (im: { image: string; href?: string; label?: string }, key: string, hidden: boolean, cls: string) => (
+    <li key={key} className={cls} aria-hidden={hidden || undefined}>
       <SmartLink href={im.href} className="block h-full p-3" aria-label={hidden ? undefined : im.label}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={im.image} alt="" loading="eager" className="h-full w-full object-contain" />
       </SmartLink>
     </li>
   );
+  const moving = showProducts && strip.length >= 6;
 
   return (
-    <section className="band-forest relative overflow-hidden">
+    <section className="hero">
+      <div className="hero-photo" aria-hidden />
       <div className="hero-weave" aria-hidden />
-      <div className={`${WRAP} relative grid items-center gap-10 py-14 sm:py-16 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:py-0`}>
-        <div className="animate-[fade_.9s_ease-out_both] lg:py-24">
+      <div className={`${WRAP} relative grid items-stretch gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-14 ${moving ? "" : "lg:grid-cols-1"}`}>
+        <div className="animate-[fade_.9s_ease-out_both] py-14 sm:py-16 lg:py-24">
           <h1 className="hero-title" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h1>
-          {L(d.text, lang) && <p className="mt-6 max-w-lg text-base leading-relaxed text-white/80">{L(d.text, lang)}</p>}
+          {L(d.text, lang) && <p className="mt-6 max-w-lg text-base leading-relaxed opacity-80">{L(d.text, lang)}</p>}
           <div className="mt-9 flex flex-wrap items-center gap-3">
-            {L(d.cta1Label, lang) && <SmartLink href={d.cta1Href} className="btn btn-saffron h-12 px-7 text-[0.9375rem]">{L(d.cta1Label, lang)}<Icon name="arrowR" size={16} /></SmartLink>}
-            {L(d.cta2Label, lang) && <SmartLink href={d.cta2Href} className="btn btn-outline-light h-12 px-7 text-[0.9375rem]">{L(d.cta2Label, lang)}</SmartLink>}
+            {L(d.cta1Label, lang) && <SmartLink href={d.cta1Href} className="btn btn-hero h-12 px-7 text-[0.9375rem]">{L(d.cta1Label, lang)}<Icon name="arrowR" size={16} /></SmartLink>}
+            {L(d.cta2Label, lang) && <SmartLink href={d.cta2Href} className="btn btn-hero-outline h-12 px-7 text-[0.9375rem]">{L(d.cta2Label, lang)}</SmartLink>}
           </div>
-          <dl className="mt-12 grid max-w-lg grid-cols-3 gap-4 border-t border-white/15 pt-6">
-            {stats.map((s) => (
-              <div key={s.l}>
-                <dt className="sr-only">{s.l}</dt>
-                <dd className="display text-2xl font-semibold text-saffron sm:text-3xl">{s.n}</dd>
-                <dd className="mt-1 text-xs leading-snug text-white/70">{s.l}</dd>
+          <dl className="hero-stats mt-12 grid max-w-lg grid-cols-3 gap-4 pt-6">
+            {stats.map((st) => (
+              <div key={st.l}>
+                <dt className="sr-only">{st.l}</dt>
+                <dd className="display text-2xl font-semibold sm:text-3xl" style={{ color: "var(--hero-accent)" }}>{st.n}</dd>
+                <dd className="mt-1 text-xs leading-snug opacity-75">{st.l}</dd>
               </div>
             ))}
           </dl>
         </div>
 
-        {strip.length >= 6 && (
+        {moving && (
           <div className="hero-columns" aria-label={lang === "de" ? "Produkte aus dem Laden" : "Products from the shop"}>
             {cols.map((col, c) => (
-              <div key={c} className={`hero-col ${c === 1 ? "hero-col-rev" : ""} ${c === 2 ? "hidden sm:block" : ""}`} style={{ ["--col-s" as string]: `${38 + c * 9}s` }}>
+              <div key={c} className={c === 1 ? "hero-col-rev" : ""} style={{ ["--col-s" as string]: `${38 + c * 9}s` }}>
                 <ul className="hero-col-track">
-                  {col.map((im, i) => tile(im, `a${i}`, false))}
-                  {col.map((im, i) => tile(im, `b${i}`, true))}
+                  {col.map((im, i) => tile(im, `a${i}`, false, "hero-tile"))}
+                  {col.map((im, i) => tile(im, `b${i}`, true, "hero-tile"))}
                 </ul>
               </div>
             ))}
           </div>
         )}
       </div>
+      {moving && (
+        <div className="hero-strip marquee" style={{ ["--marquee-s" as string]: `${Math.max(40, strip.length * 4)}s` }} aria-hidden>
+          <ul className="marquee-track py-4">
+            {strip.map((im, i) => tile(im, `m${i}`, true, "hero-strip-tile"))}
+            {strip.map((im, i) => tile(im, `n${i}`, true, "hero-strip-tile"))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }
@@ -183,7 +200,7 @@ function Tiles({ d, lang }: { d: D; lang: Lang }) {
 const DEFAULT_LINK: Record<string, string> = { bestsellers: "/shop", recommended: "/shop", newest: "/shop?sort=new", sale: "/shop?sale=1" };
 
 async function Products({ d, lang }: { d: D; lang: Lang }) {
-  const products = await getRailProducts(d.source, d.category || undefined, Number(d.limit) || 10, d.country || undefined);
+  const products = await getRailProducts(d.source, d.category || undefined, Number(d.limit) || 10, d.country || undefined, d.productIds);
   if (!products.length) return null;
   let href: string | undefined = d.linkHref || DEFAULT_LINK[d.source];
   if (!d.linkHref && d.source === "category" && d.category) href = `/c/${d.category}`;
@@ -201,6 +218,61 @@ async function Products({ d, lang }: { d: D; lang: Lang }) {
             {products.map((p, i) => <ProductCard key={p.id} p={p} lang={lang} badge={badge && i < 3 ? badge : undefined} />)}
           </Rail>
         )}
+      </div>
+    </section>
+  );
+}
+
+// ---------- offers: loud, colourful, before/after prices ----------
+const OFFER_TONES: Record<string, string> = { terra: "offers-terra", saffron: "offers-saffron", forest: "offers-forest", indigo: "offers-indigo", ink: "offers-ink" };
+
+async function Offers({ d, lang }: { d: D; lang: Lang }) {
+  const items = await getOffers(Math.min(Number(d.limit) || 12, 24), d.source === "picked" ? d.productIds : undefined);
+  if (!items.length) return null;
+  const pct = (p: { price: number; compare_at_price: number | null }) => Math.round((1 - Number(p.price) / Number(p.compare_at_price)) * 100);
+  const best = Math.max(...items.map(pct));
+  const fmtDate = (s: string) => new Date(s).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", { day: "numeric", month: "short" });
+  return (
+    <section className={`offers ${OFFER_TONES[d.color] ?? "offers-terra"} py-16 sm:py-20`}>
+      <div className={WRAP}>
+        <div className="mb-9 flex flex-wrap items-end justify-between gap-5">
+          <div className="flex items-center gap-5">
+            <span className="offers-sticker" aria-hidden>
+              <span className="text-[0.625rem] font-semibold">{lang === "de" ? "bis zu" : "up to"}</span>
+              <span className="display text-2xl font-bold leading-none">−{best}%</span>
+            </span>
+            <div>
+              <h2 className="h-section" style={{ textWrap: "balance" }}>{L(d.title, lang) || (lang === "de" ? "Angebote" : "Offers")}</h2>
+              {L(d.text, lang) && <p className="mt-1.5 text-[0.9375rem] opacity-85">{L(d.text, lang)}</p>}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {L(d.badge, lang) && <span className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold">{L(d.badge, lang)}</span>}
+            <Link href="/shop?sale=1" className="pill-link">{lang === "de" ? "Alle Angebote" : "All offers"}<Icon name="arrowR" size={14} /></Link>
+          </div>
+        </div>
+        <ul className="offers-grid">
+          {items.map((p) => (
+            <li key={p.id} className="offer-card group">
+              <Link href={`/p/${p.slug}`} className="relative block aspect-square overflow-hidden rounded-xl bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.image_url ?? ""} alt={productTitle(p, lang)} loading="lazy" className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-105" />
+                <span className="offer-badge">−{pct(p)}%</span>
+              </Link>
+              <div className="flex flex-1 flex-col px-1 pb-1 pt-3">
+                <Link href={`/p/${p.slug}`} className="line-clamp-2 text-[0.8125rem] leading-snug text-ink hover:underline">{productTitle(p, lang)}</Link>
+                <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+                  <div className="leading-tight">
+                    <span className="block text-xs text-muted line-through decoration-terra/70">{lang === "de" ? "statt" : "was"} {money(Number(p.compare_at_price))}</span>
+                    <span className="display text-xl font-bold text-terra">{money(p.price)}</span>
+                    {p.sale_ends_at && <span className="block text-[0.6875rem] text-muted">{lang === "de" ? "bis" : "until"} {fmtDate(p.sale_ends_at)}</span>}
+                  </div>
+                  <AddToCart product={p} compact lang={lang} />
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
@@ -451,6 +523,8 @@ export async function Sections({ sections, lang }: { sections: HomeSection[]; la
           case "marquee": return <Marquee key={s.id} d={d} lang={lang} />;
           case "tiles": return <Tiles key={s.id} d={d} lang={lang} />;
           case "products": return <Products key={s.id} d={d} lang={lang} />;
+          case "offers": return <Offers key={s.id} d={d} lang={lang} />;
+          case "scene": return <Scene key={s.id} d={d} lang={lang} />;
           case "banners": return <Banners key={s.id} d={d} lang={lang} />;
           case "usp": return <Usp key={s.id} d={d} lang={lang} />;
           case "story": return <Story key={s.id} d={d} lang={lang} />;

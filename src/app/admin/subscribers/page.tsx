@@ -12,14 +12,14 @@ export default async function Subscribers() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold">Newsletter subscribers</h1>
+          <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Newsletter subscribers</h1>
           <p className="mt-1 text-sm text-muted">{count ?? 0} people signed up through the newsletter box on your website.</p>
         </div>
         {rows.length > 0 && (
           <a download="subscribers.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`} className="btn btn-primary">Download as CSV</a>
         )}
       </div>
-      <section className="rounded-2xl bg-white p-5">
+      <section className="rounded-2xl border border-line bg-white p-5">
         {rows.length ? (
           <table className="table">
             <thead><tr><th>Email</th><th>Language</th><th>Signed up</th></tr></thead>

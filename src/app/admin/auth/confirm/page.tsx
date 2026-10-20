@@ -27,7 +27,7 @@ export default function ConfirmSignIn() {
 
   return (
     <div className="mx-auto max-w-sm px-4 pt-24">
-      <h1 className="text-3xl font-extrabold">{error ? "Sign-in failed" : "Signing you in…"}</h1>
+      <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">{error ? "Sign-in failed" : "Signing you in…"}</h1>
       {error && (
         <p className="mt-3 text-sm text-danger">
           {error}{" "}

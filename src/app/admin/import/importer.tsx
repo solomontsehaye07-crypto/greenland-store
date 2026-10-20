@@ -108,7 +108,7 @@ export function Importer() {
       </div>
 
       {headers.length > 0 && (
-        <div className="rounded-2xl bg-white p-5">
+        <div className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg font-bold">Match your columns</h2>
           <p className="text-sm text-muted">{raw.length} rows found in {file}.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -141,7 +141,7 @@ export function Importer() {
       {error && <p className="rounded-xl bg-danger/10 p-3 text-sm text-danger">{error}</p>}
 
       {result && (
-        <div className="rounded-2xl bg-white p-5">
+        <div className="rounded-2xl border border-line bg-white p-5">
           <p className="font-semibold">
             {result.applied ? "Imported." : "Preview – nothing saved yet."} {result.create} new, {result.update} updates, {result.skipped} unchanged, {result.errors.length} errors.
           </p>

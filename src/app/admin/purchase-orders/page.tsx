@@ -22,10 +22,10 @@ export default async function PurchaseOrders() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-3xl font-extrabold">Refill orders</h1>
+        <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Refill orders</h1>
         <form action={createDrafts}><button className="btn btn-primary">Draft orders from low stock</button></form>
       </div>
-      <div className="overflow-x-auto rounded-2xl bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white">
         <table className="table">
           <thead><tr><th>No.</th><th>Supplier</th><th>Type</th><th>Lines</th><th>Status</th><th>Created</th><th>Expected</th></tr></thead>
           <tbody>
@@ -45,7 +45,7 @@ export default async function PurchaseOrders() {
         </table>
       </div>
       {!!sups?.length && (
-        <form action={createManualPo} className="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-5">
+        <form action={createManualPo} className="flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-5">
           <div><label className="label">New manual order for</label><select name="supplier_id" className="input">{sups.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
           <div className="min-w-60 flex-1"><label className="label">Notes</label><input name="notes" className="input" /></div>
           <button className="btn btn-ghost">Create</button>

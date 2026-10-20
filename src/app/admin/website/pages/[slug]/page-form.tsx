@@ -11,7 +11,7 @@ export function PageForm({ page }: { page: PageRow }) {
   const [state, action, pending] = useActionState(savePage.bind(null, page.slug), null);
   return (
     <form action={action} className="space-y-5">
-      <div className="space-y-6 rounded-2xl bg-white p-5 sm:p-6">
+      <div className="space-y-6 rounded-2xl border border-line bg-white p-5 sm:p-6">
         <fieldset>
           <legend className="label">Title</legend>
           <div className="grid gap-3 md:grid-cols-2">

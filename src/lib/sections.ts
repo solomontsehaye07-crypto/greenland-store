@@ -14,6 +14,7 @@ export type FieldKind =
   | "toggle"
   | "select"
   | "category"
+  | "products" // hand-picked products (list of ids)
   | "list";
 
 export interface Field {
@@ -63,7 +64,7 @@ const ICONS = [
   { value: "gift", label: "Gift" },
 ];
 
-export type SectionType = "hero" | "marquee" | "tiles" | "products" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text" | "countries" | "recipes";
+export type SectionType = "hero" | "marquee" | "tiles" | "products" | "offers" | "scene" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text" | "countries" | "recipes";
 
 export interface SectionDef {
   type: SectionType;
@@ -77,7 +78,7 @@ export const SECTION_DEFS: SectionDef[] = [
   {
     type: "hero",
     label: "Hero",
-    description: "The opening area on deep green: a big headline, two buttons, live shop numbers and three slowly moving columns of product photos.",
+    description: "The opening area: a big headline, two buttons, live shop numbers and moving product photos. Its colours and background photo come from the active design (Designs & seasons).",
     fields: [
       { key: "title", label: "Headline", kind: "text" },
       { key: "text", label: "Intro text", kind: "textarea" },
@@ -87,7 +88,7 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "cta2Href", label: "Second button link", kind: "plain" },
       {
         key: "images",
-        label: "Photos in the moving strip",
+        label: "Your own photos in the moving columns (optional)",
         kind: "list",
         itemLabel: "Photo",
         max: 16,
@@ -96,10 +97,10 @@ export const SECTION_DEFS: SectionDef[] = [
           { key: "href", label: "Link (optional)", kind: "plain" },
         ],
       },
-      { key: "autoFill", label: "Fill the strip with recommended products when there are fewer than 10 photos", kind: "toggle" },
-      { key: "facts", label: "Small facts under the buttons", kind: "list", itemLabel: "Fact", max: 4, item: [{ key: "text", label: "Fact", kind: "text" }] },
+      { key: "showProducts", label: "Show moving product photos (switch off to show only the design’s background photo)", kind: "toggle" },
+      { key: "autoFill", label: "Fill the moving photos with recommended products", kind: "toggle" },
     ],
-    defaults: { title: { de: "", en: "" }, images: [], facts: [], autoFill: true },
+    defaults: { title: { de: "", en: "" }, images: [], facts: [], autoFill: true, showProducts: true },
   },
   {
     type: "marquee",
@@ -149,6 +150,7 @@ export const SECTION_DEFS: SectionDef[] = [
         label: "Which products",
         kind: "select",
         options: [
+          { value: "picked", label: "Products you choose (pick them below)" },
           { value: "bestsellers", label: "Customer favourites (best sellers, topped up with your recommendations)" },
           { value: "recommended", label: "Recommendations (products marked Featured)" },
           { value: "newest", label: "New products" },
@@ -157,6 +159,7 @@ export const SECTION_DEFS: SectionDef[] = [
           { value: "country", label: "From a country" },
         ],
       },
+      { key: "productIds", label: "Your products (when “Products you choose”)", kind: "products", max: 24, help: "You can also tick this section in a product’s editor under “Show on the home page”." },
       { key: "category", label: "Category (also narrows favourites and recommendations)", kind: "category" },
       { key: "country", label: "Country (if 'From a country'), e.g. Ghana", kind: "plain" },
       { key: "limit", label: "How many", kind: "number" },
@@ -166,6 +169,64 @@ export const SECTION_DEFS: SectionDef[] = [
       { ...BAND, help: "Green, indigo and terracotta show here as a light tint so the product cards stay readable." },
     ],
     defaults: { source: "bestsellers", limit: 10, layout: "row", color: "none" },
+  },
+  {
+    type: "offers",
+    label: "Offers (Angebote)",
+    description: "A bright section with every product on offer: big discount badge, the old price crossed out and the new price in red.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text", kind: "textarea" },
+      { key: "badge", label: "Sticker text (e.g. Nur diese Woche)", kind: "text" },
+      {
+        key: "source",
+        label: "Which products",
+        kind: "select",
+        options: [
+          { value: "auto", label: "Every product with an offer price (biggest discount first)" },
+          { value: "picked", label: "Only the products I choose" },
+        ],
+      },
+      { key: "productIds", label: "Your products (when “Only the products I choose”)", kind: "products", max: 24, help: "Only products with an offer price are shown. Set offer prices in Products." },
+      { key: "limit", label: "How many at most", kind: "number" },
+      {
+        key: "color",
+        label: "Colour",
+        kind: "select",
+        options: [
+          { value: "terra", label: "Red & saffron" },
+          { value: "saffron", label: "Saffron & red" },
+          { value: "forest", label: "Green & saffron" },
+          { value: "indigo", label: "Indigo & saffron" },
+          { value: "ink", label: "Dark & saffron" },
+        ],
+      },
+    ],
+    defaults: { title: { de: "Angebote", en: "Offers" }, text: { de: "Solange der Vorrat reicht.", en: "While stocks last." }, source: "auto", limit: 12, color: "terra", productIds: [] },
+  },
+  {
+    type: "scene",
+    label: "Scroll scene (photos behind the page)",
+    description: "Big photos stay still in the background while text cards scroll over them; the photo changes with each card as you scroll up or down.",
+    fields: [
+      {
+        key: "steps",
+        label: "Scenes",
+        kind: "list",
+        itemLabel: "Scene",
+        max: 6,
+        item: [
+          { key: "image", label: "Background photo (landscape, at least 1600 px wide)", kind: "image" },
+          { key: "title", label: "Title", kind: "text" },
+          { key: "text", label: "Text", kind: "textarea" },
+          { key: "ctaLabel", label: "Button text (optional)", kind: "text" },
+          { key: "ctaHref", label: "Button link", kind: "plain" },
+        ],
+      },
+      { key: "align", label: "Card position", kind: "select", options: [{ value: "left", label: "Left" }, { value: "center", label: "Centre" }, { value: "right", label: "Right" }] },
+      { key: "dim", label: "Darken the photos (0–80 %, makes text easier to read)", kind: "number" },
+    ],
+    defaults: { steps: [], align: "left", dim: 30 },
   },
   {
     type: "banners",

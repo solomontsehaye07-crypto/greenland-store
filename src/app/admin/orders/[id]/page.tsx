@@ -17,9 +17,9 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-6">
       <Link href="/admin/orders" className="text-sm text-green">← Orders</Link>
-      <h1 className="text-3xl font-extrabold">Order #{o.number}</h1>
+      <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Order #{o.number}</h1>
       <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-        <section className="rounded-2xl bg-white p-5">
+        <section className="rounded-2xl border border-line bg-white p-5">
           <table className="table">
             <thead><tr><th>Item</th><th>SKU</th><th>Qty</th><th>Price</th><th></th></tr></thead>
             <tbody>
@@ -43,7 +43,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
           )}
         </section>
         <div className="space-y-6">
-          <section className="rounded-2xl bg-white p-5 text-sm">
+          <section className="rounded-2xl border border-line bg-white p-5 text-sm">
             <h2 className="text-lg font-bold">Customer</h2>
             <p className="mt-2">{a.name}<br />{a.street}<br />{a.postal} {a.city} {a.country}</p>
             <p className="mt-2">{o.email}<br />{o.phone}</p>
@@ -56,7 +56,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
             )}
             <p className="mt-3 text-muted">Payment: {o.payment_provider} {o.payment_ref ? `(${o.payment_ref})` : ""} {o.paid_at ? `· paid ${new Date(o.paid_at).toLocaleString("de-DE")}` : "· not paid yet"}</p>
           </section>
-          <form action={setOrderStatus} className="space-y-3 rounded-2xl bg-white p-5">
+          <form action={setOrderStatus} className="space-y-3 rounded-2xl border border-line bg-white p-5">
             <input type="hidden" name="order_id" value={o.id} />
             <h2 className="text-lg font-bold">Update status</h2>
             <select name="status" defaultValue={o.status} className="input">

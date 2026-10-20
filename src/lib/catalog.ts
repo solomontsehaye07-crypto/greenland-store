@@ -20,7 +20,7 @@ export async function getCategoryTree() {
 
 export type CardProduct = Pick<
   Product,
-  "id" | "sku" | "slug" | "title" | "title_de" | "brand" | "price" | "compare_at_price" | "image_url" | "size_qty" | "size_unit" | "stock" | "is_frozen" | "age_restricted" | "weight_g" | "category_id" | "country" | "featured"
+  "id" | "sku" | "slug" | "title" | "title_de" | "brand" | "price" | "compare_at_price" | "image_url" | "size_qty" | "size_unit" | "stock" | "is_frozen" | "age_restricted" | "weight_g" | "category_id" | "country" | "featured" | "sale_ends_at"
 >;
 
 export async function getProductsInCategories(ids: number[], opts: { sort?: string; limit?: number; offset?: number } = {}) {
@@ -105,8 +105,9 @@ export function countryFilter(country: string) {
 }
 
 /** Products for a product row on the home page. A department (parent category) includes its subcategories. */
-export async function getRailProducts(source: string, categorySlug: string | undefined, limit = 10, country?: string) {
+export async function getRailProducts(source: string, categorySlug: string | undefined, limit = 10, country?: string, ids?: number[]) {
   const n = Math.min(Math.max(limit || 10, 1), 24);
+  if (source === "picked") return getPickedProducts(ids ?? [], n);
   const scope = categorySlug ? await categoryScope(categorySlug) : null;
   if (source === "bestsellers") return getBestsellers(n, scope?.ids);
   if (source === "recommended" || source === "featured") {
@@ -221,3 +222,21 @@ export const getHomeShelves = unstable_cache(
   { revalidate: 300, tags: ["catalog"] }
 );
 
+
+/** Hand-picked products in the chosen order (hidden products are skipped). */
+export async function getPickedProducts(ids: number[], limit = 24): Promise<CardProduct[]> {
+  const list = ids.map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 48);
+  if (!list.length) return [];
+  const { data } = await base().in("id", list);
+  const byId = new Map(((data ?? []) as CardProduct[]).map((p) => [p.id, p]));
+  return list.map((id) => byId.get(id)).filter((p): p is CardProduct => !!p).slice(0, limit);
+}
+
+/** Products on offer (offer price below the regular price), biggest discount first. */
+export async function getOffers(limit = 12, ids?: number[]): Promise<CardProduct[]> {
+  const rows = ids?.length ? await getPickedProducts(ids, 48) : (((await base().not("compare_at_price", "is", null).limit(200)).data ?? []) as CardProduct[]);
+  return rows
+    .filter((p) => p.compare_at_price && Number(p.compare_at_price) > Number(p.price))
+    .sort((a, b) => (ids?.length ? 0 : Number(a.price) / Number(a.compare_at_price) - Number(b.price) / Number(b.compare_at_price)))
+    .slice(0, limit);
+}
