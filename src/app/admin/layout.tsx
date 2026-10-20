@@ -5,6 +5,7 @@ import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
 import { AdminNav } from "@/components/admin/nav";
 import { AdminTranslator } from "@/components/admin/translator";
 import { AdminPrefs } from "@/components/admin/prefs";
+import { FieldMemory } from "@/components/field-memory";
 import { signOut } from "./actions";
 
 export const metadata = { title: "Admin", robots: { index: false } };
@@ -22,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="admin min-h-screen" data-lang={lang} data-theme={theme} lang={lang === "ti" ? "ti" : "en"}>
       {inner}
       <AdminTranslator lang={lang} overrides={overrides} />
+      <FieldMemory seedsUrl={user ? "/api/admin/suggest" : undefined} />
     </div>
   );
   if (!user) return shell(children);

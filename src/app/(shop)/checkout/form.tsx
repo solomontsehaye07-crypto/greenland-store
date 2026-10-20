@@ -27,6 +27,17 @@ const COUNTRIES = [
   ["FR", "France"],
 ];
 
+const SAVED_KEY = "greenland.checkout.details.v1";
+type Saved = { name?: string; email?: string; phone?: string; street?: string; postal?: string; city?: string };
+function readSaved(): Saved {
+  if (typeof window === "undefined") return {};
+  try {
+    return (JSON.parse(localStorage.getItem(SAVED_KEY) ?? "{}") as Saved) ?? {};
+  } catch {
+    return {};
+  }
+}
+
 export function CheckoutForm({
   methods,
   pack,
@@ -55,8 +66,11 @@ export function CheckoutForm({
   pickupAddress?: string;
 }) {
   const { lines, subtotal, ready, clear } = useCart();
+  // details from the last order on this device (only if the customer agreed to remember them)
+  const [saved] = useState<Saved>(() => readSaved());
+  const [rememberMe, setRememberMe] = useState(true);
   const [country, setCountry] = useState("DE");
-  const [postal, setPostal] = useState("");
+  const [postal, setPostal] = useState(saved.postal ?? "");
   const [code, setCode] = useState<string>("");
   const [payment, setPayment] = useState<Provider>(options[0]?.id ?? "cash");
   const [depositProvider, setDepositProvider] = useState(online[0]?.id);
@@ -87,6 +101,16 @@ export function CheckoutForm({
     if (payment === "cash" && !cashAllowed) return setError("Paying on collection is only possible for pickup or local delivery.");
     if (needsDeposit && !depositProvider) return setError("Paying on collection needs a deposit, but no online payment is set up yet. Please choose another payment method.");
     const f = new FormData(e.currentTarget);
+    try {
+      if (rememberMe) {
+        const keep: Saved = { name: String(f.get("name") ?? ""), email: String(f.get("email") ?? ""), phone: String(f.get("phone") ?? ""), postal };
+        if (f.get("street")) Object.assign(keep, { street: String(f.get("street")), city: String(f.get("city") ?? "") });
+        else Object.assign(keep, { street: saved.street, city: saved.city });
+        localStorage.setItem(SAVED_KEY, JSON.stringify(keep));
+      } else localStorage.removeItem(SAVED_KEY);
+    } catch {
+      /* storage unavailable */
+    }
     setBusy(true);
     try {
       const r = await fetch("/api/checkout", {
@@ -128,17 +152,21 @@ export function CheckoutForm({
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="label" htmlFor="name">Full name</label>
-              <input id="name" name="name" required autoComplete="name" className="input" />
+              <input id="name" name="name" required autoComplete="name" defaultValue={saved.name} className="input" />
             </div>
             <div>
               <label className="label" htmlFor="email">Email</label>
-              <input id="email" name="email" type="email" required autoComplete="email" className="input" />
+              <input id="email" name="email" type="email" required autoComplete="email" defaultValue={saved.email} className="input" />
             </div>
             <div>
               <label className="label" htmlFor="phone">Phone / WhatsApp</label>
-              <input id="phone" name="phone" type="tel" required autoComplete="tel" className="input" />
+              <input id="phone" name="phone" type="tel" required autoComplete="tel" defaultValue={saved.phone} className="input" />
             </div>
           </div>
+          <label className="mt-3 flex items-center gap-2 text-sm text-muted">
+            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="accent-[var(--green)]" />
+            Remember my details on this device for next time
+          </label>
         </fieldset>
 
         <fieldset>
@@ -161,7 +189,7 @@ export function CheckoutForm({
             </div>
             <div>
               <label className="label" htmlFor="postal">Postcode</label>
-              <input id="postal" value={postal} onChange={(e) => setPostal(e.target.value.trim())} autoComplete="postal-code" className="input" />
+              <input id="postal" value={postal} onChange={(e) => setPostal(e.target.value.trim())} autoComplete="shipping postal-code" inputMode="numeric" className="input" />
             </div>
           </div>
           <div className="mt-5 space-y-2" role="radiogroup" aria-label="Delivery option">
@@ -190,11 +218,11 @@ export function CheckoutForm({
             <div className="mt-5 grid gap-4 sm:grid-cols-3">
               <div className="sm:col-span-3">
                 <label className="label" htmlFor="street">Street and house number</label>
-                <input id="street" name="street" required autoComplete="street-address" className="input" />
+                <input id="street" name="street" required autoComplete="shipping street-address" defaultValue={saved.street} className="input" />
               </div>
               <div className="sm:col-span-2">
                 <label className="label" htmlFor="city">City</label>
-                <input id="city" name="city" required autoComplete="address-level2" className="input" />
+                <input id="city" name="city" required autoComplete="shipping address-level2" defaultValue={saved.city} className="input" />
               </div>
             </div>
           )}

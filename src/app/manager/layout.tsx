@@ -8,6 +8,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { AdminTranslator } from "@/components/admin/translator";
 import { AdminPrefs } from "@/components/admin/prefs";
 import { ManagerTabs } from "./tabs";
+import { FieldMemory } from "@/components/field-memory";
 
 export const metadata: Metadata = {
   title: "Greenland Manager",
@@ -53,6 +54,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">{children}</main>
       <ManagerTabs />
+      <FieldMemory seedsUrl="/api/admin/suggest" />
       <AdminTranslator lang={lang} overrides={(tr?.value as Record<string, string>) ?? {}} />
     </div>
   );
