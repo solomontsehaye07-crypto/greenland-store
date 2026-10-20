@@ -117,6 +117,27 @@ export async function savePickup(fd: FormData) {
   back("/admin/settings/shipping", "Pickup times saved. Checkout shows them now.");
 }
 
+// ---------------- frozen packaging ----------------
+
+export async function saveFrozenPack(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const boxKg = dec(fd.get("boxKg"));
+  const boxPrice = dec(fd.get("boxPrice"));
+  if (!boxKg || boxKg < 0.5) back("/admin/settings/shipping", "Box size must be at least 0.5 kg.");
+  if (boxPrice == null || boxPrice < 0) back("/admin/settings/shipping", "Please enter the packaging price per box.");
+  await upsert("public.frozen_pack", {
+    enabled: on(fd, "enabled"),
+    boxKg,
+    boxPrice: Math.round(boxPrice * 100) / 100,
+    smallKg: Math.max(0, dec(fd.get("smallKg")) ?? 1),
+    perBoxShipping: on(fd, "perBoxShipping"),
+    applyLocal: on(fd, "applyLocal"),
+    smallNote: { de: txt(fd.get("small_de")), en: txt(fd.get("small_en")) },
+  });
+  revalidatePath("/", "layout");
+  back("/admin/settings/shipping", "Frozen packaging saved. Cart and checkout use it now.");
+}
+
 // ---------------- payments ----------------
 
 const SECRET_FIELDS: (keyof PaymentSecrets)[] = ["stripeSecretKey", "stripeWebhookSecret", "paypalClientId", "paypalSecret", "vivaClientId", "vivaSecret", "vivaSourceCode"];

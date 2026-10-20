@@ -1,9 +1,15 @@
 import type { CartLine, ShippingMethod } from "./types";
+import { packagingFor, type FrozenPack } from "./frozen";
 
 export interface ShippingQuote {
   method: ShippingMethod;
   available: boolean;
+  /** delivery + frozen packaging */
   price: number;
+  /** delivery part of the price */
+  delivery: number;
+  /** frozen packaging part of the price */
+  packaging: { boxes: number; fee: number };
   reason?: string;
 }
 
@@ -13,7 +19,8 @@ export function quoteShipping(
   lines: CartLine[],
   subtotal: number,
   country = "DE",
-  postal = ""
+  postal = "",
+  pack?: FrozenPack
 ): ShippingQuote[] {
   const weight = lines.reduce((s, l) => s + l.weight_g * l.qty, 0);
   const hasFrozen = lines.some((l) => l.is_frozen);
@@ -47,7 +54,11 @@ export function quoteShipping(
           reason = "Outside our local delivery area";
         }
       }
-      const price = m.free_from != null && subtotal >= m.free_from ? 0 : Number(m.price);
-      return { method: m, available, price, reason };
+      const packaging = pack ? packagingFor(m.type, lines, pack) : { boxes: 0, fee: 0 };
+      // each insulated box travels as its own parcel when the frozen courier charges per box
+      const parcels = m.type === "frozen" && pack?.perBoxShipping && packaging.boxes > 1 ? packaging.boxes : 1;
+      const delivery = m.free_from != null && subtotal >= m.free_from ? 0 : Math.round(Number(m.price) * parcels * 100) / 100;
+      const price = Math.round((delivery + packaging.fee) * 100) / 100;
+      return { method: m, available, price, delivery, packaging: { boxes: packaging.boxes, fee: packaging.fee }, reason };
     });
 }

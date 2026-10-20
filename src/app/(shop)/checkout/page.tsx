@@ -1,5 +1,5 @@
 import { supabasePublic } from "@/lib/supabase";
-import { getPaymentConfig, getPickupSettings, pickupSlots } from "@/lib/commerce";
+import { getFrozenPack, getPaymentConfig, getPickupSettings, pickupSlots } from "@/lib/commerce";
 import { getLang, tx } from "@/lib/i18n";
 import type { ShippingMethod } from "@/lib/types";
 import { CheckoutForm, type PayOption } from "./form";
@@ -9,11 +9,12 @@ export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ cancelled?: string; failed?: string }> }) {
   const sp = await searchParams;
-  const [{ data }, cfg, pickup, lang] = await Promise.all([
+  const [{ data }, cfg, pickup, lang, pack] = await Promise.all([
     supabasePublic().from("shipping_methods").select("*").eq("active", true).order("sort"),
     getPaymentConfig(),
     getPickupSettings(),
     getLang(),
+    getFrozenPack(),
   ]);
   const slots = await pickupSlots(pickup);
   const notice = sp.cancelled ? "Payment was cancelled. Your cart is still here." : sp.failed ? "Payment did not go through. Please try again or choose another method." : null;
@@ -36,6 +37,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       {notice && <p className="mt-4 rounded-xl bg-gold/30 px-4 py-3 text-sm">{notice}</p>}
       <CheckoutForm
         methods={methods}
+        pack={pack}
         options={options}
         online={cfg.online.map((o) => ({ id: o, name: tx(cfg.pub[o].label, lang) || o }))}
         cashPickup={cfg.pub.cash.pickup}

@@ -1,6 +1,22 @@
 import "server-only";
 import { supabaseAdmin } from "./supabase";
 import type { L10n } from "./i18n";
+import { normaliseFrozenPack, type FrozenPack } from "./frozen";
+
+/** Frozen packaging settings (box size, price per box). */
+export async function getFrozenPack(): Promise<FrozenPack> {
+  const { data } = await supabaseAdmin().from("settings").select("value").eq("key", "public.frozen_pack").maybeSingle();
+  return normaliseFrozenPack(data?.value);
+}
+
+/** Packaging settings plus the frozen courier price, for the cart illustration. */
+export async function getFrozenInfo(): Promise<{ pack: FrozenPack; courier: number | null }> {
+  const [pack, { data }] = await Promise.all([
+    getFrozenPack(),
+    supabaseAdmin().from("shipping_methods").select("price").eq("type", "frozen").eq("active", true).order("price").limit(1),
+  ]);
+  return { pack, courier: data?.[0] ? Number(data[0].price) : null };
+}
 
 // ---------------------------------------------------------------------------------------------
 // Everything the owner configures for checkout lives in the settings table:

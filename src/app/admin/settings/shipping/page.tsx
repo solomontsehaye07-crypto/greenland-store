@@ -2,9 +2,9 @@ import Link from "next/link";
 import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
-import { getPickupSettings, pickupSlots } from "@/lib/commerce";
+import { getFrozenPack, getPickupSettings, pickupSlots } from "@/lib/commerce";
 import { Card, Notice, PageHead, SidePanel, Toggle } from "@/components/admin/ui";
-import { savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
+import { saveFrozenPack, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
   const { edit, pickup: editPickup, msg } = await searchParams;
   const { data } = await supabaseAdmin().from("shipping_methods").select("*").order("sort").order("id");
   const methods = (data ?? []) as M[];
-  const p = await getPickupSettings();
+  const [p, fp] = await Promise.all([getPickupSettings(), getFrozenPack()]);
   const preview = (await pickupSlots(p)).slice(0, 4);
   const editing: M | undefined = edit === "new" ? { type: "parcel", active: true, countries: ["DE"], price: 0, min_order: 0, sort: (methods.at(-1)?.sort ?? 0) + 10 } : methods.find((m) => String(m.id) === edit);
 
@@ -87,6 +87,44 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
           {preview.length > 0 && <p className="mt-2 text-xs">Next free slots: {preview.map((s) => s.label.de).join(" · ")}</p>}
         </Card>
       </div>
+
+      <Card
+        className="mt-5"
+        title="Frozen packaging"
+        text="Frozen food is packed in insulated boxes with cooling packs. Every started box is charged at checkout and shown to customers in the cart as a box that fills up."
+      >
+        <form action={saveFrozenPack} className="space-y-4">
+          <Toggle name="enabled" defaultChecked={fp.enabled} label="Charge for frozen packaging" />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="label" htmlFor="boxKg">One box holds up to (kg)</label>
+              <input id="boxKg" name="boxKg" defaultValue={String(fp.boxKg).replace(".", ",")} inputMode="decimal" className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="boxPrice">Packaging price per box (€)</label>
+              <input id="boxPrice" name="boxPrice" defaultValue={fp.boxPrice.toFixed(2).replace(".", ",")} inputMode="decimal" className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="smallKg">Show the small-amount hint below (kg)</label>
+              <input id="smallKg" name="smallKg" defaultValue={String(fp.smallKg).replace(".", ",")} inputMode="decimal" className="input" />
+            </div>
+          </div>
+          <Toggle name="perBoxShipping" defaultChecked={fp.perBoxShipping} label="Frozen delivery price counts per box" hint="Each box travels as its own parcel, so 2 boxes = 2 × the frozen delivery price." />
+          <Toggle name="applyLocal" defaultChecked={fp.applyLocal} label="Also charge packaging for local delivery" hint="Off: local delivery and pickup have no packaging charge." />
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted">Own wording for the small-amount hint (optional)</summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <textarea name="small_de" rows={3} defaultValue={fp.smallNote.de} placeholder="German" className="input" />
+              <textarea name="small_en" rows={3} defaultValue={fp.smallNote.en} placeholder="English" className="input" />
+            </div>
+          </details>
+          <p className="text-xs text-muted">
+            Example with today’s settings: 6.2 kg frozen = 2 boxes = {money(2 * fp.boxPrice)} packaging
+            {fp.perBoxShipping ? " plus 2 × the frozen delivery price" : " plus the frozen delivery price once"}.
+          </p>
+          <button className="btn btn-primary">Save frozen packaging</button>
+        </form>
+      </Card>
 
       <Card className="mt-5" title="Dropshipping" text="Products marked Dropship in the product editor are ordered from their supplier automatically when a customer pays; the supplier ships straight to the customer.">
         <p className="text-sm">Set the supplier and its email or WhatsApp under <Link href="/admin/suppliers" className="text-forest underline">Suppliers</Link> (tick “Dropshipper”), then mark products as Dropship in <Link href="/admin/products" className="text-forest underline">Products</Link>.</p>

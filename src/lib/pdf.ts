@@ -212,7 +212,9 @@ export async function buildReceiptPdf({ order: o, store, receipt, bank }: Receip
   };
   const sub = Number(o.subtotal);
   row("Zwischensumme", eur(sub));
-  row((o.shipping_methods?.name as string) || "Versand", eur(Number(o.shipping_total)));
+  const pack = Number(o.packaging_total) || 0;
+  row((o.shipping_methods?.name as string) || "Versand", eur(Number(o.shipping_total) - pack));
+  if (pack > 0) row(`Tiefkühl-Verpackung (${o.frozen_boxes} ${Number(o.frozen_boxes) === 1 ? "Box" : "Boxen"})`, eur(pack));
   row("Gesamt inkl. MwSt.", eur(Number(o.total)), true);
   for (const [rate, gross] of [...vat.entries()].sort((x, z) => x[0] - z[0])) row(`darin ${rate} % MwSt.`, eur(gross - gross / (1 + rate / 100)));
   if (Number(o.shipping_total) > 0) row("Versand: MwSt. nach Hauptanteil", "");

@@ -6,13 +6,15 @@ import { useCart } from "./cart";
 import { money } from "@/lib/format";
 import { FreeShippingBar, Upsell } from "./cart-extras";
 import { RecipeSuggestions } from "./recipe-suggestions";
+import { FrozenBoxes } from "./frozen-boxes";
+import type { FrozenPack } from "@/lib/frozen";
 
 const T = {
   de: { cart: "Warenkorb", empty: "Dein Warenkorb ist leer.", close: "Schließen", subtotal: "Zwischensumme", checkout: "Zur Kasse", view: "Warenkorb ansehen", remove: "Entfernen", note: "Inkl. MwSt., zzgl. Versand" },
   en: { cart: "Cart", empty: "Your cart is empty.", close: "Close", subtotal: "Subtotal", checkout: "Checkout", view: "View cart", remove: "Remove", note: "Incl. VAT, plus delivery" },
 };
 
-export function CartDrawer({ lang }: { lang: "de" | "en" }) {
+export function CartDrawer({ lang, frozen }: { lang: "de" | "en"; frozen: { pack: FrozenPack; courier: number | null } }) {
   const { lines, subtotal, setQty, remove, drawerOpen, setDrawerOpen } = useCart();
   const t = T[lang];
   const panel = useRef<HTMLDivElement>(null);
@@ -50,7 +52,10 @@ export function CartDrawer({ lang }: { lang: "de" | "en" }) {
           <div className="flex-1 overflow-y-auto px-5">
             {lines.length ? (
               <>
-                <div className="py-4"><FreeShippingBar subtotal={subtotal} lang={lang} /></div>
+                <div className="space-y-3 py-4">
+                  <FreeShippingBar subtotal={subtotal} lang={lang} />
+                  <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} lang={lang} compact />
+                </div>
                 <ul className="divide-y divide-line border-y border-line">
                   {lines.map((l) => (
                     <li key={l.id} className="flex gap-3 py-3.5">

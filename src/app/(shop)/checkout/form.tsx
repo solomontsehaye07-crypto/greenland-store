@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/components/cart";
 import { quoteShipping } from "@/lib/shipping";
+import type { FrozenPack } from "@/lib/frozen";
 import { money } from "@/lib/format";
 import type { ShippingMethod } from "@/lib/types";
 
@@ -28,6 +29,7 @@ const COUNTRIES = [
 
 export function CheckoutForm({
   methods,
+  pack,
   options,
   online,
   cashPickup,
@@ -39,6 +41,7 @@ export function CheckoutForm({
   pickupAddress,
 }: {
   methods: ShippingMethod[];
+  pack: FrozenPack;
   options: PayOption[];
   online: { id: "stripe" | "paypal" | "viva"; name: string }[];
   cashPickup: boolean;
@@ -58,7 +61,7 @@ export function CheckoutForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const quotes = useMemo(() => quoteShipping(methods, lines, subtotal, country, postal), [methods, lines, subtotal, country, postal]);
+  const quotes = useMemo(() => quoteShipping(methods, lines, subtotal, country, postal, pack), [methods, lines, subtotal, country, postal, pack]);
   const chosen = quotes.find((q) => q.method.code === code && q.available) ?? null;
   const isPickup = chosen?.method.type === "pickup";
   const cashAllowed = chosen ? (chosen.method.type === "pickup" && cashPickup) || (chosen.method.type === "local" && cashLocal) : false;
@@ -165,6 +168,11 @@ export function CheckoutForm({
                     <span>{q.price === 0 ? "Free" : money(q.price)}</span>
                   </span>
                   <span className="block text-sm text-muted">{q.available ? q.method.description : q.reason}</span>
+                  {q.available && q.packaging.boxes > 0 && (
+                    <span className="mt-1 block text-xs text-[#14466B]">
+                      {q.packaging.boxes} × insulated box for frozen food ({money(pack.boxPrice)} each) included
+                    </span>
+                  )}
                 </span>
               </label>
             ))}
@@ -252,7 +260,10 @@ export function CheckoutForm({
         </ul>
         <div className="space-y-1 border-t border-line pt-4 text-sm">
           <div className="flex justify-between"><span>Subtotal</span><span>{money(subtotal)}</span></div>
-          <div className="flex justify-between"><span>Delivery</span><span>{chosen ? (chosen.price ? money(chosen.price) : "Free") : "—"}</span></div>
+          <div className="flex justify-between"><span>Delivery</span><span>{chosen ? (chosen.delivery ? money(chosen.delivery) : "Free") : "—"}</span></div>
+          {chosen && chosen.packaging.boxes > 0 && (
+            <div className="flex justify-between"><span>Frozen packaging ({chosen.packaging.boxes} {chosen.packaging.boxes === 1 ? "box" : "boxes"})</span><span>{money(chosen.packaging.fee)}</span></div>
+          )}
           <div className="flex justify-between pt-2 text-lg font-bold"><span>Total</span><span>{money(total)}</span></div>
           <p className="text-xs text-muted">incl. VAT</p>
         </div>

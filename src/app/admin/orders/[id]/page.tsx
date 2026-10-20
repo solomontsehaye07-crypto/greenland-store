@@ -30,6 +30,9 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
           </table>
           <div className="mt-4 space-y-1 text-right text-sm">
             <div>{(o.shipping_methods as { name: string } | null)?.name}: {money(o.shipping_total)}</div>
+            {Number(o.frozen_boxes) > 0 && (
+              <div className="font-semibold text-[#14466B]">Pack {o.frozen_boxes} insulated {Number(o.frozen_boxes) === 1 ? "box" : "boxes"} with cooling packs (incl. {money(o.packaging_total)} packaging)</div>
+            )}
             <div className="text-lg font-bold">Total {money(o.total)}</div>
             <div className="text-muted">of which VAT {money(o.tax_total)}</div>
           </div>

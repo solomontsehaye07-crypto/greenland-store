@@ -5,15 +5,16 @@ import { CartDrawer } from "@/components/cart-drawer";
 import { HeaderScroll, RevealOnScroll } from "@/components/reveal";
 import { getSite } from "@/lib/content";
 import { getLang, ui } from "@/lib/i18n";
+import { getFrozenInfo } from "@/lib/commerce";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const [{ site }, lang] = await Promise.all([getSite(), getLang()]);
+  const [{ site }, lang, frozen] = await Promise.all([getSite(), getLang(), getFrozenInfo()]);
   return (
     <>
       <Header />
       <main id="main">{children}</main>
       <Footer />
-      <CartDrawer lang={lang} />
+      <CartDrawer lang={lang} frozen={frozen} />
       <RevealOnScroll />
       <HeaderScroll />
       {site.showWhatsappButton !== false && site.whatsapp && (
