@@ -15,12 +15,13 @@ export const metadata: Metadata = {
   robots: { index: false },
   appleWebApp: { capable: true, title: "GL Manager", statusBarStyle: "black-translucent" },
   icons: { apple: "/brand/greenland-icon-512.png" },
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 export const viewport: Viewport = { themeColor: "#1D5C3F", width: "device-width", initialScale: 1, viewportFit: "cover" };
 export const dynamic = "force-dynamic";
 
 export default async function ManagerLayout({ children }: { children: React.ReactNode }) {
-  const { user, profile } = await requireStaff(MANAGER_ROLES);
+  const { user, profile } = await requireStaff(MANAGER_ROLES, "/manager");
   const jar = await cookies();
   const lang = jar.get("admin_lang")?.value === "ti" ? "ti" : "en";
   const theme = ["light", "dark"].includes(jar.get("admin_theme")?.value ?? "") ? jar.get("admin_theme")!.value : "system";

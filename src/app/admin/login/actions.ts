@@ -1,6 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+
+/** Only same-site paths are allowed as the page to open after sign-in. */
+function safeNext(v: FormDataEntryValue | null) {
+  const s = String(v ?? "");
+  return s.startsWith("/") && !s.startsWith("//") ? s : "/admin";
+}
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
 import { siteUrl } from "@/lib/site";
@@ -58,7 +64,7 @@ export async function verifyCode(_: LoginState, fd: FormData): Promise<LoginStat
     await sb.auth.signOut();
     return { error: "This account has no access to the admin." };
   }
-  redirect(profile.role === "staff" ? "/admin" : String(fd.get("next") || "/admin"));
+  redirect(profile.role === "staff" ? "/admin" : safeNext(fd.get("next")));
 }
 
 /** Optional: sign in with a password instead of a code. */
@@ -66,5 +72,5 @@ export async function passwordSignIn(_: LoginState, fd: FormData): Promise<Login
   const sb = await supabaseServer();
   const { error } = await sb.auth.signInWithPassword({ email: String(fd.get("email") ?? "").trim().toLowerCase(), password: String(fd.get("password") ?? "") });
   if (error) return { error: "Wrong email or password. You can also sign in with a code instead." };
-  redirect(String(fd.get("next") || "/admin"));
+  redirect(safeNext(fd.get("next")));
 }

@@ -7,12 +7,12 @@ export const STAFF_ROLES: Role[] = ["staff", "manager", "admin"];
 export const MANAGER_ROLES: Role[] = ["manager", "admin"];
 
 /** Returns the signed-in staff user or redirects to the admin login. */
-export async function requireStaff(roles: Role[] = STAFF_ROLES) {
+export async function requireStaff(roles: Role[] = STAFF_ROLES, next?: string) {
   const sb = await supabaseServer();
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user) redirect("/admin/login");
+  if (!user) redirect(next ? `/admin/login?next=${encodeURIComponent(next)}` : "/admin/login");
   const { data: profile } = await sb.from("profiles").select("role, full_name").eq("id", user.id).single();
   if (!profile || !STAFF_ROLES.includes(profile.role)) redirect("/admin/login?denied=1");
   if (!roles.includes(profile.role)) redirect("/admin?denied=1");

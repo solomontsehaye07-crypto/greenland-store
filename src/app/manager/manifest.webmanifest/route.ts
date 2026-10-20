@@ -6,8 +6,10 @@ export function GET() {
       name: "Greenland Manager",
       short_name: "GL Manager",
       description: "Run Greenland Afro Asia Store: sales, orders, stock and store controls.",
+      id: "/manager",
       start_url: "/manager",
-      scope: "/manager",
+      // whole site in scope so sign-in and the full admin stay inside the app window
+      scope: "/",
       display: "standalone",
       background_color: "#121513",
       theme_color: "#1D5C3F",
