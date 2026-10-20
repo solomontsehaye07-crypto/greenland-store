@@ -34,3 +34,6 @@ revoke execute on function public.end_expired_offers() from public, anon, authen
 
 create or replace function public.next_receipt_number() returns bigint language sql security definer set search_path = public as $fn$ select nextval('public.receipt_number_seq') $fn$;
 revoke execute on function public.next_receipt_number() from public, anon, authenticated;
+
+alter table public.orders drop constraint if exists orders_payment_provider_check;
+alter table public.orders add constraint orders_payment_provider_check check (payment_provider in ('stripe','paypal','viva','cash','cod','bank'));

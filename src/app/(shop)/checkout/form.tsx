@@ -6,14 +6,16 @@ import { useCart } from "@/components/cart";
 import { quoteShipping } from "@/lib/shipping";
 import { money } from "@/lib/format";
 import type { ShippingMethod } from "@/lib/types";
-import type { Provider } from "@/lib/payments";
 
-const PROVIDER_LABEL: Record<Provider, { name: string; note: string }> = {
-  stripe: { name: "Card, Apple Pay, Google Pay, Klarna", note: "Secure payment with Stripe" },
-  paypal: { name: "PayPal", note: "Pay with your PayPal account" },
-  viva: { name: "Viva Wallet", note: "Cards and local payment methods" },
-  cash: { name: "Cash or card on pickup / delivery", note: "Only for pickup and local delivery" },
-};
+type Provider = "stripe" | "paypal" | "viva" | "bank" | "cash";
+export type PayOption = { id: Provider; name: string; note?: string };
+type Deposit = { enabled: boolean; percent: number; fixed: number; minOrder: number };
+
+function depositOf(d: Deposit, total: number) {
+  if (!d.enabled || total < (Number(d.minOrder) || 0)) return 0;
+  const a = Number(d.fixed) > 0 ? Number(d.fixed) : (total * (Number(d.percent) || 0)) / 100;
+  return Math.min(total, Math.round(a * 100) / 100);
+}
 
 const COUNTRIES = [
   ["DE", "Germany"],
@@ -24,21 +26,46 @@ const COUNTRIES = [
   ["FR", "France"],
 ];
 
-export function CheckoutForm({ methods, providers }: { methods: ShippingMethod[]; providers: Provider[] }) {
+export function CheckoutForm({
+  methods,
+  options,
+  online,
+  cashPickup,
+  cashLocal,
+  deposit,
+  slots,
+  allowAsap,
+  pickupNote,
+  pickupAddress,
+}: {
+  methods: ShippingMethod[];
+  options: PayOption[];
+  online: { id: "stripe" | "paypal" | "viva"; name: string }[];
+  cashPickup: boolean;
+  cashLocal: boolean;
+  deposit: Deposit;
+  slots: { value: string; label: string; full: boolean }[];
+  allowAsap: boolean;
+  pickupNote?: string;
+  pickupAddress?: string;
+}) {
   const { lines, subtotal, ready, clear } = useCart();
   const [country, setCountry] = useState("DE");
   const [postal, setPostal] = useState("");
   const [code, setCode] = useState<string>("");
-  const [payment, setPayment] = useState<Provider>(providers[0]);
+  const [payment, setPayment] = useState<Provider>(options[0]?.id ?? "cash");
+  const [depositProvider, setDepositProvider] = useState(online[0]?.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const quotes = useMemo(() => quoteShipping(methods, lines, subtotal, country, postal), [methods, lines, subtotal, country, postal]);
   const chosen = quotes.find((q) => q.method.code === code && q.available) ?? null;
   const isPickup = chosen?.method.type === "pickup";
-  const cashAllowed = chosen ? ["pickup", "local"].includes(chosen.method.type) : false;
+  const cashAllowed = chosen ? (chosen.method.type === "pickup" && cashPickup) || (chosen.method.type === "local" && cashLocal) : false;
   const hasAlcohol = lines.some((l) => l.age_restricted);
   const total = subtotal + (chosen?.price ?? 0);
+  const dep = payment === "cash" ? depositOf(deposit, total) : 0;
+  const needsDeposit = dep > 0;
 
   if (!ready) return <p className="mt-6 text-muted">Loading…</p>;
   if (!lines.length)
@@ -52,7 +79,8 @@ export function CheckoutForm({ methods, providers }: { methods: ShippingMethod[]
     e.preventDefault();
     setError(null);
     if (!chosen) return setError("Please choose a delivery option.");
-    if (payment === "cash" && !cashAllowed) return setError("Cash is only possible for pickup or local delivery.");
+    if (payment === "cash" && !cashAllowed) return setError("Paying on collection is only possible for pickup or local delivery.");
+    if (needsDeposit && !depositProvider) return setError("Paying on collection needs a deposit, but no online payment is set up yet. Please choose another payment method.");
     const f = new FormData(e.currentTarget);
     setBusy(true);
     try {
@@ -68,8 +96,10 @@ export function CheckoutForm({ methods, providers }: { methods: ShippingMethod[]
           city: f.get("city") ?? "",
           country,
           shipping_code: chosen.method.code,
-          pickup_slot: f.get("pickup_slot") ?? undefined,
+          pickup_at: f.get("pickup_at") ?? undefined,
+          pickup_slot: isPickup ? (slots.find((s) => s.value === f.get("pickup_at"))?.label ?? "I will call before coming") : undefined,
           payment,
+          deposit_provider: needsDeposit ? depositProvider : undefined,
           notes: f.get("notes") || undefined,
           age_confirmed: f.get("age") === "on",
           items: lines.map((l) => ({ id: l.id, qty: l.qty })),
@@ -152,14 +182,17 @@ export function CheckoutForm({ methods, providers }: { methods: ShippingMethod[]
             </div>
           )}
           {isPickup && (
-            <div className="mt-5 max-w-sm">
-              <label className="label" htmlFor="pickup_slot">Preferred pickup time</label>
-              <select id="pickup_slot" name="pickup_slot" className="input">
-                <option>Today, after 2 pm</option>
-                <option>Tomorrow morning</option>
-                <option>Tomorrow afternoon</option>
-                <option>I will call before coming</option>
+            <div className="mt-5 max-w-md space-y-2">
+              <label className="label" htmlFor="pickup_at">Pickup time</label>
+              <select id="pickup_at" name="pickup_at" required className="input">
+                {slots.filter((s) => !s.full).map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+                {allowAsap && <option value="call">I will call before coming</option>}
               </select>
+              {!slots.some((s) => !s.full) && !allowAsap && <p className="text-sm text-danger">No pickup times are free right now. Please choose another delivery option.</p>}
+              {pickupAddress && <p className="whitespace-pre-line text-sm text-muted">{pickupAddress}</p>}
+              {pickupNote && <p className="whitespace-pre-line text-sm text-muted">{pickupNote}</p>}
             </div>
           )}
         </fieldset>
@@ -167,19 +200,38 @@ export function CheckoutForm({ methods, providers }: { methods: ShippingMethod[]
         <fieldset>
           <legend className="text-xl font-bold display">Payment</legend>
           <div className="mt-4 space-y-2" role="radiogroup" aria-label="Payment method">
-            {providers.map((p) => {
+            {options.map((o) => {
+              const p = o.id;
               const disabled = p === "cash" && !cashAllowed;
               return (
                 <label key={p} className={`flex cursor-pointer items-start gap-3 rounded-2xl border bg-white p-4 ${payment === p ? "border-green ring-2 ring-green/20" : "border-line"} ${disabled ? "opacity-50" : ""}`}>
                   <input type="radio" name="pay" className="mt-1 accent-[var(--green)]" checked={payment === p} disabled={disabled} onChange={() => setPayment(p)} />
                   <span>
-                    <span className="block font-semibold">{PROVIDER_LABEL[p].name}</span>
-                    <span className="block text-sm text-muted">{PROVIDER_LABEL[p].note}</span>
+                    <span className="block font-semibold">{o.name}</span>
+                    {o.note && <span className="block text-sm text-muted">{o.note}</span>}
                   </span>
                 </label>
               );
             })}
           </div>
+          {needsDeposit && (
+            <div className="mt-4 rounded-2xl border border-saffron bg-saffron/10 p-4 text-sm">
+              <p className="font-semibold">Deposit of {money(dep)} now, {money(total - dep)} on collection</p>
+              <p className="mt-1 text-muted">We hold your goods with a small deposit paid online. Pay the deposit with:</p>
+              {online.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {online.map((o) => (
+                    <label key={o.id} className={`cursor-pointer rounded-full border px-3 py-1.5 ${depositProvider === o.id ? "border-green bg-white font-semibold" : "border-line bg-white/60"}`}>
+                      <input type="radio" name="deposit_provider" className="sr-only" checked={depositProvider === o.id} onChange={() => setDepositProvider(o.id)} />
+                      {o.name}
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-danger">Online payment is not set up yet, so a deposit can’t be taken. Please choose another payment method.</p>
+              )}
+            </div>
+          )}
         </fieldset>
 
         <div>
@@ -220,7 +272,7 @@ export function CheckoutForm({ methods, providers }: { methods: ShippingMethod[]
         </label>
         {error && <p className="rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
         <button disabled={busy} className="btn btn-primary w-full py-3 text-base">
-          {busy ? "Placing order…" : `Order and pay ${money(total)}`}
+          {busy ? "Placing order…" : needsDeposit ? `Order and pay deposit ${money(dep)}` : payment === "cash" ? `Place order (${money(total)} on collection)` : payment === "bank" ? `Place order (${money(total)} by transfer)` : `Order and pay ${money(total)}`}
         </button>
       </aside>
     </form>

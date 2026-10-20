@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { draftRefillOrders } from "@/lib/purchasing";
-import { sendEmail } from "@/lib/notify";
+import { emailConfig, sendEmail } from "@/lib/notify";
 import { siteUrl } from "@/lib/site";
 
 // Runs daily (Cloudflare cron trigger in wrangler.jsonc, or vercel.json on Vercel). Creates alerts, drafts refill orders per supplier and emails a digest.
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
   const drafts = await draftRefillOrders();
 
-  const to = process.env.ALERT_EMAIL_TO;
+  const to = (await emailConfig()).alertTo;
   if (to && ((low?.length ?? 0) > 0 || (expiring?.length ?? 0) > 0)) {
     const site = siteUrl();
     const li = (low ?? []).map((p) => `<li>${p.title} (${p.sku}) – <b>${p.stock}</b> left${p.on_order ? " · on order" : ""}</li>`).join("");

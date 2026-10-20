@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-import { CheckoutSchema, createOrder, confirmCashOrder } from "@/lib/orders";
-import { enabledProviders, paypalCheckout, stripeCheckout, vivaCheckout } from "@/lib/payments";
+import { CheckoutSchema, confirmBankOrder, confirmCashOrder, createOrder } from "@/lib/orders";
+import { paypalCheckout, stripeCheckout, vivaCheckout, type PayableOrder } from "@/lib/payments";
+import { getPaymentConfig } from "@/lib/commerce";
 import { supabaseServer } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   const parsed = CheckoutSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: "Please check the highlighted fields." }, { status: 400 });
   const input = parsed.data;
-  if (!enabledProviders().includes(input.payment))
-    return NextResponse.json({ error: "This payment method is not available." }, { status: 400 });
+  const cfg = await getPaymentConfig();
+  if (!cfg.methods.includes(input.payment)) return NextResponse.json({ error: "This payment method is not available." }, { status: 400 });
 
   const sb = await supabaseServer();
   const {
@@ -16,8 +17,8 @@ export async function POST(req: Request) {
   } = await sb.auth.getUser();
 
   try {
-    const order = await createOrder(input, user?.id ?? null);
-    const payable = {
+    const order = await createOrder(input, user?.id ?? null, cfg);
+    const full: PayableOrder = {
       id: order.id,
       number: order.number,
       email: input.email,
@@ -25,20 +26,23 @@ export async function POST(req: Request) {
       shipping_total: order.shipping_total,
       lines: order.lines.map((l) => ({ title: l.title, qty: l.qty, unit_price: l.price })),
     };
+    // cash on pickup with a deposit: only the deposit is charged online now
+    const charge: PayableOrder =
+      order.deposit > 0
+        ? { ...full, total: order.deposit, shipping_total: 0, lines: [{ title: `Anzahlung Bestellung #${order.number}`, qty: 1, unit_price: order.deposit }] }
+        : full;
+    const provider = order.deposit > 0 ? input.deposit_provider! : input.payment;
+
     let url: string;
-    switch (input.payment) {
-      case "stripe":
-        url = await stripeCheckout(payable);
-        break;
-      case "paypal":
-        url = await paypalCheckout(payable);
-        break;
-      case "viva":
-        url = await vivaCheckout(payable);
-        break;
-      default:
-        await confirmCashOrder(order.id);
-        url = `/order/${order.id}`;
+    if (provider === "stripe") url = await stripeCheckout(charge, cfg);
+    else if (provider === "paypal") url = await paypalCheckout(charge, cfg);
+    else if (provider === "viva") url = await vivaCheckout(charge, cfg);
+    else if (provider === "bank") {
+      await confirmBankOrder(order.id);
+      url = `/order/${order.id}`;
+    } else {
+      await confirmCashOrder(order.id);
+      url = `/order/${order.id}`;
     }
     return NextResponse.json({ url });
   } catch (e) {

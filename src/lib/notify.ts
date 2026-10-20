@@ -1,4 +1,25 @@
-/** Email via Resend REST API (no SDK needed). Returns false when not configured. */
+import { supabaseAdmin } from "./supabase";
+import { decryptJson } from "./commerce";
+
+type MailCfg = { resendKey?: string; from?: string; alertTo?: string };
+
+/** Email settings from Admin → Account & receipts (falls back to environment variables). */
+export async function emailConfig(): Promise<MailCfg> {
+  let stored: MailCfg = {};
+  try {
+    const { data } = await supabaseAdmin().from("settings").select("value").eq("key", "private.email").maybeSingle();
+    stored = (await decryptJson<MailCfg>(data?.value)) ?? {};
+  } catch {
+    /* fall back to env */
+  }
+  return {
+    resendKey: stored.resendKey || process.env.RESEND_API_KEY,
+    from: stored.from || process.env.EMAIL_FROM,
+    alertTo: stored.alertTo || process.env.ALERT_EMAIL_TO,
+  };
+}
+
+/** Email via Resend REST API (no SDK needed). Returns ok:false when not configured. */
 export async function sendEmail(opts: {
   to: string | string[];
   subject: string;
@@ -6,13 +27,14 @@ export async function sendEmail(opts: {
   attachments?: { filename: string; content: Uint8Array }[];
   replyTo?: string;
 }) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return { ok: false, error: "RESEND_API_KEY not set" };
+  const cfg = await emailConfig();
+  const key = cfg.resendKey;
+  if (!key) return { ok: false, error: "Email sending is not set up (Admin → Account & receipts)" };
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? "Greenland Afro Asia Store <onboarding@resend.dev>",
+      from: cfg.from || "Greenland Afro Asia Store <onboarding@resend.dev>",
       to: opts.to,
       subject: opts.subject,
       html: opts.html,

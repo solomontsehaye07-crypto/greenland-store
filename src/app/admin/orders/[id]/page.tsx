@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { waLink } from "@/lib/notify";
-import { setOrderStatus } from "../../actions";
+import { markOrderPaid, setOrderStatus } from "../../actions";
 
 export default async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
   await requireStaff();
@@ -54,7 +54,19 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
                 Message on WhatsApp
               </a>
             )}
-            <p className="mt-3 text-muted">Payment: {o.payment_provider} {o.payment_ref ? `(${o.payment_ref})` : ""} {o.paid_at ? `· paid ${new Date(o.paid_at).toLocaleString("de-DE")}` : "· not paid yet"}</p>
+            <p className="mt-3 text-muted">Payment: {o.payment_method ?? o.payment_provider} {o.payment_ref ? `(${o.payment_ref})` : ""} {o.paid_at ? `· paid ${new Date(o.paid_at).toLocaleString("de-DE")}` : "· not paid yet"}</p>
+            {o.deposit_amount && <p className="mt-1">Deposit paid online: <b>{money(o.deposit_amount)}</b></p>}
+            {Number(o.balance_due) > 0 && <p className="mt-1 font-semibold text-terra">Still to pay: {money(o.balance_due)}</p>}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(o.status === "pending" && o.payment_method === "bank") || Number(o.balance_due) > 0 ? (
+                <form action={markOrderPaid}>
+                  <input type="hidden" name="order_id" value={o.id} />
+                  <input type="hidden" name="what" value={o.payment_method === "bank" ? "full" : "balance"} />
+                  <button className="btn btn-primary h-9 py-1 text-sm">{o.payment_method === "bank" ? "Transfer received" : "Rest paid on collection"}</button>
+                </form>
+              ) : null}
+              <a href={`/order/${o.id}/receipt`} target="_blank" rel="noopener" className="btn btn-ghost h-9 py-1 text-sm">Receipt (PDF)</a>
+            </div>
           </section>
           <form action={setOrderStatus} className="space-y-3 rounded-2xl border border-line bg-white p-5">
             <input type="hidden" name="order_id" value={o.id} />

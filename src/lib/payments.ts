@@ -1,33 +1,26 @@
 import Stripe from "stripe";
 
 import { siteUrl } from "./site";
+import type { PaymentConfig } from "./commerce";
 
-export type Provider = "stripe" | "paypal" | "viva" | "cash";
-
-export function enabledProviders(): Provider[] {
-  const list: Provider[] = [];
-  if (process.env.STRIPE_SECRET_KEY) list.push("stripe");
-  if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) list.push("paypal");
-  if (process.env.VIVA_CLIENT_ID && process.env.VIVA_CLIENT_SECRET) list.push("viva");
-  list.push("cash"); // pay at pickup / on local delivery
-  return list;
-}
+// Keys and live/test mode come from Admin → Payments (see lib/commerce.ts), with env vars as fallback.
 
 export interface PayableOrder {
   id: string;
   number: number;
   email: string;
-  total: number;
+  total: number; // the amount to charge now (the whole order, or only the deposit)
   lines: { title: string; qty: number; unit_price: number }[];
   shipping_total: number;
 }
 
 // ---------------- Stripe (cards, Apple/Google Pay, Klarna, SEPA – per your Stripe dashboard) ----------------
-export function stripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!, { httpClient: Stripe.createFetchHttpClient() });
+export function stripe(cfg: PaymentConfig) {
+  if (!cfg.secrets.stripeSecretKey) throw new Error("Stripe is not connected");
+  return new Stripe(cfg.secrets.stripeSecretKey, { httpClient: Stripe.createFetchHttpClient() });
 }
 
-export async function stripeCheckout(o: PayableOrder) {
+export async function stripeCheckout(o: PayableOrder, cfg: PaymentConfig) {
   const items: Stripe.Checkout.SessionCreateParams.LineItem[] = o.lines.map((l) => ({
     quantity: l.qty,
     price_data: { currency: "eur", unit_amount: Math.round(l.unit_price * 100), product_data: { name: l.title } },
@@ -37,7 +30,7 @@ export async function stripeCheckout(o: PayableOrder) {
       quantity: 1,
       price_data: { currency: "eur", unit_amount: Math.round(o.shipping_total * 100), product_data: { name: "Shipping" } },
     });
-  const session = await stripe().checkout.sessions.create({
+  const session = await stripe(cfg).checkout.sessions.create({
     mode: "payment",
     customer_email: o.email,
     line_items: items,
@@ -50,12 +43,11 @@ export async function stripeCheckout(o: PayableOrder) {
 }
 
 // ---------------- PayPal (Orders v2) ----------------
-const PAYPAL_BASE = () =>
-  process.env.PAYPAL_ENV === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
+const PAYPAL_BASE = (cfg: PaymentConfig) => (cfg.pub.paypal.live ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com");
 
-async function paypalToken() {
-  const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
-  const r = await fetch(`${PAYPAL_BASE()}/v1/oauth2/token`, {
+async function paypalToken(cfg: PaymentConfig) {
+  const auth = Buffer.from(`${cfg.secrets.paypalClientId}:${cfg.secrets.paypalSecret}`).toString("base64");
+  const r = await fetch(`${PAYPAL_BASE(cfg)}/v1/oauth2/token`, {
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: "grant_type=client_credentials",
@@ -64,9 +56,9 @@ async function paypalToken() {
   return (await r.json()).access_token as string;
 }
 
-export async function paypalCheckout(o: PayableOrder) {
-  const token = await paypalToken();
-  const r = await fetch(`${PAYPAL_BASE()}/v2/checkout/orders`, {
+export async function paypalCheckout(o: PayableOrder, cfg: PaymentConfig) {
+  const token = await paypalToken(cfg);
+  const r = await fetch(`${PAYPAL_BASE(cfg)}/v2/checkout/orders`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -89,9 +81,9 @@ export async function paypalCheckout(o: PayableOrder) {
 }
 
 /** Captures an approved PayPal order. Returns capture id when COMPLETED. */
-export async function paypalCapture(paypalOrderId: string) {
-  const token = await paypalToken();
-  const r = await fetch(`${PAYPAL_BASE()}/v2/checkout/orders/${paypalOrderId}/capture`, {
+export async function paypalCapture(paypalOrderId: string, cfg: PaymentConfig) {
+  const token = await paypalToken(cfg);
+  const r = await fetch(`${PAYPAL_BASE(cfg)}/v2/checkout/orders/${paypalOrderId}/capture`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   });
@@ -104,15 +96,13 @@ export async function paypalCapture(paypalOrderId: string) {
 }
 
 // ---------------- Viva Wallet (Smart Checkout) ----------------
-const VIVA_ACCOUNTS = () =>
-  process.env.VIVA_ENV === "live" ? "https://accounts.vivapayments.com" : "https://demo-accounts.vivapayments.com";
-const VIVA_API = () => (process.env.VIVA_ENV === "live" ? "https://api.vivapayments.com" : "https://demo-api.vivapayments.com");
-const VIVA_CHECKOUT = () =>
-  process.env.VIVA_ENV === "live" ? "https://www.vivapayments.com" : "https://demo.vivapayments.com";
+const VIVA_ACCOUNTS = (c: PaymentConfig) => (c.pub.viva.live ? "https://accounts.vivapayments.com" : "https://demo-accounts.vivapayments.com");
+const VIVA_API = (c: PaymentConfig) => (c.pub.viva.live ? "https://api.vivapayments.com" : "https://demo-api.vivapayments.com");
+const VIVA_CHECKOUT = (c: PaymentConfig) => (c.pub.viva.live ? "https://www.vivapayments.com" : "https://demo.vivapayments.com");
 
-async function vivaToken() {
-  const auth = Buffer.from(`${process.env.VIVA_CLIENT_ID}:${process.env.VIVA_CLIENT_SECRET}`).toString("base64");
-  const r = await fetch(`${VIVA_ACCOUNTS()}/connect/token`, {
+async function vivaToken(cfg: PaymentConfig) {
+  const auth = Buffer.from(`${cfg.secrets.vivaClientId}:${cfg.secrets.vivaSecret}`).toString("base64");
+  const r = await fetch(`${VIVA_ACCOUNTS(cfg)}/connect/token`, {
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: "grant_type=client_credentials",
@@ -121,28 +111,28 @@ async function vivaToken() {
   return (await r.json()).access_token as string;
 }
 
-export async function vivaCheckout(o: PayableOrder) {
-  const token = await vivaToken();
-  const r = await fetch(`${VIVA_API()}/checkout/v2/orders`, {
+export async function vivaCheckout(o: PayableOrder, cfg: PaymentConfig) {
+  const token = await vivaToken(cfg);
+  const r = await fetch(`${VIVA_API(cfg)}/checkout/v2/orders`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       amount: Math.round(o.total * 100),
       customerTrns: `Greenland order #${o.number}`,
       customer: { email: o.email, requestLang: "de-DE" },
-      sourceCode: process.env.VIVA_SOURCE_CODE,
+      sourceCode: cfg.secrets.vivaSourceCode,
       merchantTrns: o.id,
     }),
   });
   const data = await r.json();
   if (!data.orderCode) throw new Error("Viva order failed");
-  return `${VIVA_CHECKOUT()}/web/checkout?ref=${data.orderCode}`;
+  return `${VIVA_CHECKOUT(cfg)}/web/checkout?ref=${data.orderCode}`;
 }
 
 /** Looks up a Viva transaction; returns our order id when it is paid. */
-export async function vivaVerify(transactionId: string) {
-  const token = await vivaToken();
-  const r = await fetch(`${VIVA_API()}/checkout/v2/transactions/${transactionId}`, {
+export async function vivaVerify(transactionId: string, cfg: PaymentConfig) {
+  const token = await vivaToken(cfg);
+  const r = await fetch(`${VIVA_API(cfg)}/checkout/v2/transactions/${transactionId}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!r.ok) return null;

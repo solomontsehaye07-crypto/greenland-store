@@ -107,3 +107,131 @@ export async function buildPurchaseOrderPdf(po: PoPdfInput): Promise<Uint8Array>
   text("Please confirm this order by email or WhatsApp. Thank you!", M, 50, 9, font, MUTED);
   return doc.save();
 }
+
+// ---------------- customer receipt / invoice ----------------
+
+export interface ReceiptInput {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  order: Record<string, any>;
+  store: Record<string, string>; // name, owner, street, postal, city, phone, email, vat_id
+  receipt: Record<string, string>; // tax_number, footer, title
+  bank?: { holder?: string; iban?: string; bic?: string; bankName?: string };
+}
+
+const eur = (n: number) => `${Number(n).toFixed(2).replace(".", ",")} EUR`;
+
+export async function buildReceiptPdf({ order: o, store, receipt, bank }: ReceiptInput): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  let page = doc.addPage([595.28, 841.89]);
+  const { width } = page.getSize();
+  const M = 48;
+  let y = 790;
+  const text = (s: string, x: number, yy: number, size = 10, f = font, color = INK) => page.drawText(safe(String(s ?? "")), { x, y: yy, size, font: f, color });
+  const right = (s: string, xr: number, yy: number, size = 10, f = font, color = INK) => text(s, xr - f.widthOfTextAtSize(safe(s), size), yy, size, f, color);
+
+  const name = store.name || "Greenland Afro Asia Store";
+  text(name, M, y, 16, bold, GREEN);
+  right(receipt.title || "Rechnung / Beleg", width - M, y, 12, bold);
+  y -= 15;
+  const addr = [store.street, [store.postal, store.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  if (addr) text(addr, M, y, 9, font, MUTED);
+  right(`Nr. ${o.receipt_number ?? o.number}`, width - M, y, 10);
+  y -= 12;
+  const contact = [store.phone && `Tel. ${store.phone}`, store.email].filter(Boolean).join("  ");
+  if (contact) text(contact, M, y, 9, font, MUTED);
+  right(`Datum: ${new Date(o.paid_at ?? o.created_at).toLocaleDateString("de-DE")}`, width - M, y, 10);
+  y -= 12;
+  const tax = [store.vat_id && `USt-IdNr. ${store.vat_id}`, receipt.tax_number && `St.-Nr. ${receipt.tax_number}`].filter(Boolean).join("  ");
+  if (tax) text(tax, M, y, 9, font, MUTED);
+  right(`Bestellung #${o.number}`, width - M, y, 10);
+
+  y -= 34;
+  const a = (o.shipping_address ?? {}) as Record<string, string>;
+  text("Kunde / Customer", M, y, 9, bold, MUTED);
+  y -= 14;
+  for (const line of [a.name, a.street, [a.postal, a.city].filter(Boolean).join(" "), o.email].filter(Boolean)) {
+    text(line, M, y, 10);
+    y -= 13;
+  }
+
+  y -= 14;
+  const cols = { pos: M, title: M + 24, qty: width - M - 190, vat: width - M - 130, unit: width - M - 70, sum: width - M };
+  const header = () => {
+    page.drawRectangle({ x: M - 6, y: y - 6, width: width - 2 * M + 12, height: 20, color: rgb(0.93, 0.95, 0.93) });
+    text("#", cols.pos, y, 9, bold);
+    text("Artikel", cols.title, y, 9, bold);
+    text("Menge", cols.qty, y, 9, bold);
+    text("MwSt.", cols.vat, y, 9, bold);
+    right("Einzel", cols.unit + 40, y, 9, bold);
+    right("Summe", cols.sum, y, 9, bold);
+    y -= 22;
+  };
+  header();
+  const items = (o.order_items ?? []) as { title: string; qty: number; unit_price: number; tax_rate: number }[];
+  const vat = new Map<number, number>(); // rate → gross
+  items.forEach((it, i) => {
+    if (y < 140) {
+      page = doc.addPage([595.28, 841.89]);
+      y = 790;
+      header();
+    }
+    const t = it.title.length > 52 ? it.title.slice(0, 51) + "…" : it.title;
+    const line = Number(it.unit_price) * it.qty;
+    vat.set(Number(it.tax_rate), (vat.get(Number(it.tax_rate)) ?? 0) + line);
+    text(String(i + 1), cols.pos, y, 9);
+    text(t, cols.title, y, 9);
+    text(String(it.qty), cols.qty + 8, y, 9);
+    text(`${Number(it.tax_rate)} %`, cols.vat, y, 9);
+    right(eur(Number(it.unit_price)), cols.unit + 40, y, 9);
+    right(eur(line), cols.sum, y, 9);
+    y -= 15;
+    page.drawLine({ start: { x: M - 6, y: y + 9 }, end: { x: width - M + 6, y: y + 9 }, thickness: 0.4, color: rgb(0.86, 0.87, 0.86) });
+  });
+
+  y -= 10;
+  const row = (l: string, v: string, b = false) => {
+    text(l, width - M - 230, y, 10, b ? bold : font);
+    right(v, width - M, y, 10, b ? bold : font);
+    y -= 15;
+  };
+  const sub = Number(o.subtotal);
+  row("Zwischensumme", eur(sub));
+  row((o.shipping_methods?.name as string) || "Versand", eur(Number(o.shipping_total)));
+  row("Gesamt inkl. MwSt.", eur(Number(o.total)), true);
+  for (const [rate, gross] of [...vat.entries()].sort((x, z) => x[0] - z[0])) row(`darin ${rate} % MwSt.`, eur(gross - gross / (1 + rate / 100)));
+  if (Number(o.shipping_total) > 0) row("Versand: MwSt. nach Hauptanteil", "");
+
+  y -= 10;
+  const paid: Record<string, string> = {
+    stripe: "Bezahlt mit Karte (Stripe)",
+    paypal: "Bezahlt mit PayPal",
+    viva: "Bezahlt mit Viva Wallet",
+    cash: "Zahlung bei Abholung / Lieferung",
+    cash_deposit: "Anzahlung online bezahlt, Rest bei Abholung",
+    bank: "Zahlung per Überweisung",
+  };
+  text("Zahlung / Payment", M, y, 9, bold, MUTED);
+  y -= 14;
+  text(paid[o.payment_method ?? o.payment_provider ?? ""] ?? String(o.payment_provider ?? ""), M, y, 10);
+  y -= 13;
+  if (o.deposit_amount) {
+    text(`Anzahlung: ${eur(Number(o.deposit_amount))}   Offener Betrag: ${eur(Number(o.balance_due))}`, M, y, 10, bold);
+    y -= 13;
+  } else if (Number(o.balance_due) > 0) {
+    text(`Offener Betrag: ${eur(Number(o.balance_due))}`, M, y, 10, bold);
+    y -= 13;
+  }
+  if (o.payment_method === "bank" && !o.paid_at && bank?.iban) {
+    text(`Bitte überweisen an ${bank.holder ?? ""}, IBAN ${bank.iban}${bank.bic ? `, BIC ${bank.bic}` : ""}, Verwendungszweck: Bestellung ${o.number}`, M, y, 9);
+    y -= 13;
+  }
+  if (o.pickup_slot) {
+    text(`Abholung: ${o.pickup_slot}`, M, y, 10);
+    y -= 13;
+  }
+  const footer = receipt.footer || `${name} · Vielen Dank für Ihren Einkauf!`;
+  footer.split("\n").slice(0, 3).forEach((l, i) => text(l, M, 58 - i * 12, 8, font, MUTED));
+  return doc.save();
+}

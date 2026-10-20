@@ -73,7 +73,8 @@ export const NAV_GROUPS: { label: string; items: { href: string; label: string; 
   {
     label: "Settings",
     items: [
-      // SHIPPING_PAYMENTS_NAV
+      { href: "/admin/settings/shipping", label: "Shipping & pickup", icon: "truck" },
+      { href: "/admin/settings/payments", label: "Payments", icon: "card" },
       { href: "/admin/website/site", label: "Shop details", icon: "store" },
       { href: "/admin/settings", label: "Account & receipts", icon: "gear", exact: true },
     ],

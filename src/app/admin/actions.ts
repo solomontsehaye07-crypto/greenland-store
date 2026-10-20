@@ -259,10 +259,12 @@ export async function setOrderStatus(fd: FormData) {
   if (status === "delivered") patch.paid_at = new Date().toISOString();
   await sb.from("orders").update(patch).eq("id", id);
   if (fd.get("notify") === "on") {
-    const { data: o } = await sb.from("orders").select("email, number").eq("id", id).single();
+    const { data: o } = await sb.from("orders").select("email, number, pickup_slot, balance_due, shipping_methods(carrier, tracking_url)").eq("id", id).single();
+    const sm = (o?.shipping_methods ?? null) as unknown as { carrier: string | null; tracking_url: string | null } | null;
+    const link = tracking && sm?.tracking_url ? sm.tracking_url.replace("{tracking}", encodeURIComponent(tracking)) : null;
     const msg: Record<string, string> = {
-      shipped: `Your order #${o?.number} is on its way.${tracking ? ` Tracking: ${tracking}` : ""}`,
-      ready_for_pickup: `Your order #${o?.number} is ready for pickup in Kaiserslautern.`,
+      shipped: `Your order #${o?.number} is on its way${sm?.carrier ? ` with ${sm.carrier}` : ""}.${tracking ? ` Tracking number: ${link ? `<a href="${link}">${tracking}</a>` : tracking}` : ""}`,
+      ready_for_pickup: `Your order #${o?.number} is ready for pickup${o?.pickup_slot ? ` (${o.pickup_slot})` : ""}.${Number(o?.balance_due) > 0 ? ` Amount to pay on collection: ${Number(o?.balance_due).toFixed(2).replace(".", ",")} €.` : ""}`,
       delivered: `Your order #${o?.number} was delivered. Enjoy!`,
       cancelled: `Your order #${o?.number} was cancelled. Contact us if you have questions.`,
     };
@@ -295,4 +297,22 @@ export async function setOwnPassword(_: unknown, fd: FormData) {
   const { error } = await sb.auth.updateUser({ password: pw });
   if (error) return { error: error.message };
   return { ok: "Password saved. Next time, sign in with your email and this password." };
+}
+
+// ---------- payments received outside the online checkout ----------
+/** Bank transfer arrived, or the rest was paid on collection. */
+export async function markOrderPaid(fd: FormData) {
+  await assertStaff();
+  const id = String(fd.get("order_id"));
+  const what = String(fd.get("what")); // full | balance
+  const sb = supabaseAdmin();
+  const { data: o } = await sb.from("orders").select("status, payment_method").eq("id", id).single();
+  if (!o) return;
+  if (o.status === "pending") {
+    // reserves stock, books the sale and marks it paid (same as an online payment)
+    await sb.rpc("mark_order_paid", { p_order_id: id, p_provider: o.payment_method === "bank" ? "bank" : "cash", p_ref: what === "full" ? "manual" : "collected" });
+  }
+  await sb.from("orders").update({ balance_due: 0, paid_at: new Date().toISOString(), ...(o.status === "processing" ? { status: "paid" } : {}) }).eq("id", id);
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath("/admin/orders");
 }
