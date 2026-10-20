@@ -20,6 +20,19 @@ export default async function Settings({ searchParams }: { searchParams: Promise
     <div>
       <PageHead title="Account & receipts" text="Your sign-in, the business details printed on receipts and refill orders, and how emails are sent." />
       <Notice msg={msg} />
+      {(() => {
+        const miss = [
+          !v.owner && "owner’s full name",
+          (!v.street || /\[|\]/.test(v.street)) && "street address",
+          !r.tax_number && !v.vat_id && "tax number (Steuernummer) or VAT ID",
+          !v.email && "email address",
+        ].filter(Boolean);
+        return miss.length ? (
+          <p className="mb-5 rounded-xl border border-saffron bg-saffron/10 px-4 py-3 text-sm">
+            <b>Receipts are missing details required in Germany:</b> {miss.join(", ")}. Fill them in below so every receipt is a valid invoice (§ 14 UStG).
+          </p>
+        ) : null;
+      })()}
       <form action={saveReceiptSettings} className="space-y-5">
         <Card title="Business details" text="Printed on customer receipts and on refill orders to suppliers.">
           <div className="grid gap-4 sm:grid-cols-2">
