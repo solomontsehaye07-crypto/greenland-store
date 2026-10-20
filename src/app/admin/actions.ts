@@ -7,6 +7,7 @@ import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
 import { draftRefillOrders, receivePo, renderPoPdf, sendPo } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
 import { siteUrl } from "@/lib/site";
+import { cancelDhlLabel, createDhlLabel, dhlTrackingUrl } from "@/lib/dhl";
 import { createClient } from "@supabase/supabase-js";
 
 const num = (v: FormDataEntryValue | null) => (v === null || v === "" ? null : Number(v));
@@ -258,8 +259,9 @@ export async function setOrderStatus(fd: FormData) {
   await assertStaff();
   const id = String(fd.get("order_id"));
   const status = String(fd.get("status"));
-  const tracking = str(fd.get("tracking_number"));
   const sb = supabaseAdmin();
+  const { data: cur } = await sb.from("orders").select("tracking_number, carrier").eq("id", id).single();
+  const tracking = str(fd.get("tracking_number")) || cur?.tracking_number || "";
   const patch: Record<string, unknown> = { status };
   if (tracking) patch.tracking_number = tracking;
   if (status === "delivered") patch.paid_at = new Date().toISOString();
@@ -267,9 +269,10 @@ export async function setOrderStatus(fd: FormData) {
   if (fd.get("notify") === "on") {
     const { data: o } = await sb.from("orders").select("email, number, pickup_slot, balance_due, shipping_methods(carrier, tracking_url)").eq("id", id).single();
     const sm = (o?.shipping_methods ?? null) as unknown as { carrier: string | null; tracking_url: string | null } | null;
-    const link = tracking && sm?.tracking_url ? sm.tracking_url.replace("{tracking}", encodeURIComponent(tracking)) : null;
+    const isDhl = String(cur?.carrier ?? "").startsWith("DHL");
+    const link = tracking ? (isDhl ? dhlTrackingUrl(tracking) : sm?.tracking_url ? sm.tracking_url.replace("{tracking}", encodeURIComponent(tracking)) : null) : null;
     const msg: Record<string, string> = {
-      shipped: `Your order #${o?.number} is on its way${sm?.carrier ? ` with ${sm.carrier}` : ""}.${tracking ? ` Tracking number: ${link ? `<a href="${link}">${tracking}</a>` : tracking}` : ""}`,
+      shipped: `Your order #${o?.number} is on its way${isDhl ? " with DHL" : sm?.carrier ? ` with ${sm.carrier}` : ""}.${tracking ? ` Tracking number: ${link ? `<a href="${link}">${tracking}</a>` : tracking}` : ""}`,
       ready_for_pickup: `Your order #${o?.number} is ready for pickup${o?.pickup_slot ? ` (${o.pickup_slot})` : ""}.${Number(o?.balance_due) > 0 ? ` Amount to pay on collection: ${Number(o?.balance_due).toFixed(2).replace(".", ",")} €.` : ""}`,
       delivered: `Your order #${o?.number} was delivered. Enjoy!`,
       cancelled: `Your order #${o?.number} was cancelled. Contact us if you have questions.`,
@@ -321,4 +324,34 @@ export async function markOrderPaid(fd: FormData) {
   await sb.from("orders").update({ balance_due: 0, paid_at: new Date().toISOString(), ...(o.status === "processing" ? { status: "paid" } : {}) }).eq("id", id);
   revalidatePath(`/admin/orders/${id}`);
   revalidatePath("/admin/orders");
+}
+
+// ---------- DHL labels ----------
+export async function createLabelAction(fd: FormData) {
+  await assertStaff();
+  const id = String(fd.get("order_id"));
+  const back = String(fd.get("back") || `/admin/orders/${id}`);
+  let msg: string;
+  try {
+    const r = await createDhlLabel(id);
+    msg = `DHL label created – tracking number ${r.shipmentNo}.`;
+  } catch (e) {
+    msg = `DHL: ${(e as Error).message}`;
+  }
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath("/manager/orders");
+  redirect(`${back}${back.includes("?") ? "&" : "?"}msg=${encodeURIComponent(msg)}`);
+}
+
+export async function cancelLabelAction(fd: FormData) {
+  await assertStaff();
+  const id = String(fd.get("order_id"));
+  let msg = "DHL label cancelled.";
+  try {
+    await cancelDhlLabel(id);
+  } catch (e) {
+    msg = `DHL: ${(e as Error).message}`;
+  }
+  revalidatePath(`/admin/orders/${id}`);
+  redirect(`/admin/orders/${id}?msg=${encodeURIComponent(msg)}`);
 }

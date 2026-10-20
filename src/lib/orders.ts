@@ -127,12 +127,22 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
   return { ...order, total, deposit, shipping_total: q.price, lines, method: q.method };
 }
 
+/** Creates the DHL label right after payment when that is switched on (parcel orders only). */
+async function autoDhlLabel(orderId: string) {
+  const { getDhl, createDhlLabel } = await import("./dhl");
+  const c = await getDhl();
+  if (!c.enabled || !c.auto) return;
+  const { data: o } = await supabaseAdmin().from("orders").select("fulfillment_type, tracking_number").eq("id", orderId).single();
+  if (o?.fulfillment_type === "parcel" && !o.tracking_number) await createDhlLabel(orderId);
+}
+
 /** Idempotent: called from webhooks / return URLs once payment is confirmed. */
 export async function onOrderPaid(orderId: string, provider: string, ref: string) {
   const sb = supabaseAdmin();
   const { data: changed } = await sb.rpc("mark_order_paid", { p_order_id: orderId, p_provider: provider, p_ref: ref });
   if (!changed) return false;
   await forwardDropshipItems(orderId).catch(() => null);
+  await autoDhlLabel(orderId).catch(() => null);
   await sendConfirmation(orderId).catch(() => null);
   return true;
 }

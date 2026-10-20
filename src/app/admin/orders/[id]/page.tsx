@@ -4,11 +4,14 @@ import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { waLink } from "@/lib/notify";
-import { markOrderPaid, setOrderStatus } from "../../actions";
+import { cancelLabelAction, createLabelAction, markOrderPaid, setOrderStatus } from "../../actions";
+import { dhlTrackingUrl, getDhl } from "@/lib/dhl";
 
-export default async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ msg?: string }> }) {
   await requireStaff();
   const { id } = await params;
+  const { msg } = await searchParams;
+  const dhl = await getDhl();
   const sb = supabaseAdmin();
   const { data: o } = await sb.from("orders").select("*, order_items(*), shipping_methods(name)").eq("id", id).single();
   if (!o) notFound();
@@ -18,6 +21,7 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
     <div className="space-y-6">
       <Link href="/admin/orders" className="text-sm text-green">← Orders</Link>
       <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Order #{o.number}</h1>
+      {msg && <p role="status" className={`rounded-xl px-4 py-3 text-sm font-medium ${msg.startsWith("DHL:") ? "bg-terra/10 text-terra" : "bg-forest/10 text-forest"}`}>{msg}</p>}
       <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
         <section className="rounded-2xl border border-line bg-white p-5">
           <table className="table">
@@ -71,6 +75,35 @@ export default async function OrderDetail({ params }: { params: Promise<{ id: st
               <a href={`/order/${o.id}/receipt`} target="_blank" rel="noopener" className="btn btn-ghost h-9 py-1 text-sm">Receipt (PDF)</a>
             </div>
           </section>
+          {o.fulfillment_type === "parcel" && (
+            <section className="space-y-3 rounded-2xl border border-line bg-white p-5">
+              <h2 className="text-lg font-bold">DHL shipping label</h2>
+              {o.tracking_number && String(o.carrier ?? "").startsWith("DHL") ? (
+                <>
+                  <p className="text-sm">
+                    Tracking: <a href={dhlTrackingUrl(o.tracking_number)} target="_blank" rel="noreferrer" className="font-semibold text-forest underline">{o.tracking_number}</a>
+                    {o.carrier === "DHL (test)" && <span className="ml-2 rounded bg-saffron/25 px-1.5 text-xs">test label</span>}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <a href={`/admin/orders/${o.id}/label`} target="_blank" rel="noreferrer" className="btn btn-primary h-9 py-1 text-sm">Print label (PDF)</a>
+                    <form action={cancelLabelAction}>
+                      <input type="hidden" name="order_id" value={o.id} />
+                      <button className="btn btn-ghost h-9 py-1 text-sm">Cancel label</button>
+                    </form>
+                  </div>
+                  <p className="text-xs text-muted">Set the status to “shipped” when DHL has the parcel – the customer gets the tracking link by email.</p>
+                </>
+              ) : dhl.enabled ? (
+                <form action={createLabelAction}>
+                  <input type="hidden" name="order_id" value={o.id} />
+                  <button className="btn btn-primary w-full">Create DHL label from this address</button>
+                  <p className="mt-2 text-xs text-muted">Uses the customer’s address and the weight of the items – nothing to type in the DHL portal.</p>
+                </form>
+              ) : (
+                <p className="text-sm text-muted">Connect DHL under <Link href="/admin/settings/shipping" className="underline">Shipping & pickup</Link> to create labels here.</p>
+              )}
+            </section>
+          )}
           <form action={setOrderStatus} className="space-y-3 rounded-2xl border border-line bg-white p-5">
             <input type="hidden" name="order_id" value={o.id} />
             <h2 className="text-lg font-bold">Update status</h2>

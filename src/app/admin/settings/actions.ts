@@ -117,6 +117,51 @@ export async function savePickup(fd: FormData) {
   back("/admin/settings/shipping", "Pickup times saved. Checkout shows them now.");
 }
 
+// ---------------- DHL connection ----------------
+
+export async function saveDhlSettings(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const { getDhl, saveDhl, testDhl } = await import("@/lib/dhl");
+  const c = await getDhl();
+  for (const k of ["apiKey", "user", "password"] as const) {
+    const v = txt(fd.get(k));
+    if (fd.get(`${k}__clear`) === "on") delete c[k];
+    else if (v) c[k] = v;
+  }
+  const fmt = txt(fd.get("printFormat"));
+  const next = {
+    ...c,
+    enabled: on(fd, "enabled"),
+    sandbox: on(fd, "sandbox"),
+    billingNumber: txt(fd.get("billingNumber")).replace(/\s/g, ""),
+    printFormat: (["A4", "910-300-700", "910-300-600", "910-300-300"].includes(fmt) ? fmt : "910-300-700") as typeof c.printFormat,
+    auto: on(fd, "auto"),
+    shareEmail: on(fd, "shareEmail"),
+    extraWeightKg: Math.min(5, Math.max(0, dec(fd.get("extraWeightKg")) ?? 0.3)),
+    sender: {
+      name1: txt(fd.get("s_name1")),
+      name2: txt(fd.get("s_name2")),
+      street: txt(fd.get("s_street")),
+      house: txt(fd.get("s_house")),
+      postal: txt(fd.get("s_postal")),
+      city: txt(fd.get("s_city")),
+      email: txt(fd.get("s_email")),
+    },
+  };
+  await saveDhl(next);
+  let msg = "DHL settings saved.";
+  if (fd.get("test") === "1") {
+    try {
+      await testDhl(next);
+      msg = `DHL connection works${next.sandbox ? " (test mode)" : ""}.`;
+    } catch (e) {
+      msg = `Saved, but DHL said: ${(e as Error).message}`;
+    }
+  }
+  revalidatePath("/admin/settings/shipping");
+  back("/admin/settings/shipping", msg);
+}
+
 // ---------------- delivery area ----------------
 
 export async function saveShippingArea(fd: FormData) {

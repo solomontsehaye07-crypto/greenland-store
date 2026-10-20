@@ -3,8 +3,9 @@ import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { getFrozenPack, getPickupSettings, getShippingArea, pickupSlots } from "@/lib/commerce";
+import { getDhl } from "@/lib/dhl";
 import { Card, Notice, PageHead, SidePanel, Toggle } from "@/components/admin/ui";
-import { saveFrozenPack, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
+import { saveDhlSettings, saveFrozenPack, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,10 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
   const { edit, pickup: editPickup, msg } = await searchParams;
   const { data } = await supabaseAdmin().from("shipping_methods").select("*").order("sort").order("id");
   const methods = (data ?? []) as M[];
-  const [p, fp, area] = await Promise.all([getPickupSettings(), getFrozenPack(), getShippingArea()]);
+  const [p, fp, area, dhl, { data: storeRow }] = await Promise.all([getPickupSettings(), getFrozenPack(), getShippingArea(), getDhl(), supabaseAdmin().from("settings").select("value").eq("key", "public.store").maybeSingle()]);
+  const st = (storeRow?.value ?? {}) as Record<string, string>;
+  const [stStreet, stHouse] = (st.street ?? "").match(/^(.*?)\s+(\d+\s?[a-zA-Z]?)$/)?.slice(1) ?? [st.street ?? "", ""];
+  const snd = { name1: dhl.sender.name1 || st.name || "", name2: dhl.sender.name2, street: dhl.sender.street || stStreet, house: dhl.sender.house || stHouse, postal: dhl.sender.postal || st.postal || "", city: dhl.sender.city || st.city || "", email: dhl.sender.email || st.email || "" };
   const preview = (await pickupSlots(p)).slice(0, 4);
   const editing: M | undefined = edit === "new" ? { type: "parcel", active: true, countries: ["DE"], price: 0, min_order: 0, sort: (methods.at(-1)?.sort ?? 0) + 10 } : methods.find((m) => String(m.id) === edit);
 
@@ -87,6 +91,68 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
           {preview.length > 0 && <p className="mt-2 text-xs">Next free slots: {preview.map((s) => s.label.de).join(" · ")}</p>}
         </Card>
       </div>
+
+      <Card
+        className="mt-5"
+        title="DHL connection"
+        text="Creates the DHL label straight from the order – the customer’s address is sent to DHL, you print the label, and the customer gets the tracking link. Needs a DHL business customer account (Geschäftskunde)."
+      >
+        <form action={saveDhlSettings} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Toggle name="enabled" defaultChecked={dhl.enabled} label="Use DHL labels" />
+            <Toggle name="sandbox" defaultChecked={dhl.sandbox} label="Test mode (DHL sandbox)" hint="Test labels are not real and cost nothing. Switch off when your contract data is in." />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {([
+              ["apiKey", "API key (developer.dhl.com)", !!dhl.apiKey],
+              ["user", "Business customer system user", !!dhl.user],
+              ["password", "Password of that user", !!dhl.password],
+            ] as const).map(([k, l, has]) => (
+              <div key={k}>
+                <label className="label" htmlFor={`dhl-${k}`}>{l}</label>
+                <input id={`dhl-${k}`} name={k} type={k === "user" ? "text" : "password"} autoComplete="off" placeholder={has ? "saved – leave empty to keep" : ""} className="input" />
+                {has && <label className="mt-1 flex items-center gap-1.5 text-xs text-muted"><input type="checkbox" name={`${k}__clear`} /> remove</label>}
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="label" htmlFor="billingNumber">Billing number (Abrechnungsnummer)</label>
+              <input id="billingNumber" name="billingNumber" defaultValue={dhl.billingNumber} placeholder="EKP + 01 + 01, 14 digits" className="input" inputMode="numeric" />
+            </div>
+            <div>
+              <label className="label" htmlFor="printFormat">Label size</label>
+              <select id="printFormat" name="printFormat" defaultValue={dhl.printFormat} className="input">
+                <option value="910-300-700">Label printer 103 × 150 mm</option>
+                <option value="910-300-600">Label printer 103 × 199 mm</option>
+                <option value="910-300-300">Label printer 105 × 148 mm (A6)</option>
+                <option value="A4">Normal printer, A4 paper</option>
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="extraWeightKg">Box and filling weight (kg)</label>
+              <input id="extraWeightKg" name="extraWeightKg" defaultValue={String(dhl.extraWeightKg).replace(".", ",")} inputMode="decimal" className="input" />
+            </div>
+          </div>
+          <fieldset className="grid gap-3 sm:grid-cols-6">
+            <legend className="mb-1 text-sm font-medium">Sender on the label</legend>
+            <input name="s_name1" defaultValue={snd.name1} placeholder="Shop name" className="input sm:col-span-3" />
+            <input name="s_name2" defaultValue={snd.name2} placeholder="Name line 2 (optional)" className="input sm:col-span-3" />
+            <input name="s_street" defaultValue={snd.street} placeholder="Street" className="input sm:col-span-4" />
+            <input name="s_house" defaultValue={snd.house} placeholder="No." className="input sm:col-span-2" />
+            <input name="s_postal" defaultValue={snd.postal} placeholder="Postcode" className="input sm:col-span-2" />
+            <input name="s_city" defaultValue={snd.city} placeholder="City" className="input sm:col-span-2" />
+            <input name="s_email" defaultValue={snd.email} placeholder="Email" className="input sm:col-span-2" />
+          </fieldset>
+          <Toggle name="auto" defaultChecked={dhl.auto} label="Create the label automatically when a parcel order is paid" />
+          <Toggle name="shareEmail" defaultChecked={dhl.shareEmail} label="Send the customer’s email and phone to DHL" hint="DHL then announces the parcel and the customer can follow it. Mention this in your privacy policy." />
+          <div className="flex flex-wrap gap-2">
+            <button className="btn btn-primary">Save</button>
+            <button name="test" value="1" className="btn btn-ghost">Save and test connection</button>
+          </div>
+          <p className="text-xs text-muted">Labels work for “Standard delivery (DHL)” orders. Frozen express, local delivery and pickup don’t use DHL.</p>
+        </form>
+      </Card>
 
       <Card className="mt-5" title="Delivery area" text="Where customers can have orders delivered. Pickup in store is always possible.">
         <form action={saveShippingArea} className="flex flex-wrap items-center justify-between gap-4">

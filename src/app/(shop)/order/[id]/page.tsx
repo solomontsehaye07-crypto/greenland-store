@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { ClearCart } from "./clear-cart";
 
+import { dhlTrackingUrl } from "@/lib/dhl";
+
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Order confirmation", robots: { index: false } };
 
@@ -25,7 +27,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   // UUIDs are unguessable; we only show a minimal summary
   const { data: o } = await supabaseAdmin()
     .from("orders")
-    .select("id, number, status, total, shipping_total, fulfillment_type, payment_method, deposit_amount, balance_due, pickup_slot, paid_at, order_items(title, qty, unit_price), shipping_methods(name)")
+    .select("id, number, status, total, shipping_total, fulfillment_type, payment_method, deposit_amount, balance_due, pickup_slot, paid_at, tracking_number, carrier, order_items(title, qty, unit_price), shipping_methods(name)")
     .eq("id", id)
     .maybeSingle();
   if (!o) notFound();
@@ -38,6 +40,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       <ClearCart />
       <h1 className="display text-3xl font-semibold tracking-tight sm:text-4xl">Thank you! Order #{o.number}</h1>
       <p className="mt-3 text-lg text-green">{STATUS[o.status] ?? o.status}</p>
+      {o.tracking_number && String(o.carrier ?? "").startsWith("DHL") && (
+        <a href={dhlTrackingUrl(o.tracking_number)} target="_blank" rel="noreferrer" className="btn btn-primary mt-4">Track your parcel with DHL ({o.tracking_number})</a>
+      )}
       <p className="mt-2 text-muted">We sent a confirmation and your receipt to your email.{phone ? ` Questions? Message us on WhatsApp at ${phone}.` : ""}</p>
       {o.pickup_slot && <p className="mt-4 rounded-2xl bg-white px-5 py-3 text-sm">Pickup: <b>{o.pickup_slot}</b></p>}
       {o.payment_method === "bank" && !o.paid_at && bank?.iban && (

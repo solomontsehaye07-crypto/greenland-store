@@ -4,6 +4,8 @@ import { money } from "@/lib/format";
 import { waLink } from "@/lib/notify";
 import { Msg } from "../ui";
 import { collectRest, moveOrder } from "../actions";
+import { createLabelAction } from "../../admin/actions";
+import { getDhl } from "@/lib/dhl";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,10 @@ const GROUPS: { status: string[]; title: string; color: string; next: [string, s
 
 export default async function Orders({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
   const { msg } = await searchParams;
+  const dhl = await getDhl();
   const { data } = await supabaseAdmin()
     .from("orders")
-    .select("id, number, status, total, balance_due, payment_method, fulfillment_type, pickup_slot, phone, email, created_at, shipping_address, order_items(qty)")
+    .select("id, number, status, total, balance_due, payment_method, fulfillment_type, pickup_slot, phone, email, created_at, shipping_address, tracking_number, carrier, order_items(qty)")
     .in("status", ["pending", "paid", "processing", "packed", "ready_for_pickup", "shipped"])
     .order("created_at")
     .limit(200);
@@ -65,6 +68,16 @@ export default async function Orders({ searchParams }: { searchParams: Promise<{
                           <button className={`btn h-9 px-4 py-1 text-sm ${s === "cancelled" ? "btn-ghost" : "btn-primary"}`}>{l}</button>
                         </form>
                       ))}
+                      {o.fulfillment_type === "parcel" && dhl.enabled && !o.tracking_number && ["paid", "processing", "packed"].includes(o.status) && (
+                        <form action={createLabelAction}>
+                          <input type="hidden" name="order_id" value={o.id} />
+                          <input type="hidden" name="back" value="/manager/orders" />
+                          <button className="btn btn-ghost h-9 px-4 py-1 text-sm">DHL label</button>
+                        </form>
+                      )}
+                      {o.tracking_number && String(o.carrier ?? "").startsWith("DHL") && (
+                        <a href={`/admin/orders/${o.id}/label`} target="_blank" rel="noreferrer" className="btn btn-ghost h-9 px-4 py-1 text-sm">Print label</a>
+                      )}
                       {Number(o.balance_due) > 0 && (
                         <form action={collectRest}>
                           <input type="hidden" name="order_id" value={o.id} />
