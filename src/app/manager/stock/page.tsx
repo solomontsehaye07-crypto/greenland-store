@@ -17,11 +17,11 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
     <div>
       <Msg msg={msg} />
       {!!drafts?.length && (
-        <Section title="Refill requests ready to send">
+        <Section title="Supplier orders ready to send" color="stock2">
           <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
             {drafts.map((d) => (
               <li key={d.id}>
-                <Link href={`/manager/refill?s=${(d as unknown as { supplier_id: number }).supplier_id}`} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface">
+                <Link href={`/manager/orders/suppliers?s=${(d as unknown as { supplier_id: number }).supplier_id}`} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface">
                   <span><b>PO-{d.number}</b> · {(d.suppliers as unknown as { name: string }).name}</span>
                   <span className="text-xs text-muted">{(d.purchase_order_items as unknown[]).length} items → open & send</span>
                 </Link>
@@ -30,7 +30,7 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
           </ul>
         </Section>
       )}
-      <Section title={`Running low (${low?.length ?? 0})`} action={<Link href="/admin/goods-in" className="text-xs font-medium text-forest">Book a delivery</Link>}>
+      <Section color="stock" title={`Running low (${low?.length ?? 0})`} action={<Link href="/admin/goods-in" className="text-xs font-medium text-forest">Book a delivery</Link>}>
         {low?.length ? (
           <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
             {low.map((p) => (
@@ -56,7 +56,7 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
           <p className="rounded-2xl border border-line bg-white p-5 text-sm text-muted">Nothing is running low.</p>
         )}
       </Section>
-      <Section title="Expiring within 30 days">
+      <Section title="Expiring within 30 days" color="loss">
         {exp?.length ? (
           <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
             {exp.map((b) => (

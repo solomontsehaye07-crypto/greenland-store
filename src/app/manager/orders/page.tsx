@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { waLink } from "@/lib/notify";
-import { Msg } from "../ui";
+import { Msg, OrdersNav } from "../ui";
 import { collectRest, moveOrder } from "../actions";
 import { createLabelAction } from "../../admin/actions";
 import { getDhl } from "@/lib/dhl";
@@ -10,11 +10,11 @@ import { getDhl } from "@/lib/dhl";
 export const dynamic = "force-dynamic";
 
 const GROUPS: { status: string[]; title: string; color: string; next: [string, string][] }[] = [
-  { status: ["paid", "processing"], title: "To pack", color: "amber", next: [["packed", "Packed"]] },
-  { status: ["packed"], title: "Packed", color: "teal", next: [["ready_for_pickup", "Ready for pickup"], ["shipped", "Shipped"]] },
-  { status: ["ready_for_pickup"], title: "Waiting for pickup", color: "blue", next: [["delivered", "Collected"]] },
-  { status: ["shipped"], title: "On the way", color: "violet", next: [["delivered", "Delivered"]] },
-  { status: ["pending"], title: "Waiting for payment", color: "red", next: [["cancelled", "Cancel"]] },
+  { status: ["paid", "processing"], title: "To pack", color: "order", next: [["packed", "Packed"]] },
+  { status: ["packed"], title: "Packed", color: "order2", next: [["ready_for_pickup", "Ready for pickup"], ["shipped", "Shipped"]] },
+  { status: ["ready_for_pickup"], title: "Waiting for pickup", color: "order3", next: [["delivered", "Collected"]] },
+  { status: ["shipped"], title: "On the way", color: "order4", next: [["delivered", "Delivered"]] },
+  { status: ["pending"], title: "Waiting for payment", color: "wait", next: [["cancelled", "Cancel"]] },
 ];
 
 export default async function Orders({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
@@ -29,6 +29,7 @@ export default async function Orders({ searchParams }: { searchParams: Promise<{
   const orders = data ?? [];
   return (
     <div>
+      <OrdersNav active="customers" />
       <Msg msg={msg} />
       {!orders.length && <p className="rounded-2xl border border-line bg-white p-6 text-center text-sm text-muted">No open orders. 🎉</p>}
       {GROUPS.map((g) => {
@@ -36,29 +37,31 @@ export default async function Orders({ searchParams }: { searchParams: Promise<{
         if (!list.length) return null;
         return (
           <section key={g.title} className="mb-6">
-            <h2 className={`mt-${g.color} mb-2 flex items-center gap-2 text-sm font-semibold`}>
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--c)" }} aria-hidden />
-              {g.title} <span className="text-muted">({list.length})</span>
+            <h2 className={`mt-c mt-${g.color} mb-2 inline-block rounded-lg px-3 py-1.5 text-sm font-semibold`}>
+              {g.title} ({list.length})
             </h2>
             <ul className="space-y-3">
               {list.map((o) => {
                 const a = (o.shipping_address ?? {}) as { name?: string; city?: string };
                 const units = (o.order_items as { qty: number }[]).reduce((s, i) => s + i.qty, 0);
                 return (
-                  <li key={o.id} className={`mt-c mt-${g.color} rounded-2xl p-4`}>
+                  <li key={o.id} className={`mt-${g.color} overflow-hidden rounded-2xl border border-line bg-white`}>
+                    <div className="mt-head flex items-center justify-between gap-3 px-4 py-2.5">
+                      <div className="min-w-0 truncate text-sm">
+                        <Link href={`/admin/orders/${o.id}`} className="font-bold underline-offset-2 hover:underline">#{o.number}</Link>
+                        <span className="ml-2" data-no-translate>{a.name}</span>
+                      </div>
+                      <p className="shrink-0 text-sm font-bold tabular-nums">{money(o.total)}</p>
+                    </div>
+                    <div className="p-4 pt-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <Link href={`/admin/orders/${o.id}`} className="text-sm font-semibold hover:underline">#{o.number}</Link>
-                        <span className="ml-2 text-sm" data-no-translate>{a.name}</span>
-                        <p className="mt-0.5 text-xs text-muted">
+                        <p className="text-xs text-muted">
                           {units} items · {o.fulfillment_type === "pickup" ? "Pickup" : o.fulfillment_type === "local" ? "Local delivery" : "Parcel"}
                           {o.pickup_slot ? ` · ${o.pickup_slot}` : ""} · {new Date(o.created_at).toLocaleDateString("de-DE")}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold tabular-nums">{money(o.total)}</p>
-                        {Number(o.balance_due) > 0 && <p className="text-xs font-medium text-terra">{money(o.balance_due)} to collect</p>}
-                      </div>
+                      {Number(o.balance_due) > 0 && <p className="shrink-0 text-xs font-semibold text-terra">{money(o.balance_due)} to collect</p>}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {g.next.filter(([s]) => s !== "ready_for_pickup" || o.fulfillment_type === "pickup").filter(([s]) => s !== "shipped" || o.fulfillment_type !== "pickup").map(([s, l]) => (
@@ -87,6 +90,7 @@ export default async function Orders({ searchParams }: { searchParams: Promise<{
                       )}
                       {o.phone && <a href={waLink(o.phone, `Hallo ${a.name ?? ""}, hier ist Greenland Afro Asia Store wegen Ihrer Bestellung #${o.number}.`)} target="_blank" rel="noreferrer" className="btn btn-ghost h-9 px-4 py-1 text-sm">WhatsApp</a>}
                       {o.phone && <a href={`tel:${o.phone}`} className="btn btn-ghost h-9 px-4 py-1 text-sm">Call</a>}
+                    </div>
                     </div>
                   </li>
                 );

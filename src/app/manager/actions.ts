@@ -120,7 +120,7 @@ const refillBack = (fd: FormData, msg?: string): never => {
   if (s) u.set("s", s);
   if (q) u.set("q", q);
   if (msg) u.set("msg", msg);
-  redirect(`/manager/refill${u.toString() ? `?${u}` : ""}`);
+  redirect(`/manager/orders/suppliers${u.toString() ? `?${u}` : ""}`);
 };
 
 /** Open draft for a supplier, created on first use. */
@@ -149,7 +149,7 @@ export async function refillAdd(fd: FormData) {
     await sb.from("purchase_order_items").insert({ purchase_order_id: poId, product_id: pid, qty: suggested, unit_cost: p?.cost_price ?? null });
   }
   await sb.from("purchase_orders").update({ updated_at: new Date().toISOString() }).eq("id", poId);
-  revalidatePath("/manager/refill");
+  revalidatePath("/manager/orders/suppliers");
   refillBack(fd);
 }
 
@@ -163,7 +163,7 @@ export async function refillQty(fd: FormData) {
   const qty = set != null && String(set).trim() !== "" ? Math.round(Number(set)) : it!.qty + Number(fd.get("delta") || 0);
   if (!Number.isFinite(qty) || qty <= 0) await sb.from("purchase_order_items").delete().eq("id", id);
   else await sb.from("purchase_order_items").update({ qty: Math.min(9999, qty) }).eq("id", id);
-  revalidatePath("/manager/refill");
+  revalidatePath("/manager/orders/suppliers");
   refillBack(fd);
 }
 
@@ -171,6 +171,28 @@ export async function refillMessage(fd: FormData) {
   await assertStaff(MANAGER_ROLES);
   const poId = Number(fd.get("po_id"));
   await supabaseAdmin().from("purchase_orders").update({ message: String(fd.get("message") ?? "").slice(0, 1500) || null, updated_at: new Date().toISOString() }).eq("id", poId).eq("status", "draft");
-  revalidatePath("/manager/refill");
+  revalidatePath("/manager/orders/suppliers");
   refillBack(fd, "Message saved.");
+}
+
+/** Adds a supplier from the Manager app and opens its order list. */
+export async function addSupplier(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const t = (k: string) => String(fd.get(k) ?? "").trim();
+  const name = t("name");
+  if (!name) redirect("/manager/orders/suppliers?new=1&msg=" + encodeURIComponent("Please enter the company name."));
+  const email = t("email") || null;
+  const whatsapp = t("whatsapp").replace(/[^\d+]/g, "") || null;
+  const pref = ["email", "whatsapp", "both"].includes(t("preferred_channel")) ? t("preferred_channel") : whatsapp ? "whatsapp" : "email";
+  const sb = supabaseAdmin();
+  const { data: dup } = await sb.from("suppliers").select("id").ilike("name", name).maybeSingle();
+  if (dup) redirect(`/manager/orders/suppliers?s=${dup.id}&msg=${encodeURIComponent("This supplier already exists – opened it.")}`);
+  const { data, error } = await sb
+    .from("suppliers")
+    .insert({ name, contact_name: t("contact_name") || null, email, whatsapp, phone: whatsapp, preferred_channel: pref, lead_time_days: Math.max(0, Number(t("lead_time_days")) || 3), active: true })
+    .select("id")
+    .single();
+  if (error || !data) redirect("/manager/orders/suppliers?new=1&msg=" + encodeURIComponent(`Could not save: ${error?.message ?? "unknown error"}`));
+  revalidatePath("/manager/orders/suppliers");
+  redirect(`/manager/orders/suppliers?s=${data.id}&msg=${encodeURIComponent(`${name} added. Now add the products you need.`)}`);
 }

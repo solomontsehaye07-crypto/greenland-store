@@ -367,24 +367,17 @@ main:has(> .home > section:last-child:is(.band-forest, .band-indigo, .band-terra
 .admin ::placeholder { color: var(--muted); opacity: .8; }
 .admin [class*="bg-ink/"] { background-color: rgb(0 0 0 / .45); }
 
-/* ---------- manager app: colour-coded blocks (work in light and dark) ---------- */
-.mt-c { --c: var(--forest); background: color-mix(in oklab, var(--c) 13%, var(--card)); border: 1px solid color-mix(in oklab, var(--c) 32%, var(--card)); }
-.mt-c:hover { border-color: var(--c); }
-.mt-c .mt-c-val, .mt-c .mt-c-ic { color: color-mix(in oklab, var(--c) 82%, var(--ink)); }
-.mt-c .mt-c-ic { background: color-mix(in oklab, var(--c) 20%, var(--card)); }
-.mt-green { --c: var(--forest); }
-.mt-amber { --c: #c98612; }
-.mt-blue { --c: #2f6fb3; }
-.mt-red { --c: var(--terra); }
-.mt-violet { --c: #7b4fa8; }
-.mt-teal { --c: #0e7c7b; }
-.admin[data-theme="dark"] .mt-amber { --c: #e8b04a; }
-.admin[data-theme="dark"] .mt-blue { --c: #7fb0e6; }
-.admin[data-theme="dark"] .mt-violet { --c: #b993e0; }
-.admin[data-theme="dark"] .mt-teal { --c: #4fc0bf; }
-@media (prefers-color-scheme: dark) {
-  .admin[data-theme="system"] .mt-amber { --c: #e8b04a; }
-  .admin[data-theme="system"] .mt-blue { --c: #7fb0e6; }
-  .admin[data-theme="system"] .mt-violet { --c: #b993e0; }
-  .admin[data-theme="system"] .mt-teal { --c: #4fc0bf; }
-}
+/* ---------- manager app: solid colour-coded blocks ----------
+   Families: money = greens · customer orders = ambers/browns · stock & suppliers = blues ·
+   products & offers = purples · losses = red · waiting = slate. White text keeps ≥ 4.5:1 contrast. */
+.mt-c { --c: #1e7a4c; background: var(--c); color: #fff; border: 1px solid transparent; }
+.mt-c:hover { filter: brightness(1.08); }
+.mt-c .text-muted, .mt-c .mt-c-sub { color: rgb(255 255 255 / .82); }
+.mt-c .mt-c-ic { background: rgb(255 255 255 / .2); color: #fff; }
+.mt-money { --c: #1e7a4c; } .mt-money2 { --c: #23824f; } .mt-money3 { --c: #0f6b5c; }
+.mt-order { --c: #a85f0f; } .mt-order2 { --c: #b4521b; } .mt-order3 { --c: #94431a; } .mt-order4 { --c: #7a5230; }
+.mt-stock { --c: #2563a8; } .mt-stock2 { --c: #1c4c86; } .mt-stock3 { --c: #2d6fb7; }
+.mt-product { --c: #7b4fa8; } .mt-product2 { --c: #a23e8c; }
+.mt-loss { --c: #b83227; } .mt-wait { --c: #55606e; }
+/* coloured header strip on white cards (order cards) */
+.mt-head { background: var(--c); color: #fff; }

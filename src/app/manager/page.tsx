@@ -36,15 +36,15 @@ export default async function Today({ searchParams }: { searchParams: Promise<{ 
     <div>
       <Msg msg={msg} />
       <div className="grid grid-cols-2 gap-3">
-        <Tile label="Sales today" value={money(online + store)} sub={`Online ${money(online)} · Till ${money(store)}`} color="green" icon="chart" href="/manager/money" />
-        <Tile label="Orders to pack" value={toPack} sub={`${count("packed")} packed · ${count("ready_for_pickup")} waiting for pickup`} color="amber" icon="orders" href="/manager/orders" />
-        <Tile label="Pickups today" value={pickups?.length ?? 0} sub={pickups?.[0]?.pickup_slot ? `next: ${String(pickups[0].pickup_slot).split("·").pop()?.trim()}` : "none booked"} color="blue" icon="truck" href="/manager/orders" />
-        <Tile label="Running low" value={low ?? 0} sub={`${expiring ?? 0} batches expire soon · ${drafts ?? 0} refill drafts`} color="red" icon="box" href="/manager/stock" />
+        <Tile label="Sales today" value={money(online + store)} sub={`Online ${money(online)} · Till ${money(store)}`} color="money" icon="chart" href="/manager/money" />
+        <Tile label="Orders to pack" value={toPack} sub={`${count("packed")} packed · ${count("ready_for_pickup")} waiting for pickup`} color="order" icon="orders" href="/manager/orders" />
+        <Tile label="Pickups today" value={pickups?.length ?? 0} sub={pickups?.[0]?.pickup_slot ? `next: ${String(pickups[0].pickup_slot).split("·").pop()?.trim()}` : "none booked"} color="order2" icon="truck" href="/manager/orders" />
+        <Tile label="Running low" value={low ?? 0} sub={`${expiring ?? 0} batches expire soon · ${drafts ?? 0} refill drafts`} color="stock" icon="box" href="/manager/stock" />
       </div>
       {balance > 0 && <p className="mt-3 rounded-xl border border-saffron bg-saffron/10 px-4 py-3 text-sm">Still to collect on pickup or delivery: <b>{money(balance)}</b></p>}
 
       {!!pickups?.length && (
-        <Section title="Pickups today" action={<Link href="/manager/orders" className="text-xs font-medium text-forest">All orders</Link>}>
+        <Section title="Pickups today" color="order2" action={<Link href="/manager/orders" className="text-xs font-medium text-forest">All orders</Link>}>
           <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
             {pickups.map((o) => (
               <li key={o.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
@@ -56,7 +56,7 @@ export default async function Today({ searchParams }: { searchParams: Promise<{ 
         </Section>
       )}
 
-      <Section title="Till total for today">
+      <Section title="Till total for today" color="money">
         <form action={tillTotal} className="grid grid-cols-2 gap-3 rounded-2xl border border-line bg-white p-4">
           <input type="hidden" name="day" value={today} />
           <div><label className="label" htmlFor="g7">7 % (food), €</label><input id="g7" name="gross_7" inputMode="decimal" className="input" /></div>
@@ -68,12 +68,12 @@ export default async function Today({ searchParams }: { searchParams: Promise<{ 
 
       <Section title="Quick actions">
         <div className="grid grid-cols-2 gap-3">
-          <QuickLink href="/manager/refill" label="Order from a supplier" color="violet" icon="refill" />
-          <QuickLink href="/admin/goods-in" label="Book a delivery" color="teal" icon="truck" />
-          <QuickLink href="/admin/finance" label="Book spoiled or stolen items" color="red" icon="box" />
-          <QuickLink href="/admin/products?new=1" label="New product" color="blue" icon="tag" />
-          <QuickLink href="/admin/reports" label="Reports for the tax advisor" color="green" icon="page" />
-          <QuickLink href="/admin/products?filter=offer" label="Offers" color="amber" icon="sparkle" />
+          <QuickLink href="/manager/orders/suppliers" label="Order from a supplier" color="stock2" icon="refill" />
+          <QuickLink href="/admin/goods-in" label="Book a delivery" color="stock3" icon="truck" />
+          <QuickLink href="/admin/finance" label="Book spoiled or stolen items" color="loss" icon="box" />
+          <QuickLink href="/admin/products?new=1" label="New product" color="product" icon="tag" />
+          <QuickLink href="/admin/reports" label="Reports for the tax advisor" color="money3" icon="page" />
+          <QuickLink href="/admin/products?filter=offer" label="Offers" color="product2" icon="sparkle" />
         </div>
       </Section>
     </div>
