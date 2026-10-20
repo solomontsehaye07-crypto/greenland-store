@@ -117,6 +117,16 @@ export async function savePickup(fd: FormData) {
   back("/admin/settings/shipping", "Pickup times saved. Checkout shows them now.");
 }
 
+// ---------------- delivery area ----------------
+
+export async function saveShippingArea(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const abroad = on(fd, "abroad");
+  await upsert("public.shipping_area", { abroad });
+  revalidatePath("/", "layout");
+  back("/admin/settings/shipping", abroad ? "Delivery abroad is switched on." : "Delivery is now limited to Germany.");
+}
+
 // ---------------- frozen packaging ----------------
 
 export async function saveFrozenPack(fd: FormData) {

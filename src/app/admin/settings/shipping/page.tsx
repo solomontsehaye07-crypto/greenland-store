@@ -2,9 +2,9 @@ import Link from "next/link";
 import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
-import { getFrozenPack, getPickupSettings, pickupSlots } from "@/lib/commerce";
+import { getFrozenPack, getPickupSettings, getShippingArea, pickupSlots } from "@/lib/commerce";
 import { Card, Notice, PageHead, SidePanel, Toggle } from "@/components/admin/ui";
-import { saveFrozenPack, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
+import { saveFrozenPack, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
   const { edit, pickup: editPickup, msg } = await searchParams;
   const { data } = await supabaseAdmin().from("shipping_methods").select("*").order("sort").order("id");
   const methods = (data ?? []) as M[];
-  const [p, fp] = await Promise.all([getPickupSettings(), getFrozenPack()]);
+  const [p, fp, area] = await Promise.all([getPickupSettings(), getFrozenPack(), getShippingArea()]);
   const preview = (await pickupSlots(p)).slice(0, 4);
   const editing: M | undefined = edit === "new" ? { type: "parcel", active: true, countries: ["DE"], price: 0, min_order: 0, sort: (methods.at(-1)?.sort ?? 0) + 10 } : methods.find((m) => String(m.id) === edit);
 
@@ -87,6 +87,13 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
           {preview.length > 0 && <p className="mt-2 text-xs">Next free slots: {preview.map((s) => s.label.de).join(" · ")}</p>}
         </Card>
       </div>
+
+      <Card className="mt-5" title="Delivery area" text="Where customers can have orders delivered. Pickup in store is always possible.">
+        <form action={saveShippingArea} className="flex flex-wrap items-center justify-between gap-4">
+          <Toggle name="abroad" defaultChecked={area.abroad} label="Deliver outside Germany" hint={area.abroad ? "On: customers can choose other countries at checkout." : "Off: checkout only accepts addresses in Germany."} />
+          <button className="btn btn-primary">Save</button>
+        </form>
+      </Card>
 
       <Card
         className="mt-5"

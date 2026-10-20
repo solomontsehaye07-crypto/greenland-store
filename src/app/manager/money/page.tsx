@@ -17,10 +17,10 @@ export default async function Money() {
     <div>
       <p className="mb-3 text-sm text-muted" data-no-translate>{label}</p>
       <div className="grid grid-cols-2 gap-3">
-        <Tile label="Sales (net)" value={money(p.revenue)} sub={delta === null ? "first month" : `${delta >= 0 ? "+" : ""}${delta.toFixed(0)} % vs last month`} tone={delta !== null && delta < 0 ? "bad" : "good"} />
-        <Tile label="Gross profit" value={money(p.grossProfit)} sub={`margin ${pct(p.grossMargin)}`} />
-        <Tile label="Thrown away / lost" value={money(p.writeoffs)} sub={`loss rate ${pct(p.lossRate)} of goods bought`} tone={p.writeoffs > 0 ? "bad" : undefined} />
-        <Tile label="Net profit" value={money(p.netProfit)} sub={`after ${money(p.expenses)} costs`} tone={p.netProfit >= 0 ? "good" : "bad"} />
+        <Tile label="Sales (net)" value={money(p.revenue)} sub={delta === null ? "first month" : `${delta >= 0 ? "+" : ""}${delta.toFixed(0)} % vs last month`} color="green" icon="chart" />
+        <Tile label="Gross profit" value={money(p.grossProfit)} sub={`margin ${pct(p.grossMargin)}`} color="teal" icon="tag" />
+        <Tile label="Thrown away / lost" value={money(p.writeoffs)} sub={`loss rate ${pct(p.lossRate)} of goods bought`} color="red" icon="box" />
+        <Tile label="Net profit" value={money(p.netProfit)} sub={`after ${money(p.expenses)} costs`} color={p.netProfit >= 0 ? "blue" : "red"} icon="sparkle" />
       </div>
       <Section title="Where the money came from">
         <div className="rounded-2xl border border-line bg-white p-4 text-sm">

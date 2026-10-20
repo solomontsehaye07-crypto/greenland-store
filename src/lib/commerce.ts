@@ -9,6 +9,12 @@ export async function getFrozenPack(): Promise<FrozenPack> {
   return normaliseFrozenPack(data?.value);
 }
 
+/** Delivery area: by default orders are delivered inside Germany only. */
+export async function getShippingArea(): Promise<{ abroad: boolean }> {
+  const { data } = await supabaseAdmin().from("settings").select("value").eq("key", "public.shipping_area").maybeSingle();
+  return { abroad: (data?.value as { abroad?: boolean } | null)?.abroad === true };
+}
+
 /** Packaging settings plus the frozen courier price, for the cart illustration. */
 export async function getFrozenInfo(): Promise<{ pack: FrozenPack; courier: number | null }> {
   const [pack, { data }] = await Promise.all([

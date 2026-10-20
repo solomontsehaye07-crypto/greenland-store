@@ -7,12 +7,12 @@ import { collectRest, moveOrder } from "../actions";
 
 export const dynamic = "force-dynamic";
 
-const GROUPS: { status: string[]; title: string; next: [string, string][] }[] = [
-  { status: ["paid", "processing"], title: "To pack", next: [["packed", "Packed"]] },
-  { status: ["packed"], title: "Packed", next: [["ready_for_pickup", "Ready for pickup"], ["shipped", "Shipped"]] },
-  { status: ["ready_for_pickup"], title: "Waiting for pickup", next: [["delivered", "Collected"]] },
-  { status: ["shipped"], title: "On the way", next: [["delivered", "Delivered"]] },
-  { status: ["pending"], title: "Waiting for payment", next: [["cancelled", "Cancel"]] },
+const GROUPS: { status: string[]; title: string; color: string; next: [string, string][] }[] = [
+  { status: ["paid", "processing"], title: "To pack", color: "amber", next: [["packed", "Packed"]] },
+  { status: ["packed"], title: "Packed", color: "teal", next: [["ready_for_pickup", "Ready for pickup"], ["shipped", "Shipped"]] },
+  { status: ["ready_for_pickup"], title: "Waiting for pickup", color: "blue", next: [["delivered", "Collected"]] },
+  { status: ["shipped"], title: "On the way", color: "violet", next: [["delivered", "Delivered"]] },
+  { status: ["pending"], title: "Waiting for payment", color: "red", next: [["cancelled", "Cancel"]] },
 ];
 
 export default async function Orders({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
@@ -33,13 +33,16 @@ export default async function Orders({ searchParams }: { searchParams: Promise<{
         if (!list.length) return null;
         return (
           <section key={g.title} className="mb-6">
-            <h2 className="mb-2 text-sm font-semibold">{g.title} <span className="text-muted">({list.length})</span></h2>
+            <h2 className={`mt-${g.color} mb-2 flex items-center gap-2 text-sm font-semibold`}>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--c)" }} aria-hidden />
+              {g.title} <span className="text-muted">({list.length})</span>
+            </h2>
             <ul className="space-y-3">
               {list.map((o) => {
                 const a = (o.shipping_address ?? {}) as { name?: string; city?: string };
                 const units = (o.order_items as { qty: number }[]).reduce((s, i) => s + i.qty, 0);
                 return (
-                  <li key={o.id} className="rounded-2xl border border-line bg-white p-4">
+                  <li key={o.id} className={`mt-c mt-${g.color} rounded-2xl p-4`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link href={`/admin/orders/${o.id}`} className="text-sm font-semibold hover:underline">#{o.number}</Link>

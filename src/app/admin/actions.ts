@@ -206,6 +206,7 @@ export async function sendPoAction(_: unknown, fd: FormData) {
   try {
     const r = await sendPo(id, channel);
     revalidatePath(`/admin/purchase-orders/${id}`);
+    if (channel === "email") revalidatePath("/manager/refill");
     if (!r.ok) return { error: r.error ?? "Sending failed" };
     if (r.link) return { link: r.link, pdfUrl: r.pdfUrl };
     return { ok: channel === "email" ? "Emailed to supplier with the PDF attached." : "Sent on WhatsApp.", pdfUrl: r.pdfUrl };
@@ -223,6 +224,7 @@ export async function markPoSent(fd: FormData) {
   const sup = po?.suppliers as unknown as { whatsapp: string | null; phone: string | null } | null;
   await sb.from("purchase_order_sends").insert({ purchase_order_id: id, channel: "whatsapp", recipient: sup?.whatsapp ?? sup?.phone ?? null, pdf_path: po?.pdf_path ?? null });
   revalidatePath(`/admin/purchase-orders/${id}`);
+  revalidatePath("/manager/refill");
 }
 
 export async function setPoStatus(fd: FormData) {

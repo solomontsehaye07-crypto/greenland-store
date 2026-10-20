@@ -110,3 +110,67 @@ export async function setTopBar(fd: FormData) {
   revalidatePath("/", "layout");
   back("/manager/controls", "Top-bar message saved.");
 }
+
+// ---------------- refill order form (Manager → Refill) ----------------
+
+const refillBack = (fd: FormData, msg?: string): never => {
+  const u = new URLSearchParams();
+  const s = String(fd.get("supplier_id") ?? "");
+  const q = String(fd.get("q") ?? "");
+  if (s) u.set("s", s);
+  if (q) u.set("q", q);
+  if (msg) u.set("msg", msg);
+  redirect(`/manager/refill${u.toString() ? `?${u}` : ""}`);
+};
+
+/** Open draft for a supplier, created on first use. */
+async function draftFor(supplierId: number, userId: string) {
+  const sb = supabaseAdmin();
+  const { data: po } = await sb.from("purchase_orders").select("id").eq("supplier_id", supplierId).eq("status", "draft").eq("kind", "refill").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (po) return po.id as number;
+  const { data: sup } = await sb.from("suppliers").select("lead_time_days").eq("id", supplierId).single();
+  const expected = new Date(Date.now() + (sup?.lead_time_days ?? 3) * 86400000).toISOString().slice(0, 10);
+  const { data } = await sb.from("purchase_orders").insert({ supplier_id: supplierId, status: "draft", kind: "refill", expected_at: expected, created_by: userId }).select("id").single();
+  return data!.id as number;
+}
+
+export async function refillAdd(fd: FormData) {
+  const user = await assertStaff(MANAGER_ROLES);
+  const supplierId = Number(fd.get("supplier_id"));
+  const pid = Number(fd.get("product_id"));
+  if (!supplierId || !pid) refillBack(fd, "Choose a supplier first.");
+  const sb = supabaseAdmin();
+  const poId = await draftFor(supplierId, user.id);
+  const { data: p } = await sb.from("products").select("reorder_qty, reorder_point, stock, cost_price").eq("id", pid).single();
+  const { data: has } = await sb.from("purchase_order_items").select("id, qty").eq("purchase_order_id", poId).eq("product_id", pid).maybeSingle();
+  if (has) await sb.from("purchase_order_items").update({ qty: has.qty + 1 }).eq("id", has.id);
+  else {
+    const suggested = p ? Math.max(1, (p.reorder_qty || 0) + (p.reorder_point || 0) - (p.stock || 0)) : 1;
+    await sb.from("purchase_order_items").insert({ purchase_order_id: poId, product_id: pid, qty: suggested, unit_cost: p?.cost_price ?? null });
+  }
+  await sb.from("purchase_orders").update({ updated_at: new Date().toISOString() }).eq("id", poId);
+  revalidatePath("/manager/refill");
+  refillBack(fd);
+}
+
+export async function refillQty(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const id = Number(fd.get("item_id"));
+  const sb = supabaseAdmin();
+  const { data: it } = await sb.from("purchase_order_items").select("id, qty, purchase_order_id, purchase_orders(status)").eq("id", id).single();
+  if (!it || (it.purchase_orders as unknown as { status: string })?.status !== "draft") refillBack(fd, "This request was already sent.");
+  const set = fd.get("qty");
+  const qty = set != null && String(set).trim() !== "" ? Math.round(Number(set)) : it!.qty + Number(fd.get("delta") || 0);
+  if (!Number.isFinite(qty) || qty <= 0) await sb.from("purchase_order_items").delete().eq("id", id);
+  else await sb.from("purchase_order_items").update({ qty: Math.min(9999, qty) }).eq("id", id);
+  revalidatePath("/manager/refill");
+  refillBack(fd);
+}
+
+export async function refillMessage(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const poId = Number(fd.get("po_id"));
+  await supabaseAdmin().from("purchase_orders").update({ message: String(fd.get("message") ?? "").slice(0, 1500) || null, updated_at: new Date().toISOString() }).eq("id", poId).eq("status", "draft");
+  revalidatePath("/manager/refill");
+  refillBack(fd, "Message saved.");
+}

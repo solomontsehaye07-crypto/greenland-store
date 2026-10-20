@@ -11,7 +11,7 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
   const [{ data: low }, { data: exp }, { data: drafts }] = await Promise.all([
     sb.from("low_stock").select("id, sku, title, stock, reorder_point, supplier_name, on_order, image_url").order("stock").limit(60),
     sb.from("expiring_batches").select("id, product_id, title, best_before, quantity_left").order("best_before").limit(30),
-    sb.from("purchase_orders").select("id, number, suppliers(name), purchase_order_items(qty)").eq("status", "draft").order("created_at", { ascending: false }),
+    sb.from("purchase_orders").select("id, number, supplier_id, suppliers(name), purchase_order_items(qty)").eq("status", "draft").order("created_at", { ascending: false }),
   ]);
   return (
     <div>
@@ -21,7 +21,7 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
           <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
             {drafts.map((d) => (
               <li key={d.id}>
-                <Link href={`/admin/purchase-orders/${d.id}`} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface">
+                <Link href={`/manager/refill?s=${(d as unknown as { supplier_id: number }).supplier_id}`} className="flex items-center justify-between px-4 py-3 text-sm hover:bg-surface">
                   <span><b>PO-{d.number}</b> · {(d.suppliers as unknown as { name: string }).name}</span>
                   <span className="text-xs text-muted">{(d.purchase_order_items as unknown[]).length} items → open & send</span>
                 </Link>

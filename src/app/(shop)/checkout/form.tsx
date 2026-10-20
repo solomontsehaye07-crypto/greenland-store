@@ -30,6 +30,7 @@ const COUNTRIES = [
 export function CheckoutForm({
   methods,
   pack,
+  abroad,
   options,
   online,
   cashPickup,
@@ -42,6 +43,7 @@ export function CheckoutForm({
 }: {
   methods: ShippingMethod[];
   pack: FrozenPack;
+  abroad: boolean;
   options: PayOption[];
   online: { id: "stripe" | "paypal" | "viva"; name: string }[];
   cashPickup: boolean;
@@ -144,11 +146,18 @@ export function CheckoutForm({
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <div>
               <label className="label" htmlFor="country">Country</label>
-              <select id="country" value={country} onChange={(e) => setCountry(e.target.value)} className="input">
-                {COUNTRIES.map(([c, n]) => (
-                  <option key={c} value={c}>{n}</option>
-                ))}
-              </select>
+              {abroad ? (
+                <select id="country" value={country} onChange={(e) => setCountry(e.target.value)} className="input">
+                  {COUNTRIES.map(([c, n]) => (
+                    <option key={c} value={c}>{n}</option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <input id="country" value="Germany" readOnly className="input" aria-describedby="country-note" />
+                  <p id="country-note" className="mt-1 text-xs text-muted">We deliver within Germany only.</p>
+                </>
+              )}
             </div>
             <div>
               <label className="label" htmlFor="postal">Postcode</label>

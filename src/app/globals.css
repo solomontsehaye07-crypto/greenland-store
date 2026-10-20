@@ -366,3 +366,25 @@ main:has(> .home > section:last-child:is(.band-forest, .band-indigo, .band-terra
 .admin .text-white.bg-ink { color: var(--paper); }
 .admin ::placeholder { color: var(--muted); opacity: .8; }
 .admin [class*="bg-ink/"] { background-color: rgb(0 0 0 / .45); }
+
+/* ---------- manager app: colour-coded blocks (work in light and dark) ---------- */
+.mt-c { --c: var(--forest); background: color-mix(in oklab, var(--c) 13%, var(--card)); border: 1px solid color-mix(in oklab, var(--c) 32%, var(--card)); }
+.mt-c:hover { border-color: var(--c); }
+.mt-c .mt-c-val, .mt-c .mt-c-ic { color: color-mix(in oklab, var(--c) 82%, var(--ink)); }
+.mt-c .mt-c-ic { background: color-mix(in oklab, var(--c) 20%, var(--card)); }
+.mt-green { --c: var(--forest); }
+.mt-amber { --c: #c98612; }
+.mt-blue { --c: #2f6fb3; }
+.mt-red { --c: var(--terra); }
+.mt-violet { --c: #7b4fa8; }
+.mt-teal { --c: #0e7c7b; }
+.admin[data-theme="dark"] .mt-amber { --c: #e8b04a; }
+.admin[data-theme="dark"] .mt-blue { --c: #7fb0e6; }
+.admin[data-theme="dark"] .mt-violet { --c: #b993e0; }
+.admin[data-theme="dark"] .mt-teal { --c: #4fc0bf; }
+@media (prefers-color-scheme: dark) {
+  .admin[data-theme="system"] .mt-amber { --c: #e8b04a; }
+  .admin[data-theme="system"] .mt-blue { --c: #7fb0e6; }
+  .admin[data-theme="system"] .mt-violet { --c: #b993e0; }
+  .admin[data-theme="system"] .mt-teal { --c: #4fc0bf; }
+}

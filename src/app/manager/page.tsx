@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { berlinDayStart, berlinToday } from "@/lib/designs";
-import { Msg, Section, Tile } from "./ui";
+import { Msg, QuickLink, Section, Tile } from "./ui";
 import { tillTotal } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -36,10 +36,10 @@ export default async function Today({ searchParams }: { searchParams: Promise<{ 
     <div>
       <Msg msg={msg} />
       <div className="grid grid-cols-2 gap-3">
-        <Tile label="Sales today" value={money(online + store)} sub={`Online ${money(online)} · Till ${money(store)}`} tone="good" href="/manager/money" />
-        <Tile label="Orders to pack" value={toPack} sub={`${count("packed")} packed · ${count("ready_for_pickup")} waiting for pickup`} tone={toPack ? "warn" : undefined} href="/manager/orders" />
-        <Tile label="Pickups today" value={pickups?.length ?? 0} sub={pickups?.[0]?.pickup_slot ? `next: ${String(pickups[0].pickup_slot).split("·").pop()?.trim()}` : "none booked"} href="/manager/orders" />
-        <Tile label="Running low" value={low ?? 0} sub={`${expiring ?? 0} batches expire soon · ${drafts ?? 0} refill drafts`} tone={(low ?? 0) > 0 ? "bad" : undefined} href="/manager/stock" />
+        <Tile label="Sales today" value={money(online + store)} sub={`Online ${money(online)} · Till ${money(store)}`} color="green" icon="chart" href="/manager/money" />
+        <Tile label="Orders to pack" value={toPack} sub={`${count("packed")} packed · ${count("ready_for_pickup")} waiting for pickup`} color="amber" icon="orders" href="/manager/orders" />
+        <Tile label="Pickups today" value={pickups?.length ?? 0} sub={pickups?.[0]?.pickup_slot ? `next: ${String(pickups[0].pickup_slot).split("·").pop()?.trim()}` : "none booked"} color="blue" icon="truck" href="/manager/orders" />
+        <Tile label="Running low" value={low ?? 0} sub={`${expiring ?? 0} batches expire soon · ${drafts ?? 0} refill drafts`} color="red" icon="box" href="/manager/stock" />
       </div>
       {balance > 0 && <p className="mt-3 rounded-xl border border-saffron bg-saffron/10 px-4 py-3 text-sm">Still to collect on pickup or delivery: <b>{money(balance)}</b></p>}
 
@@ -67,17 +67,13 @@ export default async function Today({ searchParams }: { searchParams: Promise<{ 
       </Section>
 
       <Section title="Quick actions">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          {[
-            ["/admin/goods-in", "Book a delivery"],
-            ["/admin/finance", "Book spoiled or stolen items"],
-            ["/admin/purchase-orders", "Refill requests"],
-            ["/admin/products?new=1", "New product"],
-            ["/admin/reports", "Reports for the tax advisor"],
-            ["/admin/products?filter=offer", "Offers"],
-          ].map(([h, l]) => (
-            <Link key={h} href={h} className="rounded-2xl border border-line bg-white px-4 py-3 font-medium hover:border-forest">{l}</Link>
-          ))}
+        <div className="grid grid-cols-2 gap-3">
+          <QuickLink href="/manager/refill" label="Order from a supplier" color="violet" icon="refill" />
+          <QuickLink href="/admin/goods-in" label="Book a delivery" color="teal" icon="truck" />
+          <QuickLink href="/admin/finance" label="Book spoiled or stolen items" color="red" icon="box" />
+          <QuickLink href="/admin/products?new=1" label="New product" color="blue" icon="tag" />
+          <QuickLink href="/admin/reports" label="Reports for the tax advisor" color="green" icon="page" />
+          <QuickLink href="/admin/products?filter=offer" label="Offers" color="amber" icon="sparkle" />
         </div>
       </Section>
     </div>

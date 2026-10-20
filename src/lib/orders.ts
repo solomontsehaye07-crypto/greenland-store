@@ -6,7 +6,7 @@ import { round2, vatOf, money } from "./format";
 import type { CartLine, ShippingMethod } from "./types";
 import { forwardDropshipItems } from "./purchasing";
 import { emailConfig, sendEmail } from "./notify";
-import { depositFor, getFrozenPack, getPaymentConfig, pickupSlots, type PaymentConfig } from "./commerce";
+import { depositFor, getFrozenPack, getPaymentConfig, getShippingArea, pickupSlots, type PaymentConfig } from "./commerce";
 import { buildReceiptPdf } from "./pdf";
 import { siteUrl } from "./site";
 
@@ -52,7 +52,8 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
     throw new Error("Please confirm you are 18 or older to buy alcohol.");
 
   const subtotal = round2(lines.reduce((s, l) => s + l.price * l.qty, 0));
-  const [{ data: methods }, pack] = await Promise.all([sb.from("shipping_methods").select("*").eq("active", true), getFrozenPack()]);
+  const [{ data: methods }, pack, area] = await Promise.all([sb.from("shipping_methods").select("*").eq("active", true), getFrozenPack(), getShippingArea()]);
+  if (!area.abroad && input.country !== "DE") throw new Error("We currently deliver within Germany only. Pickup in store is always possible.");
   const quotes = quoteShipping((methods ?? []) as ShippingMethod[], lines, subtotal, input.country, input.postal, pack);
   const q = quotes.find((x) => x.method.code === input.shipping_code);
   if (!q || !q.available) throw new Error(q?.reason ?? "Please choose a delivery option.");
