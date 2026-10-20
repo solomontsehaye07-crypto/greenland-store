@@ -82,9 +82,16 @@ export async function getPickupSettings(): Promise<PickupSettings> {
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 const TZ = "Europe/Berlin";
 
+// Formatters are expensive to create; build each once per worker.
+let partsFmt: Intl.DateTimeFormat | null = null;
+const labelFmt: Record<string, Intl.DateTimeFormat> = {};
+const fmtLabel = (lang: string, d: Date) =>
+  (labelFmt[lang] ??= new Intl.DateTimeFormat(lang, { timeZone: TZ, weekday: "short", day: "2-digit", month: "2-digit" })).format(d);
+
 /** Berlin wall-clock parts of a moment. */
 function berlinParts(d: Date) {
-  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short" }).formatToParts(d).map((x) => [x.type, x.value]));
+  partsFmt ??= new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+  const p = Object.fromEntries(partsFmt.formatToParts(d).map((x) => [x.type, x.value]));
   return { date: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) % 24, minute: Number(p.minute) };
 }
 
@@ -123,7 +130,7 @@ export async function pickupSlots(s?: PickupSettings, now = new Date()): Promise
       for (let m = toMin(w.from); m + step <= toMin(w.to); m += step) {
         const start = berlinToDate(date, fromMin(m));
         if (start.getTime() < earliest) continue;
-        const dLabel = (lang: string) => new Intl.DateTimeFormat(lang, { timeZone: TZ, weekday: "short", day: "2-digit", month: "2-digit" }).format(start);
+        const dLabel = (lang: string) => fmtLabel(lang, start);
         const range = `${fromMin(m)}–${fromMin(m + step)}`;
         slots.push({ value: start.toISOString(), label: { de: `${dLabel("de-DE")} · ${range} Uhr`, en: `${dLabel("en-GB")} · ${range}` }, full: false });
       }

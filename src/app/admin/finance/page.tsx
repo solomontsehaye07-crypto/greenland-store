@@ -2,14 +2,14 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
-import { computePnl, EXPENSE_CATEGORIES, monthRange } from "@/lib/finance";
+import { computePnl, computePnlSeries, EXPENSE_CATEGORIES, monthRange } from "@/lib/finance";
 import { Bars } from "@/components/admin/charts";
 import { addExpense, addStoreSale, deleteEntry, recordDelivery, recordWriteoff } from "./actions";
 
 export const metadata = { title: "Profit & loss" };
 
 const pct = (x: number | null) => (x === null ? "–" : `${x.toFixed(1).replace(".", ",")} %`);
-const REASON: Record<string, string> = { spoiled: "Spoiled", damage: "Damaged", expired: "Expired" };
+const REASON: Record<string, string> = { spoiled: "Spoiled", damage: "Damaged", expired: "Expired", theft: "Stolen", own_use: "Own use" };
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   await requireStaff();
@@ -24,12 +24,12 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   const months = Array.from({ length: 6 }, (_, i) => monthRange(new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() - 5 + i, 1)).toISOString().slice(0, 7)));
   const [p, history, { data: cats }, { data: prods }, { data: sales }, { data: exps }, { data: losses }] = await Promise.all([
     computePnl(from, to),
-    Promise.all(months.map((r) => computePnl(r.from, r.to))),
+    computePnlSeries(months),
     sb.from("categories").select("id, title"),
     sb.from("products").select("sku, title, title_de, stock, cost_price").neq("status", "draft").order("title").limit(5000),
     sb.from("store_sales").select("*").gte("day", from.toISOString().slice(0, 10)).lt("day", to.toISOString().slice(0, 10)).order("day", { ascending: false }),
     sb.from("expenses").select("*").gte("day", from.toISOString().slice(0, 10)).lt("day", to.toISOString().slice(0, 10)).order("day", { ascending: false }),
-    sb.from("stock_movements").select("id, qty_change, unit_cost, reason, note, created_at, products(title, title_de)").in("reason", ["spoiled", "damage", "expired"]).order("created_at", { ascending: false }).limit(12),
+    sb.from("stock_movements").select("id, qty_change, unit_cost, reason, note, created_at, products(title, title_de)").in("reason", ["spoiled", "damage", "expired", "theft", "own_use"]).order("created_at", { ascending: false }).limit(12),
   ]);
   const catName = (id: number) => cats?.find((c) => c.id === id)?.title ?? "Uncategorised";
   const stockValue = (prods ?? []).reduce((a, r) => a + (r.cost_price ? Number(r.cost_price) * Math.max(r.stock, 0) : 0), 0);
@@ -144,7 +144,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
               <div className="sm:col-span-2"><label className="label" htmlFor="wo-qty">Quantity</label><input id="wo-qty" name="qty" type="number" min="1" required className="input" /></div>
               <div className="sm:col-span-2">
                 <label className="label" htmlFor="wo-reason">Reason</label>
-                <select id="wo-reason" name="reason" className="input"><option value="spoiled">Spoiled / rotten</option><option value="damage">Damaged</option><option value="expired">Expired</option></select>
+                <select id="wo-reason" name="reason" className="input"><option value="spoiled">Spoiled / rotten</option><option value="damage">Damaged</option><option value="expired">Expired</option><option value="theft">Stolen / missing</option><option value="own_use">Own use (Eigenverbrauch)</option></select>
               </div>
               <div className="sm:col-span-2"><label className="label" htmlFor="wo-cost">Cost per item €</label><input id="wo-cost" name="cost" inputMode="decimal" className="input" placeholder="from product" /></div>
               <div className="sm:col-span-4"><label className="label" htmlFor="wo-note">Note</label><input id="wo-note" name="note" className="input" /></div>

@@ -89,6 +89,8 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
                   <option value="count">Set counted stock</option>
                   <option value="adjust">Correct (+/−)</option>
                   <option value="spoiled">Spoiled / rotten (thrown away)</option>
+                  <option value="theft">Stolen / missing</option>
+                  <option value="own_use">Own use (Eigenverbrauch)</option>
                   <option value="damage">Damaged</option>
                   <option value="expired">Expired</option>
                 </select>

@@ -57,8 +57,9 @@ async function loadPo(id: number) {
   if (!po) throw new Error("Purchase order not found");
   const { data: items } = await sb
     .from("purchase_order_items")
-    .select("qty, unit_cost, product_id, products(sku, title)")
-    .eq("purchase_order_id", id);
+    .select("qty, unit_cost, note, product_id, products(sku, title, title_de)")
+    .eq("purchase_order_id", id)
+    .order("id");
   const { data: sp } = await sb
     .from("supplier_products")
     .select("product_id, supplier_sku")
@@ -73,26 +74,39 @@ async function loadPo(id: number) {
   return { po, items: items ?? [], refs, shipTo };
 }
 
-/** Renders the PDF, stores it in the private "documents" bucket and returns a 7-day signed URL. */
-export async function renderPoPdf(id: number) {
-  const sb = supabaseAdmin();
+/** The PDF as it looks right now (used by the live preview); nothing is stored. */
+export async function poPdfBytes(id: number) {
   const { po, items, refs, shipTo } = await loadPo(id);
   const store = await storeInfo();
-  const pdf = await buildPurchaseOrderPdf({
+  return buildPurchaseOrderPdf(pdfInput(po, items, refs, shipTo, store));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pdfInput(po: any, items: any[], refs: Map<number, string | null>, shipTo: any, store: StoreInfo) {
+  return {
     number: po.number,
     kind: po.kind,
     date: new Date(po.created_at).toLocaleDateString("de-DE"),
     expected: po.expected_at ? new Date(po.expected_at).toLocaleDateString("de-DE") : null,
     store,
     supplier: po.suppliers,
+    showPrices: po.show_prices !== false,
     items: items.map((i) => {
-      const prod = i.products as unknown as { sku: string; title: string };
-      return { sku: prod.sku, title: prod.title, qty: i.qty, unit_cost: i.unit_cost, supplier_sku: refs.get(i.product_id) };
+      const prod = i.products as { sku: string; title: string; title_de: string | null };
+      return { sku: prod.sku, title: prod.title_de || prod.title, qty: i.qty, unit_cost: i.unit_cost, supplier_sku: refs.get(i.product_id), note: i.note };
     }),
     shipTo,
     notes: po.notes,
-  });
-  const path = `purchase-orders/PO-${po.number}.pdf`;
+  };
+}
+
+/** Renders the PDF, stores it in the private "documents" bucket and returns a 7-day signed URL. */
+export async function renderPoPdf(id: number) {
+  const sb = supabaseAdmin();
+  const { po, items, refs, shipTo } = await loadPo(id);
+  const store = await storeInfo();
+  const pdf = await buildPurchaseOrderPdf(pdfInput(po, items, refs, shipTo, store));
+  const path = `purchase-orders/PO-${po.number}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}.pdf`;
   await sb.storage.from("documents").upload(path, pdf, { contentType: "application/pdf", upsert: true });
   await sb.from("purchase_orders").update({ pdf_path: path }).eq("id", id);
   const { data: signed } = await sb.storage.from("documents").createSignedUrl(path, 60 * 60 * 24 * 7);
@@ -105,13 +119,12 @@ export async function renderPoPdf(id: number) {
  */
 export async function sendPo(id: number, channel: "email" | "whatsapp") {
   const sb = supabaseAdmin();
-  const { pdf, url, po, store } = await renderPoPdf(id);
+  const { pdf, url, po, store, path } = await renderPoPdf(id);
   const sup = po.suppliers;
   const filename = `PO-${po.number}.pdf`;
   const message =
-    `Hello ${sup.contact_name ?? sup.name},\n\n` +
-    `please find our ${po.kind === "dropship" ? "dropship order" : "refill order"} PO-${po.number} from ${store.name}.\n` +
-    `PDF: ${url}\n\nPlease confirm availability and delivery date. Thank you!\n${store.name}, ${store.phone}`;
+    (po.message ? `${po.message}\n\n` : `Hello ${sup.contact_name ?? sup.name},\n\nplease find our ${po.kind === "dropship" ? "dropship order" : "refill order"} PO-${po.number} from ${store.name}.\n\n`) +
+    `PDF: ${url}\n\n${po.message ? "" : "Please confirm availability and delivery date. Thank you!\n"}${store.name}, ${store.phone}`;
 
   let result: { ok: boolean; error?: string; link?: string };
   if (channel === "email") {
@@ -130,7 +143,8 @@ export async function sendPo(id: number, channel: "email" | "whatsapp") {
     result = api.ok ? api : { ok: true, link: waLink(phone, message) };
   }
   if (result.ok && !result.link) {
-    await sb.from("purchase_orders").update({ status: "sent", sent_via: channel, sent_at: new Date().toISOString() }).eq("id", id);
+    await sb.from("purchase_order_sends").insert({ purchase_order_id: id, channel, recipient: channel === "email" ? sup.email : sup.whatsapp ?? sup.phone, pdf_path: path });
+    await sb.from("purchase_orders").update({ status: po.status === "draft" ? "sent" : po.status, sent_via: channel, sent_at: new Date().toISOString(), edited_after_send: false }).eq("id", id);
   }
   return { ...result, pdfUrl: url };
 }
@@ -201,4 +215,61 @@ export async function forwardDropshipItems(orderId: string) {
     const s = po.suppliers as unknown as { preferred_channel: string; email: string | null };
     if (s?.email && s.preferred_channel !== "whatsapp") await sendPo(po.id, "email").catch(() => null);
   }
+}
+
+export interface SupplierInsight {
+  product_id: number;
+  sku: string;
+  title: string;
+  image_url: string | null;
+  stock: number;
+  reorder_point: number;
+  reorder_qty: number;
+  cost: number | null;
+  times: number; // how many refill orders it was on
+  qty: number; // total quantity ordered
+  last: string | null; // last ordered (ISO)
+}
+
+/** Every product linked to a supplier, with how often and how recently it was ordered from them. */
+export async function supplierInsights(supplierId: number): Promise<SupplierInsight[]> {
+  const sb = supabaseAdmin();
+  const [{ data: linked }, { data: own }, { data: hist }] = await Promise.all([
+    sb.from("supplier_products").select("product_id, cost_price").eq("supplier_id", supplierId),
+    sb.from("products").select("id").eq("supplier_id", supplierId),
+    sb
+      .from("purchase_order_items")
+      .select("product_id, qty, purchase_orders!inner(supplier_id, status, created_at)")
+      .eq("purchase_orders.supplier_id", supplierId)
+      .neq("purchase_orders.status", "cancelled")
+      .limit(5000),
+  ]);
+  const stats = new Map<number, { times: number; qty: number; last: string | null }>();
+  for (const h of hist ?? []) {
+    const po = h.purchase_orders as unknown as { status: string; created_at: string };
+    if (po.status === "draft") continue;
+    const s = stats.get(h.product_id) ?? { times: 0, qty: 0, last: null };
+    s.times += 1;
+    s.qty += h.qty;
+    if (!s.last || po.created_at > s.last) s.last = po.created_at;
+    stats.set(h.product_id, s);
+  }
+  const costs = new Map((linked ?? []).map((l) => [l.product_id, l.cost_price as number | null]));
+  const ids = [...new Set([...(linked ?? []).map((l) => l.product_id), ...(own ?? []).map((o) => o.id), ...stats.keys()])];
+  if (!ids.length) return [];
+  const { data: prods } = await sb.from("products").select("id, sku, title, title_de, image_url, stock, reorder_point, reorder_qty, cost_price").in("id", ids);
+  return (prods ?? []).map((p) => {
+    const s = stats.get(p.id) ?? { times: 0, qty: 0, last: null };
+    return {
+      product_id: p.id,
+      sku: p.sku,
+      title: p.title_de || p.title,
+      image_url: p.image_url,
+      stock: p.stock,
+      reorder_point: p.reorder_point,
+      reorder_qty: p.reorder_qty,
+      cost: costs.get(p.id) ?? p.cost_price,
+      ...s,
+    };
+  });
 }

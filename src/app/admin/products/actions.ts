@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { bookDelivery, createProduct } from "@/lib/products-admin";
 
 /** "4,99" / "4.99" / "" → number | null */
 const dec = (v: FormDataEntryValue | null) => {
@@ -49,6 +50,7 @@ export async function saveProduct(fd: FormData) {
     title: txt(fd.get("title")),
     title_de: txt(fd.get("title_de")),
     brand: txt(fd.get("brand")),
+    ean: txt(fd.get("ean")),
     description: txt(fd.get("description")),
     description_de: txt(fd.get("description_de")),
     country: txt(fd.get("country")),
@@ -118,4 +120,39 @@ export async function endOffer(fd: FormData) {
   if (p?.compare_at_price) await sb.from("products").update({ price: p.compare_at_price, compare_at_price: null, sale_ends_at: null }).eq("id", id);
   refresh(id);
   back(fd, "Offer ended.");
+}
+
+/** "New product" panel: creates the product, books the first stock, then opens the full editor. */
+export async function createProductAction(fd: FormData) {
+  const user = await assertStaff();
+  const title_de = txt(fd.get("title_de"));
+  const price = dec(fd.get("price"));
+  const category_id = Number(fd.get("category_id")) || null;
+  const ret = "/admin/products?new=1";
+  if (!title_de) back(fd, "Please enter the product name.");
+  if (!price || price <= 0) back(fd, "Please enter the selling price.");
+  if (!category_id) back(fd, "Please choose a category.");
+  let id: number;
+  try {
+    const p = await createProduct({
+      title_de: title_de!,
+      title: txt(fd.get("title")) ?? undefined,
+      brand: txt(fd.get("brand")),
+      ean: txt(fd.get("ean")),
+      category_id,
+      price: price!,
+      tax_rate: Number(fd.get("tax_rate")) || 7,
+      cost_price: dec(fd.get("cost_price")),
+      image_url: txt(fd.get("image_url")),
+      supplier_id: Number(fd.get("supplier_id")) || null,
+    });
+    id = p.id;
+    const qty = Number(fd.get("stock")) || 0;
+    if (qty > 0) await bookDelivery([{ product_id: id, qty, cost: dec(fd.get("cost_price")), best_before: txt(fd.get("best_before")) }], { userId: user.id, supplierId: Number(fd.get("supplier_id")) || null, note: "First stock" });
+  } catch (e) {
+    void ret;
+    back(fd, `Could not create: ${(e as Error).message}`);
+  }
+  refresh(id!);
+  redirect(`/admin/products?edit=${id!}&msg=${encodeURIComponent("Product created. Add more photos and texts here.")}`);
 }

@@ -35,6 +35,11 @@ export function ProductPanel({ p, cats, sections, returnHref }: { p: P; cats: Ca
         <input type="hidden" name="id" value={p.id} />
         <input type="hidden" name="return" value={returnHref} />
 
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white px-4 py-3">
+          <p className="text-sm">In stock: <b>{p.stock}</b></p>
+          <Link href={`/admin/goods-in?product=${p.id}`} className="btn btn-ghost h-9 py-1 text-sm">Add stock (goods in)</Link>
+        </div>
+
         <Group title="Photos" text="Upload new photos or pick from the media library and the other product photos.">
           <ImageGallery name="images" initial={images} />
         </Group>
@@ -98,6 +103,7 @@ export function ProductPanel({ p, cats, sections, returnHref }: { p: P; cats: Ca
             <div><label className="label" htmlFor="title_de">Name (German)</label><input id="title_de" name="title_de" defaultValue={p.title_de ?? ""} className="input" /></div>
             <div><label className="label" htmlFor="title">Name (English)</label><input id="title" name="title" defaultValue={p.title} required className="input" /></div>
             <div><label className="label" htmlFor="brand">Brand</label><input id="brand" name="brand" defaultValue={p.brand ?? ""} className="input" /></div>
+            <div><label className="label" htmlFor="ean">Barcode (EAN)</label><input id="ean" name="ean" defaultValue={p.ean ?? ""} inputMode="numeric" className="input" /></div>
             <div>
               <label className="label" htmlFor="category_id">Category</label>
               <select id="category_id" name="category_id" defaultValue={p.category_id ?? ""} className="input">

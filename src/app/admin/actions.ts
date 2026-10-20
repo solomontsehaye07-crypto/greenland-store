@@ -88,7 +88,7 @@ export async function adjustStock(fd: FormData) {
     if (diff !== 0) await sb.from("stock_movements").insert({ product_id, qty_change: diff, reason: "adjustment", note: "Stock count", created_by: user.id });
   } else {
     if (qty === 0) return;
-    const loss = ["damage", "expired", "spoiled"].includes(mode);
+    const loss = ["damage", "expired", "spoiled", "theft", "own_use"].includes(mode);
     await sb.from("stock_movements").insert({
       product_id,
       qty_change: loss ? -Math.abs(qty) : qty,
@@ -217,7 +217,11 @@ export async function sendPoAction(_: unknown, fd: FormData) {
 export async function markPoSent(fd: FormData) {
   await assertStaff();
   const id = Number(fd.get("po_id"));
-  await supabaseAdmin().from("purchase_orders").update({ status: "sent", sent_via: "whatsapp", sent_at: new Date().toISOString() }).eq("id", id);
+  const sb = supabaseAdmin();
+  const { data: po } = await sb.from("purchase_orders").select("status, pdf_path, suppliers(whatsapp, phone)").eq("id", id).single();
+  await sb.from("purchase_orders").update({ status: po?.status === "draft" ? "sent" : po?.status, sent_via: "whatsapp", sent_at: new Date().toISOString(), edited_after_send: false }).eq("id", id);
+  const sup = po?.suppliers as unknown as { whatsapp: string | null; phone: string | null } | null;
+  await sb.from("purchase_order_sends").insert({ purchase_order_id: id, channel: "whatsapp", recipient: sup?.whatsapp ?? sup?.phone ?? null, pdf_path: po?.pdf_path ?? null });
   revalidatePath(`/admin/purchase-orders/${id}`);
 }
 

@@ -80,7 +80,7 @@ export async function measuredLossByCategory(days = 90): Promise<Map<number, num
   const { data } = await supabaseAdmin()
     .from("stock_movements")
     .select("qty_change, unit_cost, reason, products!inner(category_id)")
-    .in("reason", ["purchase", "damage", "expired", "spoiled"])
+    .in("reason", ["purchase", "damage", "expired", "spoiled", "theft"])
     .gte("created_at", since)
     .not("unit_cost", "is", null)
     .limit(20000);

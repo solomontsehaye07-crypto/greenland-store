@@ -49,12 +49,14 @@ export const NAV_GROUPS: { label: string; items: { href: string; label: string; 
       { href: "/admin/products", label: "Products", icon: "box" },
       { href: "/admin/pricing", label: "Pricing", icon: "tag" },
       { href: "/admin/finance", label: "Profit & loss", icon: "chart" },
+      { href: "/admin/reports", label: "Reports", icon: "page" },
     ],
   },
   {
     label: "Stock",
     items: [
-      { href: "/admin/purchase-orders", label: "Refill orders", icon: "refill" },
+      { href: "/admin/goods-in", label: "Goods in", icon: "box" },
+      { href: "/admin/purchase-orders", label: "Refill requests", icon: "refill" },
       { href: "/admin/suppliers", label: "Suppliers", icon: "people" },
       { href: "/admin/import", label: "Batch import", icon: "upload" },
     ],

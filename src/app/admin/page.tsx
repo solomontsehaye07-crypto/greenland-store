@@ -41,7 +41,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     sb.from("orders").select("total, status, fulfillment_type, created_at").gte("created_at", since.toISOString()),
     sb.from("orders").select("total, status").gte("created_at", prevSince.toISOString()).lt("created_at", since.toISOString()),
     sb.from("order_items").select("product_id, title, qty, unit_price, orders!inner(created_at, status)").gte("orders.created_at", since.toISOString()).in("orders.status", PAID),
-    sb.from("products").select("id, category_id, stock, price, cost_price, reorder_point, image_url, status, title_de, description").neq("status", "draft").limit(5000),
+    sb.from("products").select("id, category_id, stock, price, cost_price, reorder_point, image_url, status, title_de").neq("status", "draft").limit(5000),
     sb.from("categories").select("id, slug, title, parent_id"),
     sb.from("low_stock").select("id, sku, title, stock, reorder_point, supplier_name, on_order").order("stock").limit(15),
     sb.from("expiring_batches").select("id, title, best_before, quantity_left").order("best_before").limit(10),

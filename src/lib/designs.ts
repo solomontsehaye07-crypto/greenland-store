@@ -84,8 +84,10 @@ export function storeFrom(raw: unknown, legacyTheme?: Partial<Theme>): DesignSto
 }
 
 /** Today's date in Berlin as YYYY-MM-DD. */
+let dayFmt: Intl.DateTimeFormat | null = null;
 export function berlinToday(now = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  dayFmt ??= new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" });
+  return dayFmt.format(now);
 }
 
 function inRange(d: Design, today: string) {

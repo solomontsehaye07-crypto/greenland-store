@@ -41,7 +41,7 @@ export async function recordWriteoff(fd: FormData) {
   const user = await assertStaff();
   const p = await productFrom(fd);
   const qty = Math.abs(Math.round(Number(fd.get("qty"))));
-  const reason = ["spoiled", "damage", "expired"].includes(String(fd.get("reason"))) ? String(fd.get("reason")) : "spoiled";
+  const reason = ["spoiled", "damage", "expired", "theft", "own_use"].includes(String(fd.get("reason"))) ? String(fd.get("reason")) : "spoiled";
   if (!p) back(fd, "Product not found. Pick it from the list.");
   if (!qty) back(fd, "Enter how many items were thrown away.");
   const cost = dec(fd.get("cost"));
