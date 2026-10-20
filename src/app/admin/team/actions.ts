@@ -43,3 +43,16 @@ export async function setRole(fd: FormData) {
   revalidatePath("/admin/team");
   back(role === "customer" ? "Access removed." : "Role changed.");
 }
+
+/** Mobile number for signing in with an SMS code. */
+export async function setPhone(fd: FormData) {
+  await assertStaff(["admin"]);
+  const id = String(fd.get("id"));
+  const raw = String(fd.get("phone") ?? "").trim();
+  const digits = raw.replace(/[^\d+]/g, "");
+  const phone = !digits ? "" : digits.startsWith("+") ? digits : digits.startsWith("00") ? `+${digits.slice(2)}` : digits.startsWith("0") ? `+49${digits.slice(1)}` : `+${digits}`;
+  const { error } = await supabaseAdmin().auth.admin.updateUserById(id, phone ? { phone, phone_confirm: true } : { phone: "" });
+  if (error) back(`Could not save the number: ${error.message}`);
+  revalidatePath("/admin/team");
+  back(phone ? `Mobile number saved: ${phone}. This person can now sign in with an SMS code.` : "Mobile number removed.");
+}

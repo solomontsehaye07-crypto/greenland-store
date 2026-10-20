@@ -1,7 +1,7 @@
 import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Card, Notice, PageHead } from "@/components/admin/ui";
-import { inviteMember, setRole } from "./actions";
+import { inviteMember, setPhone, setRole } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +21,7 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ m
   ]);
   const emailOf = (id: string) => users?.users.find((u) => u.id === id)?.email ?? "";
   const lastSeen = (id: string) => users?.users.find((u) => u.id === id)?.last_sign_in_at;
+  const phoneOf = (id: string) => users?.users.find((u) => u.id === id)?.phone ?? "";
   return (
     <div>
       <PageHead title="Team & roles" text="Who can open the admin and what they may do. Each person signs in with their own email." />
@@ -34,6 +35,12 @@ export default async function Team({ searchParams }: { searchParams: Promise<{ m
                   <p className="truncate text-sm font-medium" data-no-translate>{p.full_name || p.email || emailOf(p.id)}</p>
                   <p className="truncate text-xs text-muted" data-no-translate>{p.email || emailOf(p.id)}{lastSeen(p.id) ? ` · ${new Date(lastSeen(p.id)!).toLocaleDateString("de-DE")}` : ""}</p>
                 </div>
+                <form action={setPhone} className="flex w-full items-center gap-2 sm:order-last">
+                  <input type="hidden" name="id" value={p.id} />
+                  <label className="sr-only" htmlFor={`ph-${p.id}`}>Mobile number for SMS codes</label>
+                  <input id={`ph-${p.id}`} name="phone" type="tel" defaultValue={phoneOf(p.id) ? `+${phoneOf(p.id).replace(/^\+/, "")}` : ""} placeholder="Mobile for SMS codes, e.g. 0152 1234567" className="input h-9 py-1 text-sm" data-no-translate />
+                  <button className="btn btn-ghost h-9 shrink-0 py-1 text-sm">Save</button>
+                </form>
                 {p.id === user.id ? (
                   <span className="rounded-full bg-forest/10 px-3 py-1 text-xs font-semibold text-forest">You · Owner</span>
                 ) : (
