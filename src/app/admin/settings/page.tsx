@@ -1,4 +1,4 @@
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { decryptJson } from "@/lib/commerce";
 import { Card, Notice, PageHead } from "@/components/admin/ui";
@@ -8,7 +8,7 @@ import { PasswordForm } from "./password-form";
 export const dynamic = "force-dynamic";
 
 export default async function Settings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
-  await requireStaff();
+  await requireStaff(MANAGER_ROLES);
   const { msg } = await searchParams;
   const { data } = await supabaseAdmin().from("settings").select("key, value").in("key", ["public.store", "public.receipt", "private.email"]);
   const get = (k: string) => (data ?? []).find((r) => r.key === k)?.value;

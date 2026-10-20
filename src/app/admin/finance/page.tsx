@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { computePnl, computePnlSeries, EXPENSE_CATEGORIES, monthRange } from "@/lib/finance";
@@ -12,7 +12,7 @@ const pct = (x: number | null) => (x === null ? "–" : `${x.toFixed(1).replace(
 const REASON: Record<string, string> = { spoiled: "Spoiled", damage: "Damaged", expired: "Expired", theft: "Stolen", own_use: "Own use" };
 
 export default async function FinancePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  await requireStaff();
+  await requireStaff(MANAGER_ROLES);
   const sp = await searchParams;
   const { from, to, key } = monthRange(sp.m);
   const sb = supabaseAdmin();

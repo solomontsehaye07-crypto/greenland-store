@@ -22,3 +22,10 @@ create index if not exists po_sends_po on public.purchase_order_sends (purchase_
 
 alter table public.stock_movements drop constraint stock_movements_reason_check;
 alter table public.stock_movements add constraint stock_movements_reason_check check (reason in ('purchase','sale','return','adjustment','damage','expired','spoiled','theft','own_use','import','initial'));
+
+-- Roles: manager between staff and owner
+alter type public.user_role add value if not exists 'manager';
+create or replace function public.is_staff() returns boolean language sql stable security definer set search_path to '' as $fn$
+  select exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role in ('staff', 'manager', 'admin'));
+$fn$;
+alter table public.profiles add column if not exists email text;

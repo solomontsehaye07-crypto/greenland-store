@@ -37,7 +37,9 @@ export function AIcon({ name, size = 18, className = "" }: { name: string; size?
   );
 }
 
-export const NAV_GROUPS: { label: string; items: { href: string; label: string; icon: string; exact?: boolean }[] }[] = [
+type Item = { href: string; label: string; icon: string; exact?: boolean; roles?: string[] };
+const M = ["manager", "admin"];
+export const NAV_GROUPS: { label: string; items: Item[] }[] = [
   {
     label: "",
     items: [{ href: "/admin", label: "Overview", icon: "home", exact: true }],
@@ -47,9 +49,9 @@ export const NAV_GROUPS: { label: string; items: { href: string; label: string; 
     items: [
       { href: "/admin/orders", label: "Orders", icon: "orders" },
       { href: "/admin/products", label: "Products", icon: "box" },
-      { href: "/admin/pricing", label: "Pricing", icon: "tag" },
-      { href: "/admin/finance", label: "Profit & loss", icon: "chart" },
-      { href: "/admin/reports", label: "Reports", icon: "page" },
+      { roles: M, href: "/admin/pricing", label: "Pricing", icon: "tag" },
+      { roles: M, href: "/admin/finance", label: "Profit & loss", icon: "chart" },
+      { roles: M, href: "/admin/reports", label: "Reports", icon: "page" },
     ],
   },
   {
@@ -75,10 +77,12 @@ export const NAV_GROUPS: { label: string; items: { href: string; label: string; 
   {
     label: "Settings",
     items: [
-      { href: "/admin/settings/shipping", label: "Shipping & pickup", icon: "truck" },
-      { href: "/admin/settings/payments", label: "Payments", icon: "card" },
+      { roles: M, href: "/admin/settings/shipping", label: "Shipping & pickup", icon: "truck" },
+      { roles: M, href: "/admin/settings/payments", label: "Payments", icon: "card" },
       { href: "/admin/website/site", label: "Shop details", icon: "store" },
-      { href: "/admin/settings", label: "Account & receipts", icon: "gear", exact: true },
+      { roles: M, href: "/admin/settings", label: "Account & receipts", icon: "gear", exact: true },
+      { roles: ["admin"], href: "/admin/team", label: "Team & roles", icon: "people" },
+      { href: "/admin/translations", label: "Translations", icon: "page" },
     ],
   },
 ];
@@ -88,11 +92,11 @@ function isActive(path: string, href: string, exact?: boolean) {
   return path === href || path.startsWith(href + "/");
 }
 
-function Links({ onNavigate }: { onNavigate?: () => void }) {
+function Links({ onNavigate, role }: { onNavigate?: () => void; role: string }) {
   const path = usePathname();
   return (
     <nav aria-label="Admin" className="space-y-5">
-      {NAV_GROUPS.map((g) => (
+      {NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !i.roles || i.roles.includes(role)) })).filter((g) => g.items.length).map((g) => (
         <div key={g.label || "top"}>
           {g.label && <p className="mb-1.5 px-3 text-[0.6875rem] font-semibold text-muted">{g.label}</p>}
           <ul className="space-y-0.5">
@@ -119,12 +123,14 @@ function Links({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AdminNav({ email, signOut }: { email: string; signOut: React.ReactNode }) {
+export function AdminNav({ email, signOut, role, prefs }: { email: string; signOut: React.ReactNode; role: string; prefs: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
   useEffect(() => setOpen(false), [path]);
   const footer = (
-    <div className="space-y-2 border-t border-line pt-4 text-xs text-muted">
+    <div className="space-y-3 border-t border-line pt-4 text-xs text-muted">
+      {prefs}
+      {M.includes(role) && <Link href="/manager" className="block rounded-lg bg-forest/10 px-3 py-2 font-semibold text-forest hover:bg-forest/15">Open Manager app</Link>}
       <p className="truncate" title={email}>{email}</p>
       <div className="flex items-center gap-4">
         <Link href="/" className="font-medium text-forest hover:underline">View shop</Link>
@@ -142,7 +148,7 @@ export function AdminNav({ email, signOut }: { email: string; signOut: React.Rea
           <span className="display text-[0.9375rem] font-semibold">Greenland admin</span>
         </Link>
         <div className="flex-1 overflow-y-auto px-2.5 pb-4">
-          <Links />
+          <Links role={role} />
         </div>
         <div className="px-5 pb-5">{footer}</div>
       </aside>
@@ -168,7 +174,7 @@ export function AdminNav({ email, signOut }: { email: string; signOut: React.Rea
                 <AIcon name="close" size={20} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-2.5 pb-4"><Links onNavigate={() => setOpen(false)} /></div>
+            <div className="flex-1 overflow-y-auto px-2.5 pb-4"><Links role={role} onNavigate={() => setOpen(false)} /></div>
             <div className="px-5 pb-5">{footer}</div>
           </div>
         </div>

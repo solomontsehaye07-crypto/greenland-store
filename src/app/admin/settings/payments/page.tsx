@@ -1,4 +1,4 @@
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { siteUrl } from "@/lib/site";
 import { decryptJson, getPaymentConfig, type PaymentSecrets } from "@/lib/commerce";
@@ -49,7 +49,7 @@ function Status({ ok, text }: { ok: boolean; text: string }) {
 }
 
 export default async function PaymentSettings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
-  await requireStaff();
+  await requireStaff(MANAGER_ROLES);
   const { msg } = await searchParams;
   const cfg = await getPaymentConfig();
   const { data } = await supabaseAdmin().from("settings").select("value").eq("key", "private.payments").maybeSingle();

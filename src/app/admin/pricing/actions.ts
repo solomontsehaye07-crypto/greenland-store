@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { assertStaff } from "@/lib/auth";
+import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { applyRecommended, getPricingSettings, type PricingSettings, type Rule } from "@/lib/pricing";
 
@@ -22,7 +22,7 @@ function back(fd: FormData, msg: string) {
 }
 
 export async function savePricingRules(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const cur = await getPricingSettings();
   const rule = (prefix: string): Rule | null => {
     const m = n(fd.get(`${prefix}_margin`));
@@ -56,7 +56,7 @@ export async function savePricingRules(fd: FormData) {
 
 /** Save edited purchase costs; with automatic repricing on, the new prices follow right away. */
 export async function saveCosts(fd: FormData) {
-  const user = await assertStaff();
+  const user = await assertStaff(MANAGER_ROLES);
   const sb = supabaseAdmin();
   const changed: number[] = [];
   for (const [key, val] of fd.entries()) {
@@ -81,7 +81,7 @@ export async function saveCosts(fd: FormData) {
 
 /** Accept recommendations: one product (button "one") or every ticked product. */
 export async function applyPrices(fd: FormData) {
-  const user = await assertStaff();
+  const user = await assertStaff(MANAGER_ROLES);
   const one = fd.get("one");
   const ids = (one ? [one] : fd.getAll("ids")).map(Number).filter((x) => Number.isInteger(x) && x > 0);
   if (!ids.length) back(fd, "Tick at least one product first.");
@@ -93,7 +93,7 @@ export async function applyPrices(fd: FormData) {
 
 /** Paste "SKU;cost" lines (from a supplier invoice or spreadsheet) to set many purchase costs at once. */
 export async function importCosts(fd: FormData) {
-  const user = await assertStaff();
+  const user = await assertStaff(MANAGER_ROLES);
   const sb = supabaseAdmin();
   const lines = String(fd.get("lines") ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const pairs: [string, number][] = [];

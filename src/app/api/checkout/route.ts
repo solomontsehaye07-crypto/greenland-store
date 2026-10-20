@@ -8,6 +8,8 @@ export async function POST(req: Request) {
   const parsed = CheckoutSchema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: "Please check the highlighted fields." }, { status: 400 });
   const input = parsed.data;
+  const { data: shop } = await (await import("@/lib/supabase")).supabaseAdmin().from("settings").select("value").eq("key", "public.shop").maybeSingle();
+  if ((shop?.value as { paused?: boolean } | null)?.paused) return NextResponse.json({ error: "The online shop is paused right now. Please try again later." }, { status: 503 });
   const cfg = await getPaymentConfig();
   if (!cfg.methods.includes(input.payment)) return NextResponse.json({ error: "This payment method is not available." }, { status: 400 });
 

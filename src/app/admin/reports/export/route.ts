@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertStaff } from "@/lib/auth";
+import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildReport, reportCsv } from "@/lib/reports";
 import { buildReportPdf } from "@/lib/pdf";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    await assertStaff();
+    await assertStaff(MANAGER_ROLES);
   } catch {
     return NextResponse.json({ error: "Staff only" }, { status: 401 });
   }

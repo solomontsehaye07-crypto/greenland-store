@@ -333,3 +333,36 @@ h3,
 /* When the page ends on a full-width band (home page), the footer sits right under it. */
 main:has(> .home > section:last-child:is(.band-forest, .band-indigo, .band-terra, .band-ink, .band-sand, .band-saffron)) + footer { margin-top: 0; border-top: 0; }
 @keyframes panel-in { from { transform: translateX(100%); } to { transform: none; } }
+
+/* ---------- admin & manager: language, light/dark, eye-friendly ---------- */
+.admin { --card: #ffffff; background: var(--paper); color: var(--ink); }
+.admin[data-lang="ti"], .admin[data-lang="ti"] h1, .admin[data-lang="ti"] h2, .admin[data-lang="ti"] h3, .admin[data-lang="ti"] .display {
+  font-family: var(--font-public-sans), "Noto Sans Ethiopic", system-ui, sans-serif;
+}
+.admin[data-lang="ti"] { line-height: 1.7; }
+/* Tigrinya: keep the page hidden for a moment until the text is swapped, so English doesn't flash */
+.admin[data-lang="ti"]:not([data-ready]) > * { visibility: hidden; animation: gl-reveal 0s 1.2s forwards; }
+@keyframes gl-reveal { to { visibility: visible; } }
+
+/* Dark: warm, low-glare greys instead of pure black; text slightly off-white */
+.admin[data-theme="dark"] {
+  --paper: #121513; --card: #1a1e1c; --surface: #222825; --sand: #262c29; --line: #2f3633;
+  --ink: #e4e0d8; --muted: #a29d94; --forest: #4c9c74; --green: #4c9c74; --green-deep: #3d8461; --saffron: #e8b04a; --terra: #e07a5f; --indigo: #9aa6e6; --danger: #f2837a;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  .admin[data-theme="system"] {
+    --paper: #121513; --card: #1a1e1c; --surface: #222825; --sand: #262c29; --line: #2f3633;
+    --ink: #e4e0d8; --muted: #a29d94; --forest: #4c9c74; --green: #4c9c74; --green-deep: #3d8461; --saffron: #e8b04a; --terra: #e07a5f; --indigo: #9aa6e6; --danger: #f2837a;
+    color-scheme: dark;
+  }
+}
+.admin .bg-white, .admin .bg-white\/95 { background-color: var(--card); }
+.admin .input, .admin .btn-ghost, .admin select { background-color: var(--card); color: var(--ink); }
+.admin .btn-primary { color: #fff; }
+.admin img.bg-white, .admin .bg-white > img { background-color: #fff; }
+.admin .table th, .admin .table td { border-color: var(--line); }
+.admin .bg-ink { background-color: var(--ink); color: var(--paper); }
+.admin .text-white.bg-ink { color: var(--paper); }
+.admin ::placeholder { color: var(--muted); opacity: .8; }
+.admin [class*="bg-ink/"] { background-color: rgb(0 0 0 / .45); }

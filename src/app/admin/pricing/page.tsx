@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { getPricingSettings, marginOf, measuredLossByCategory, recommendPrice, ruleFor, type Cat } from "@/lib/pricing";
@@ -24,7 +24,7 @@ type Row = {
 };
 
 export default async function PricingPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
-  await requireStaff();
+  await requireStaff(MANAGER_ROLES);
   const sp = await searchParams;
   const view = VIEWS.some(([v]) => v === sp.view) ? sp.view! : "all";
   const q = (sp.q ?? "").trim().toLowerCase();

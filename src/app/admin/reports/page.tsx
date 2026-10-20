@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { buildReport, REASON_DE } from "@/lib/reports";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const de = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 
 export default async function Reports({ searchParams }: { searchParams: Promise<{ p?: string; from?: string; to?: string; msg?: string }> }) {
-  await requireStaff();
+  await requireStaff(MANAGER_ROLES);
   const sp = await searchParams;
   const per = resolvePeriod(sp.p, sp.from, sp.to);
   const [r, { data: acc }] = await Promise.all([buildReport(per.from, per.to), supabaseAdmin().from("settings").select("value").eq("key", "private.accounting").maybeSingle()]);

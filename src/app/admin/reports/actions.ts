@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { assertStaff } from "@/lib/auth";
+import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buildReport, reportCsv } from "@/lib/reports";
 import { buildReportPdf } from "@/lib/pdf";
@@ -10,7 +10,7 @@ import { resolvePeriod } from "./period";
 
 /** Emails the report (PDF + CSV files) to the tax advisor and remembers the address. */
 export async function sendReport(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const to = String(fd.get("advisor") ?? "").trim();
   const per = resolvePeriod(String(fd.get("p") || "") || undefined, String(fd.get("from") || "") || undefined, String(fd.get("to") || "") || undefined);
   const back = (msg: string): never => redirect(`/admin/reports?p=${encodeURIComponent(per.key === "custom" ? "" : per.key)}${per.key === "custom" ? `&from=${per.from}&to=${per.to}` : ""}&msg=${encodeURIComponent(msg)}`);

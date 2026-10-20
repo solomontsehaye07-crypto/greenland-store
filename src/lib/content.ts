@@ -21,13 +21,16 @@ export interface CmsPage {
 }
 
 export async function getSite(): Promise<{ site: SiteSettings; theme: Theme; store: Record<string, string>; design: Design }> {
-  const { data } = await supabasePublic().from("settings").select("key, value").in("key", ["public.site", "public.theme", "public.store", "public.designs"]);
+  const { data } = await supabasePublic().from("settings").select("key, value").in("key", ["public.site", "public.theme", "public.store", "public.designs", "public.shop"]);
   const get = (k: string) => (data ?? []).find((r) => r.key === k)?.value ?? {};
   const legacy = get("public.theme") as Partial<Theme>;
   const { design } = currentDesign(storeFrom(get("public.designs"), legacy));
   const site = { ...(get("public.site") as SiteSettings) };
   if (design.announcement && (design.announcement.de || design.announcement.en))
     site.announcements = [{ text: design.announcement }, ...(site.announcements ?? [])];
+  const shop = get("public.shop") as { paused?: boolean; message?: L10n };
+  if (shop.paused)
+    site.announcements = [{ text: shop.message && (shop.message.de || shop.message.en) ? shop.message : { de: "Der Onlineshop pausiert gerade – Bestellungen sind bald wieder möglich.", en: "The online shop is paused – orders will be possible again soon." } }];
   return {
     site,
     theme: { ...DEFAULT_THEME, ...legacy, paper: design.paper, sand: design.sand, ink: design.ink, terra: design.terra, saffron: design.saffron, forest: design.forest, indigo: design.indigo },

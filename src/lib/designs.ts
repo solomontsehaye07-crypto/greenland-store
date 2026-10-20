@@ -116,3 +116,13 @@ export function onColor(hex: string) {
   });
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.38 ? "#1C1915" : "#FFFFFF";
 }
+
+let wallFmt: Intl.DateTimeFormat | null = null;
+/** The real moment when a Berlin calendar day (YYYY-MM-DD) starts. */
+export function berlinDayStart(day = berlinToday()) {
+  wallFmt ??= new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const guess = new Date(`${day}T00:00:00Z`);
+  const p = Object.fromEntries(wallFmt.formatToParts(guess).map((x) => [x.type, x.value]));
+  const wall = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+  return new Date(guess.getTime() - (wall - guess.getTime()));
+}

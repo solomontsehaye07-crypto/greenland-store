@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { assertStaff } from "@/lib/auth";
+import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { decryptJson, DEFAULT_PAYMENTS, DEFAULT_PICKUP, encryptJson, type PaymentPublic, type PaymentSecrets, type PickupSettings, type Window } from "@/lib/commerce";
 
@@ -29,7 +29,7 @@ async function upsert(key: string, value: unknown) {
 const TYPES = ["parcel", "frozen", "local", "pickup", "dropship"];
 
 export async function saveShippingMethod(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const id = Number(fd.get("id")) || null;
   const type = txt(fd.get("type"));
   if (!TYPES.includes(type)) back("/admin/settings/shipping", "Please choose a type.");
@@ -68,7 +68,7 @@ export async function saveShippingMethod(fd: FormData) {
 }
 
 export async function toggleShippingMethod(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   await supabaseAdmin().from("shipping_methods").update({ active: fd.get("active") === "true" }).eq("id", Number(fd.get("id")));
   revalidatePath("/", "layout");
   back("/admin/settings/shipping", fd.get("active") === "true" ? "Delivery option switched on." : "Delivery option switched off.");
@@ -80,7 +80,7 @@ const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export async function savePickup(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const days = {} as PickupSettings["days"];
   for (const d of DAYS) {
     const ws: Window[] = [];
@@ -122,7 +122,7 @@ export async function savePickup(fd: FormData) {
 const SECRET_FIELDS: (keyof PaymentSecrets)[] = ["stripeSecretKey", "stripeWebhookSecret", "paypalClientId", "paypalSecret", "vivaClientId", "vivaSecret", "vivaSourceCode"];
 
 export async function savePayments(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const sb = supabaseAdmin();
   const { data } = await sb.from("settings").select("key, value").in("key", ["public.payments", "private.payments"]);
   const get = (k: string) => (data ?? []).find((r) => r.key === k)?.value;
@@ -170,7 +170,7 @@ export async function savePayments(fd: FormData) {
 // ---------------- receipts, store details, email ----------------
 
 export async function saveReceiptSettings(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const store = Object.fromEntries(["name", "owner", "street", "postal", "city", "phone", "whatsapp", "email", "vat_id"].map((k) => [k, txt(fd.get(k))]));
   const receipt = { title: txt(fd.get("receipt_title")), tax_number: txt(fd.get("tax_number")), footer: txt(fd.get("receipt_footer")) };
   await upsert("public.store", store);

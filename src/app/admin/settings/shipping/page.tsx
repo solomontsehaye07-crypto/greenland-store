@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireStaff } from "@/lib/auth";
+import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { getPickupSettings, pickupSlots } from "@/lib/commerce";
@@ -29,7 +29,7 @@ const DAYS: [string, string][] = [["mon", "Monday"], ["tue", "Tuesday"], ["wed",
 type M = Record<string, any>;
 
 export default async function ShippingSettings({ searchParams }: { searchParams: Promise<{ edit?: string; pickup?: string; msg?: string }> }) {
-  await requireStaff();
+  await requireStaff(MANAGER_ROLES);
   const { edit, pickup: editPickup, msg } = await searchParams;
   const { data } = await supabaseAdmin().from("shipping_methods").select("*").order("sort").order("id");
   const methods = (data ?? []) as M[];

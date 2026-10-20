@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { assertStaff } from "@/lib/auth";
+import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { applyRecommended, getPricingSettings } from "@/lib/pricing";
 
@@ -38,7 +38,7 @@ function done() {
 }
 
 export async function recordWriteoff(fd: FormData) {
-  const user = await assertStaff();
+  const user = await assertStaff(MANAGER_ROLES);
   const p = await productFrom(fd);
   const qty = Math.abs(Math.round(Number(fd.get("qty"))));
   const reason = ["spoiled", "damage", "expired", "theft", "own_use"].includes(String(fd.get("reason"))) ? String(fd.get("reason")) : "spoiled";
@@ -54,7 +54,7 @@ export async function recordWriteoff(fd: FormData) {
 }
 
 export async function recordDelivery(fd: FormData) {
-  const user = await assertStaff();
+  const user = await assertStaff(MANAGER_ROLES);
   const p = await productFrom(fd);
   const qty = Math.abs(Math.round(Number(fd.get("qty"))));
   const cost = dec(fd.get("cost"));
@@ -75,7 +75,7 @@ export async function recordDelivery(fd: FormData) {
 }
 
 export async function addStoreSale(fd: FormData) {
-  const user = await assertStaff();
+  const user = await assertStaff(MANAGER_ROLES);
   const day = text(fd.get("day"));
   const g7 = dec(fd.get("gross_7")) ?? 0;
   const g19 = dec(fd.get("gross_19")) ?? 0;
@@ -87,7 +87,7 @@ export async function addStoreSale(fd: FormData) {
 }
 
 export async function addExpense(fd: FormData) {
-  const user = await assertStaff();
+  const user = await assertStaff(MANAGER_ROLES);
   const day = text(fd.get("day"));
   const amount = dec(fd.get("amount"));
   const category = text(fd.get("category")) ?? "Other";
@@ -98,7 +98,7 @@ export async function addExpense(fd: FormData) {
 }
 
 export async function deleteEntry(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const table = String(fd.get("table"));
   const id = Number(fd.get("id"));
   if (!["store_sales", "expenses"].includes(table) || !id) back(fd, "Nothing deleted.");
