@@ -128,6 +128,11 @@ export async function buildReceiptPdf({ order: o, store, receipt, bank }: Receip
   let pos = items.length;
   if (ship > 0) line(String(++pos), (o.shipping_methods?.name as string) || "Versand", "1", shipRate, ship, ship);
   if (pack > 0) line(String(++pos), "Tiefkühl-Verpackung (Isolierbox, Kühlakkus)", String(o.frozen_boxes || 1), shipRate, pack / (Number(o.frozen_boxes) || 1), pack);
+  if (Number(o.discount_total) > 0) {
+    y -= 2;
+    text(`Rabattcode ${o.coupon_code ?? ""}: ${eur(Number(o.discount_total))} bereits in den Preisen abgezogen`, M, y, 8.5, font, MUTED);
+    y -= 12;
+  }
 
   // --- VAT breakdown per rate and totals
   y -= 8;

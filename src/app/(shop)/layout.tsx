@@ -6,9 +6,11 @@ import { HeaderScroll, RevealOnScroll } from "@/components/reveal";
 import { getSite } from "@/lib/content";
 import { getLang, ui } from "@/lib/i18n";
 import { getFrozenInfo } from "@/lib/commerce";
+import { WelcomePopup } from "@/components/welcome-popup";
+import { currentCustomer } from "@/lib/customer";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
-  const [{ site }, lang, frozen] = await Promise.all([getSite(), getLang(), getFrozenInfo()]);
+  const [{ site }, lang, frozen, me] = await Promise.all([getSite(), getLang(), getFrozenInfo(), currentCustomer()]);
   return (
     <>
       <Header />
@@ -16,6 +18,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <Footer />
       <CartDrawer lang={lang} frozen={frozen} />
       <RevealOnScroll />
+      {site.welcomePopup !== false && <WelcomePopup lang={lang} signedIn={!!me} photo={site.welcomePhoto || "https://images.unsplash.com/photo-1763048443535-1243379234e2?w=900&q=70&auto=format&fit=crop"} />}
       <HeaderScroll />
       {site.showWhatsappButton !== false && site.whatsapp && (
         <a

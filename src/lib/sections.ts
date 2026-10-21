@@ -373,6 +373,8 @@ export const SITE_FIELDS: Field[] = [
   { key: "seoTitle", label: "Search engine title", kind: "text" },
   { key: "seoDescription", label: "Search engine description", kind: "textarea" },
   { key: "showWhatsappButton", label: "Show floating WhatsApp button", kind: "toggle" },
+  { key: "welcomePopup", label: "Show the welcome offer pop-up (10 % for new sign-ups)", kind: "toggle" },
+  { key: "welcomePhoto", label: "Photo in the welcome pop-up", kind: "image" },
 ];
 
 export const THEME_FIELDS: Field[] = [
@@ -417,4 +419,6 @@ export interface SiteSettings {
   seoTitle?: L10n;
   seoDescription?: L10n;
   showWhatsappButton?: boolean;
+  welcomePopup?: boolean;
+  welcomePhoto?: string;
 }

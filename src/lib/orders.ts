@@ -9,6 +9,7 @@ import { emailConfig, sendEmail } from "./notify";
 import { depositFor, getFrozenPack, getPaymentConfig, getShippingArea, pickupSlots, type PaymentConfig } from "./commerce";
 import { buildReceiptPdf } from "./pdf";
 import { esc, siteUrl } from "./site";
+import { checkCoupon, consumeCoupon } from "./coupons";
 
 export const CheckoutSchema = z.object({
   email: z.string().email(),
@@ -26,6 +27,7 @@ export const CheckoutSchema = z.object({
   notes: z.string().max(500).optional(),
   age_confirmed: z.boolean().optional(),
   items: z.array(z.object({ id: z.number().int(), qty: z.number().int().min(1).max(99) })).min(1),
+  coupon: z.string().max(40).optional(),
 });
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 
@@ -57,7 +59,18 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
   if (lines.some((l) => l.age_restricted) && !input.age_confirmed)
     throw new Error("Please confirm you are 18 or older to buy alcohol.");
 
+  // discount code: the percentage is taken off every unit price (rounded down to the cent), so VAT,
+  // receipts and the payment provider all see the same, already reduced prices
+  const listSubtotal = round2(lines.reduce((s, l) => s + l.price * l.qty, 0));
+  let couponCode: string | null = null;
+  if (input.coupon?.trim()) {
+    const chk = await checkCoupon(input.coupon, input.email, listSubtotal);
+    if (!chk.ok) throw new Error(chk.reason);
+    couponCode = chk.code;
+    for (const l of lines) l.price = Math.floor(l.price * (1 - chk.percent_off / 100) * 100) / 100;
+  }
   const subtotal = round2(lines.reduce((s, l) => s + l.price * l.qty, 0));
+  const discountTotal = round2(listSubtotal - subtotal);
   const [{ data: methods }, pack, area] = await Promise.all([sb.from("shipping_methods").select("*").eq("active", true), getFrozenPack(), getShippingArea()]);
   if (!area.abroad && input.country !== "DE") throw new Error("We currently deliver within Germany only. Pickup in store is always possible.");
   const quotes = quoteShipping((methods ?? []) as ShippingMethod[], lines, subtotal, input.country, input.postal, pack);
@@ -113,10 +126,13 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
       deposit_amount: deposit > 0 ? deposit : null,
       balance_due: input.payment === "cash" ? round2(total - deposit) : 0,
       notes: input.notes ?? null,
+      coupon_code: couponCode,
+      discount_total: discountTotal,
     })
     .select("id, number")
     .single();
   if (error || !order) throw new Error("Could not create order. Please try again.");
+  if (couponCode) await consumeCoupon(couponCode);
 
   await sb.from("order_items").insert(
     lines.map((l) => ({

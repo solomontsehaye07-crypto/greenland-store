@@ -102,6 +102,9 @@ export async function Header() {
                 <input id="q" name="q" autoFocus placeholder={ui("searchPlaceholder", lang)} className="input rounded-full" />
               </form>
             </details>
+            <Link href="/account" className="grid h-10 w-10 place-items-center rounded-full hover:bg-surface" aria-label={lang === "de" ? "Mein Konto" : "My account"} title={lang === "de" ? "Mein Konto" : "My account"}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+            </Link>
             <div className="px-2"><LangSwitch lang={lang} /></div>
             <CartButton label={ui("cart", lang)} />
           </div>

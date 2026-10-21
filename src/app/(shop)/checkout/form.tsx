@@ -51,6 +51,7 @@ export function CheckoutForm({
   allowAsap,
   pickupNote,
   pickupAddress,
+  prefill,
 }: {
   methods: ShippingMethod[];
   pack: FrozenPack;
@@ -64,11 +65,15 @@ export function CheckoutForm({
   allowAsap: boolean;
   pickupNote?: string;
   pickupAddress?: string;
+  prefill?: Saved; // from the customer's account when signed in
 }) {
   const { lines, subtotal, ready, clear } = useCart();
   // details from the last order on this device (only if the customer agreed to remember them)
-  const [saved] = useState<Saved>(() => readSaved());
+  const [saved] = useState<Saved>(() => ({ ...readSaved(), ...Object.fromEntries(Object.entries(prefill ?? {}).filter(([, v]) => v)) }));
   const [rememberMe, setRememberMe] = useState(true);
+  const [coupon, setCoupon] = useState("");
+  const [couponState, setCouponState] = useState<{ ok: boolean; percent_off?: number; reason?: string } | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
   const [country, setCountry] = useState("DE");
   const [postal, setPostal] = useState(saved.postal ?? "");
   const [code, setCode] = useState<string>("");
@@ -82,7 +87,20 @@ export function CheckoutForm({
   const isPickup = chosen?.method.type === "pickup";
   const cashAllowed = chosen ? (chosen.method.type === "pickup" && cashPickup) || (chosen.method.type === "local" && cashLocal) : false;
   const hasAlcohol = lines.some((l) => l.age_restricted);
-  const total = subtotal + (chosen?.price ?? 0);
+  const discount = couponState?.ok && couponState.percent_off ? Math.round(subtotal * couponState.percent_off) / 100 : 0;
+  const total = subtotal - discount + (chosen?.price ?? 0);
+  const checkCode = async (code: string, email: string) => {
+    if (!code.trim()) return setCouponState(null);
+    setCouponBusy(true);
+    try {
+      const r = await fetch(`/api/coupon?code=${encodeURIComponent(code)}&email=${encodeURIComponent(email)}&subtotal=${subtotal}`);
+      setCouponState(await r.json());
+    } catch {
+      setCouponState({ ok: false, reason: "Could not check the code." });
+    } finally {
+      setCouponBusy(false);
+    }
+  };
   const dep = payment === "cash" ? depositOf(deposit, total) : 0;
   const needsDeposit = dep > 0;
 
@@ -132,6 +150,7 @@ export function CheckoutForm({
           notes: f.get("notes") || undefined,
           age_confirmed: f.get("age") === "on",
           items: lines.map((l) => ({ id: l.id, qty: l.qty })),
+          coupon: couponState?.ok ? coupon.trim() : undefined,
         }),
       });
       const data = await r.json();
@@ -295,8 +314,35 @@ export function CheckoutForm({
             </li>
           ))}
         </ul>
+        <div className="border-t border-line pt-4">
+          <label className="label" htmlFor="coupon">Discount code</label>
+          <div className="flex gap-2">
+            <input
+              id="coupon"
+              value={coupon}
+              onChange={(e) => {
+                setCoupon(e.target.value.toUpperCase());
+                setCouponState(null);
+              }}
+              onBlur={(e) => checkCode(e.target.value, String((e.currentTarget.form?.elements.namedItem("email") as HTMLInputElement | null)?.value ?? ""))}
+              placeholder="e.g. WELCOME-XXXXX"
+              autoComplete="off"
+              data-no-memory
+              className="input flex-1 uppercase"
+            />
+            <button type="button" onClick={(e) => checkCode(coupon, String((e.currentTarget.form?.elements.namedItem("email") as HTMLInputElement | null)?.value ?? ""))} disabled={couponBusy || !coupon.trim()} className="btn btn-ghost shrink-0">
+              {couponBusy ? "…" : "Apply"}
+            </button>
+          </div>
+          {couponState && (
+            <p className={`mt-1 text-xs ${couponState.ok ? "text-forest" : "text-danger"}`} role="status">
+              {couponState.ok ? `${couponState.percent_off} % off – applied.` : couponState.reason}
+            </p>
+          )}
+        </div>
         <div className="space-y-1 border-t border-line pt-4 text-sm">
           <div className="flex justify-between"><span>Subtotal</span><span>{money(subtotal)}</span></div>
+          {discount > 0 && <div className="flex justify-between text-forest"><span>Discount {couponState?.percent_off} %</span><span>− {money(discount)}</span></div>}
           <div className="flex justify-between"><span>Delivery</span><span>{chosen ? (chosen.delivery ? money(chosen.delivery) : "Free") : "—"}</span></div>
           {chosen && chosen.packaging.boxes > 0 && (
             <div className="flex justify-between"><span>Frozen packaging ({chosen.packaging.boxes} {chosen.packaging.boxes === 1 ? "box" : "boxes"})</span><span>{money(chosen.packaging.fee)}</span></div>

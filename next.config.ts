@@ -8,7 +8,7 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 const SUPABASE = (process.env.NEXT_PUBLIC_SUPABASE_URL || "https://prtstuzxigbntxoaoqkm.supabase.co").replace(/\/$/, "");
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
