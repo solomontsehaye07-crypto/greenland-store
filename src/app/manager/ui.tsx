@@ -65,3 +65,15 @@ export function OrdersNav({ active }: { active: "customers" | "suppliers" }) {
     </nav>
   );
 }
+
+/** Clear back button: solid, with an arrow and the word "Back" (not just a small "‹"). */
+export function BackButton({ href, label = "Back" }: { href: string; label?: string }) {
+  return (
+    <Link href={href} className="inline-flex h-12 shrink-0 items-center gap-1.5 rounded-xl bg-ink pl-2.5 pr-4 text-base font-bold text-white shadow-sm active:opacity-80" aria-label={label}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M15 5l-7 7 7 7" />
+      </svg>
+      Back
+    </Link>
+  );
+}

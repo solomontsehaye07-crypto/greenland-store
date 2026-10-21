@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { offerLink } from "@/lib/purchasing";
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
-import { Msg } from "../../../../ui";
+import { Msg, BackButton } from "../../../../ui";
 import { CopyButton } from "../../copy-button";
 import { cancelRequestAction, reopenOfferAction } from "../../../../actions";
 import { OfferForm, type OfferLine } from "./offer-form";
@@ -63,7 +63,7 @@ export default async function OfferPage({ params, searchParams }: { params: Prom
   return (
     <div className="space-y-4 pb-8">
       <div className="flex items-center gap-2">
-        <Link href="/manager/orders/suppliers" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-line bg-white text-xl" aria-label="Back to suppliers">‹</Link>
+        <BackButton href="/manager/orders/suppliers" />
         <div className="min-w-0">
           <h1 className="truncate text-lg font-bold" data-no-translate>{sup.name}</h1>
           <p className="text-xs text-muted">{code}{po.sent_at ? ` · asked ${fmt(po.sent_at)}` : ""}</p>

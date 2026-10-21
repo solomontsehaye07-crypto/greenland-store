@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { SupplierBadges, SupplierTypePicker } from "@/components/supplier-badges";
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
-import { Msg, OrdersNav } from "../../ui";
+import { Msg, OrdersNav, BackButton } from "../../ui";
 import { QtyField } from "@/components/qty-field";
 import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
 import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
@@ -103,7 +103,7 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
   const header = (extra?: React.ReactNode) => (
     <div className="sticky top-[calc(57px+env(safe-area-inset-top))] z-10 -mx-4 border-b border-line bg-[var(--paper)]/95 px-4 pb-2 pt-1 backdrop-blur">
       <div className="flex items-center gap-2">
-        <Link href={view === "list" ? `${BASE}?s=${sup.id}` : BASE} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-line bg-white text-xl" aria-label={view === "list" ? "Back to adding products" : "All suppliers"}>‹</Link>
+        <BackButton href={view === "list" ? `${BASE}?s=${sup.id}` : BASE} label={view === "list" ? "Back to adding products" : "Back to all suppliers"} />
         <details className="min-w-0 flex-1">
           <summary className="cursor-pointer list-none">
             <span className="block truncate text-base font-bold" data-no-translate>{sup.name}</span>
@@ -363,7 +363,7 @@ function NewSupplier({ msg, canCancel }: { msg?: string; canCancel: boolean }) {
       <OrdersNav active="suppliers" />
       <Msg msg={msg} />
       <div className="flex items-center gap-2">
-        {canCancel && <Link href={BASE} className="grid h-11 w-11 place-items-center rounded-xl border-2 border-line bg-white text-xl" aria-label="Back to suppliers">‹</Link>}
+        {canCancel && <BackButton href={BASE} label="Back to suppliers" />}
         <h1 className="text-lg font-bold">New supplier</h1>
       </div>
       <form action={addSupplier} className="mt-3 space-y-3 rounded-2xl border border-line bg-white p-4">

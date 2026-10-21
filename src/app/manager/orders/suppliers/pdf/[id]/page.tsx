@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BackButton } from "../../../../ui";
 import { supabaseAdmin } from "@/lib/supabase";
 import { PdfView } from "@/components/pdf-view";
 
@@ -14,7 +15,7 @@ export default async function PdfPreview({ params, searchParams }: { params: Pro
   return (
     <div className="pb-6">
       <div className="mb-3 flex items-center gap-2">
-        <Link href={backTo} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-line bg-white text-xl" aria-label="Back">‹</Link>
+        <BackButton href={backTo} />
         <div className="min-w-0">
           <h1 className="truncate text-base font-bold">{code}</h1>
           <p className="truncate text-xs text-muted" data-no-translate>{(po?.suppliers as unknown as { name: string } | null)?.name}</p>
