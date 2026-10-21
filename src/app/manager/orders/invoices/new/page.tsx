@@ -3,11 +3,13 @@ import { getSeries } from "@/lib/invoices";
 import { BackButton, Msg } from "../../../ui";
 import { CustomerForm } from "../customer-form";
 import { newInvoice } from "../actions";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // Step 1 of a new invoice: who is it for?
 export default async function NewInvoice({ searchParams }: { searchParams: Promise<{ msg?: string; find?: string; add?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const { msg, find = "", add } = await searchParams;
   const [{ data }, series] = await Promise.all([supabaseAdmin().from("business_customers").select("id, name, city, contact_name").eq("active", true).order("name"), getSeries()]);
   const term = find.trim().toLowerCase();

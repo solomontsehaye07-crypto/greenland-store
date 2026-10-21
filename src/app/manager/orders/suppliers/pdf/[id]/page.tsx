@@ -2,11 +2,13 @@ import Link from "next/link";
 import { BackButton } from "../../../../ui";
 import { supabaseAdmin } from "@/lib/supabase";
 import { PdfView } from "@/components/pdf-view";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // In-app PDF preview, so the Manager app never jumps to Safari / Chrome.
 export default async function PdfPreview({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const id = Number((await params).id);
   const { back } = await searchParams;
   const { data: po } = await supabaseAdmin().from("purchase_orders").select("number, request_kind, suppliers(name)").eq("id", id).single();

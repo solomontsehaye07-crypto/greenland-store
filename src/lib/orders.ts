@@ -8,7 +8,7 @@ import { forwardDropshipItems } from "./purchasing";
 import { emailConfig, sendEmail } from "./notify";
 import { depositFor, getFrozenPack, getPaymentConfig, getShippingArea, pickupSlots, type PaymentConfig } from "./commerce";
 import { buildReceiptPdf } from "./pdf";
-import { siteUrl } from "./site";
+import { esc, siteUrl } from "./site";
 
 export const CheckoutSchema = z.object({
   email: z.string().email(),
@@ -34,6 +34,12 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
   const sb = supabaseAdmin();
   cfg = cfg ?? (await getPaymentConfig());
   if (!cfg.methods.includes(input.payment)) throw new Error("This payment method is not available.");
+  // abuse guard: unpaid orders (cash / bank) reserve stock, so one email may only have a few open at a time
+  if (input.payment === "cash" || input.payment === "bank") {
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { count } = await sb.from("orders").select("id", { count: "exact", head: true }).ilike("email", input.email.trim()).in("status", ["pending", "processing"]).gte("created_at", since);
+    if ((count ?? 0) >= 3) throw new Error("You already have open orders waiting for payment or pickup. Please complete those first or contact us.");
+  }
   const ids = input.items.map((i) => i.id);
   const { data: products } = await sb
     .from("products")
@@ -199,21 +205,21 @@ async function sendConfirmation(orderId: string) {
   if (!r) return;
   const o = r.order;
   const rows = (o.order_items as { title: string; qty: number; unit_price: number }[])
-    .map((i) => `<tr><td style="padding:4px 0">${i.qty} × ${i.title}</td><td align="right">${money(i.qty * i.unit_price)}</td></tr>`)
+    .map((i) => `<tr><td style="padding:4px 0">${i.qty} × ${esc(i.title)}</td><td align="right">${money(i.qty * i.unit_price)}</td></tr>`)
     .join("");
   const { data: st } = await supabaseAdmin().from("settings").select("value").eq("key", "public.payments").maybeSingle();
   const bank = (st?.value as { bank?: { holder?: string; iban?: string; bic?: string; bankName?: string; days?: number } } | null)?.bank;
   const extra =
     o.payment_method === "bank" && bank?.iban
-      ? `<p style="font-family:sans-serif;font-size:14px;background:#f6f3ec;padding:12px;border-radius:8px"><b>Please transfer ${money(o.total)}</b> within ${bank.days ?? 7} days to:<br>${bank.holder ?? ""}<br>IBAN ${bank.iban}${bank.bic ? `<br>BIC ${bank.bic}` : ""}${bank.bankName ? `<br>${bank.bankName}` : ""}<br>Reference: <b>Order ${o.number}</b></p>`
+      ? `<p style="font-family:sans-serif;font-size:14px;background:#f6f3ec;padding:12px;border-radius:8px"><b>Please transfer ${money(o.total)}</b> within ${bank.days ?? 7} days to:<br>${esc(bank.holder ?? "")}<br>IBAN ${esc(bank.iban)}${bank.bic ? `<br>BIC ${esc(bank.bic)}` : ""}${bank.bankName ? `<br>${esc(bank.bankName)}` : ""}<br>Reference: <b>Order ${o.number}</b></p>`
       : Number(o.balance_due) > 0
         ? `<p style="font-family:sans-serif;font-size:14px;background:#f6f3ec;padding:12px;border-radius:8px">${o.deposit_amount ? `Deposit paid: <b>${money(o.deposit_amount)}</b><br>` : ""}To pay on collection: <b>${money(o.balance_due)}</b></p>`
         : "";
-  const pickup = o.pickup_slot ? `<p style="font-family:sans-serif;font-size:14px">Pickup: <b>${o.pickup_slot}</b></p>` : "";
+  const pickup = o.pickup_slot ? `<p style="font-family:sans-serif;font-size:14px">Pickup: <b>${esc(o.pickup_slot)}</b></p>` : "";
   const html = `
     <h2 style="font-family:sans-serif;color:#1D5C3F">Thank you for your order #${o.number}</h2>
     <table style="font-family:sans-serif;font-size:14px" width="100%">${rows}
-      <tr><td style="padding:4px 0">${(o.shipping_methods as { name: string } | null)?.name ?? "Shipping"}</td><td align="right">${money(o.shipping_total)}</td></tr>
+      <tr><td style="padding:4px 0">${esc((o.shipping_methods as { name: string } | null)?.name ?? "Shipping")}</td><td align="right">${money(o.shipping_total)}</td></tr>
       <tr><td style="padding:6px 0"><b>Total (incl. VAT)</b></td><td align="right"><b>${money(o.total)}</b></td></tr>
     </table>
     <p style="font-family:sans-serif;font-size:13px;color:#555">Payment: ${PAY_TEXT[o.payment_method ?? o.payment_provider ?? ""] ?? o.payment_provider ?? ""}</p>

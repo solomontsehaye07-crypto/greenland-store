@@ -6,8 +6,11 @@ import { siteUrl } from "@/lib/site";
 
 // Runs daily (Cloudflare cron trigger in wrangler.jsonc, or vercel.json on Vercel). Creates alerts, drafts refill orders per supplier and emails a digest.
 export async function GET(req: Request) {
-  if (process.env.CRON_SECRET && req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // only the Worker's own cron (worker.ts) may call this; without a configured secret nobody can
+  const secret = process.env.CRON_SECRET ?? "";
+  const given = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const same = secret.length > 0 && given.length === secret.length && [...secret].every((c, i) => c === given[i]);
+  if (!same) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sb = supabaseAdmin();
   // offers whose end date has passed go back to the regular price

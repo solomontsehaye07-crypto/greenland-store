@@ -73,7 +73,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-10 pt-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <nav aria-label="Breadcrumb" className="text-xs text-muted">
         <Link href="/" className="hover:text-ink">{ui("home", lang)}</Link>
         {parent && <><span className="px-1.5">/</span><Link href={`/c/${parent.slug}`} className="hover:text-ink">{catT(parent)}</Link></>}

@@ -6,6 +6,7 @@ import { Msg, OrdersNav } from "../ui";
 import { collectRest, moveOrder } from "../actions";
 import { createLabelAction } from "../../admin/actions";
 import { getDhl } from "@/lib/dhl";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ const GROUPS: { status: string[]; title: string; color: string; next: [string, s
 ];
 
 export default async function Orders({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const { msg } = await searchParams;
   const dhl = await getDhl();
   const { data } = await supabaseAdmin()

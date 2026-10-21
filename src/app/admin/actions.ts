@@ -2,11 +2,11 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
-import { assertStaff } from "@/lib/auth";
+import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
 import { draftRefillOrders, receivePo, renderPoPdf, sendPo, nextStatus, poShareText, archivePdf } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
-import { siteUrl } from "@/lib/site";
+import { esc, safePath, siteUrl } from "@/lib/site";
 import { validTypes } from "@/lib/supplier-types";
 import { cancelDhlLabel, createDhlLabel, dhlTrackingUrl } from "@/lib/dhl";
 import { createClient } from "@supabase/supabase-js";
@@ -15,29 +15,6 @@ const num = (v: FormDataEntryValue | null) => (v === null || v === "" ? null : N
 const str = (v: FormDataEntryValue | null) => (v === null || String(v).trim() === "" ? null : String(v).trim());
 
 // ---------- auth ----------
-export async function signIn(_: unknown, fd: FormData) {
-  const sb = await supabaseServer();
-  const email = String(fd.get("email"));
-  const password = String(fd.get("password") ?? "");
-  if (password) {
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if (error) return { error: "Wrong email or password." };
-    redirect("/admin");
-  }
-  // Implicit flow: the session travels inside the email link, so it can be opened on any device.
-  const mailer = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    auth: { flowType: "implicit", persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  const { error } = await mailer.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: `${siteUrl()}/admin/auth/confirm`, shouldCreateUser: false },
-  });
-  if (error) {
-    if (error.status === 429) return { error: "Too many sign-in emails in a short time. Please wait a few minutes and try again." };
-    return { error: error.message };
-  }
-  return { ok: "Check your inbox for a sign-in link." };
-}
 
 export async function signOut() {
   const sb = await supabaseServer();
@@ -296,8 +273,8 @@ export async function setOrderStatus(fd: FormData) {
     const isDhl = String(cur?.carrier ?? "").startsWith("DHL");
     const link = tracking ? (isDhl ? dhlTrackingUrl(tracking) : sm?.tracking_url ? sm.tracking_url.replace("{tracking}", encodeURIComponent(tracking)) : null) : null;
     const msg: Record<string, string> = {
-      shipped: `Your order #${o?.number} is on its way${isDhl ? " with DHL" : sm?.carrier ? ` with ${sm.carrier}` : ""}.${tracking ? ` Tracking number: ${link ? `<a href="${link}">${tracking}</a>` : tracking}` : ""}`,
-      ready_for_pickup: `Your order #${o?.number} is ready for pickup${o?.pickup_slot ? ` (${o.pickup_slot})` : ""}.${Number(o?.balance_due) > 0 ? ` Amount to pay on collection: ${Number(o?.balance_due).toFixed(2).replace(".", ",")} €.` : ""}`,
+      shipped: `Your order #${o?.number} is on its way${isDhl ? " with DHL" : sm?.carrier ? ` with ${esc(sm.carrier)}` : ""}.${tracking ? ` Tracking number: ${link ? `<a href="${esc(link)}">${esc(tracking)}</a>` : tracking}` : ""}`,
+      ready_for_pickup: `Your order #${o?.number} is ready for pickup${o?.pickup_slot ? ` (${esc(o.pickup_slot)})` : ""}.${Number(o?.balance_due) > 0 ? ` Amount to pay on collection: ${Number(o?.balance_due).toFixed(2).replace(".", ",")} €.` : ""}`,
       delivered: `Your order #${o?.number} was delivered. Enjoy!`,
       cancelled: `Your order #${o?.number} was cancelled. Contact us if you have questions.`,
     };
@@ -313,7 +290,7 @@ export async function resolveAlert(fd: FormData) {
 }
 
 export async function saveStoreSettings(fd: FormData) {
-  await assertStaff();
+  await assertStaff(MANAGER_ROLES);
   const value = Object.fromEntries(["name", "street", "postal", "city", "phone", "whatsapp", "email", "vat_id", "owner"].map((k) => [k, String(fd.get(k) ?? "")]));
   await supabaseAdmin().from("settings").upsert({ key: "public.store", value });
   revalidatePath("/admin/settings");
@@ -354,7 +331,7 @@ export async function markOrderPaid(fd: FormData) {
 export async function createLabelAction(fd: FormData) {
   await assertStaff();
   const id = String(fd.get("order_id"));
-  const back = String(fd.get("back") || `/admin/orders/${id}`);
+  const back = safePath(fd.get("back"), `/admin/orders/${id}`);
   let msg: string;
   try {
     const r = await createDhlLabel(id);

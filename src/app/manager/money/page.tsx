@@ -2,12 +2,14 @@ import Link from "next/link";
 import { computePnlSeries, monthRange } from "@/lib/finance";
 import { money } from "@/lib/format";
 import { Section, Tile } from "../ui";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 const pct = (x: number | null) => (x === null ? "–" : `${x.toFixed(1).replace(".", ",")} %`);
 
 export default async function Money() {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const cur = monthRange();
   const prev = monthRange(new Date(Date.UTC(cur.from.getUTCFullYear(), cur.from.getUTCMonth() - 1, 1)).toISOString().slice(0, 7));
   const [p, q] = await computePnlSeries([cur, prev]);

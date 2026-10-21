@@ -3,10 +3,12 @@ import { currentDesign, storeFrom } from "@/lib/designs";
 import { money } from "@/lib/format";
 import { Msg, Section } from "../ui";
 import { setPaused, setTopBar, toggleDelivery, useDesignNow } from "../actions";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Controls({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const { msg } = await searchParams;
   const sb = supabaseAdmin();
   const [{ data: st }, { data: methods }] = await Promise.all([

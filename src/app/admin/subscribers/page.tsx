@@ -7,7 +7,7 @@ export default async function Subscribers() {
   await requireStaff();
   const { data, count } = await supabaseAdmin().from("subscribers").select("email, lang, source, created_at", { count: "exact" }).order("created_at", { ascending: false }).limit(1000);
   const rows = data ?? [];
-  const csv = "email,language,signed_up\n" + rows.map((r) => `${r.email},${r.lang},${r.created_at.slice(0, 10)}`).join("\n");
+  const csv = "email,language,signed_up\n" + rows.map((r) => [r.email, r.lang, r.created_at.slice(0, 10)].map((v) => `"${(/^[=+\-@]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`).join(",")).join("\n");
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">

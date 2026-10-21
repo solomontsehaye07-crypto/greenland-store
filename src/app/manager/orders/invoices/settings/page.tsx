@@ -2,11 +2,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { formatNumber, getSeries } from "@/lib/invoices";
 import { BackButton, Msg } from "../../../ui";
 import { saveSeries } from "../actions";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 // Invoice numbers continue from the last number you used before (e.g. in your old program).
 export default async function InvoiceSettings({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const { msg } = await searchParams;
   const s = await getSeries();
   const { data: last } = await supabaseAdmin().from("invoices").select("number").not("number", "is", null).order("issue_date", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle();

@@ -160,7 +160,11 @@ export async function buildReport(from: string, to: string): Promise<Report> {
 // ---------------- CSV (semicolon, German number format: opens directly in Excel / DATEV import) ----------------
 
 const n = (x: number | null) => (x == null ? "" : x.toFixed(2).replace(".", ","));
-const esc = (s: string) => (/[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+// quotes fields and defuses spreadsheet formulas (a value starting with = + - @ would run in Excel)
+const esc = (raw: string) => {
+  const s = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+  return /[;"\n']/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
 const de = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 
 export function reportCsv(r: Report, part: "sales" | "purchases" | "losses" | "expenses"): string {

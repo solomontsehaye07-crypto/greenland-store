@@ -3,13 +3,13 @@
 import { redirect } from "next/navigation";
 
 /** Only same-site paths are allowed as the page to open after sign-in. */
-function safeNext(v: FormDataEntryValue | null) {
-  const s = String(v ?? "");
-  return s.startsWith("/") && !s.startsWith("//") ? s : "/admin";
-}
+const safeNext = (v: FormDataEntryValue | null) => {
+  const p = safePath(v, "/admin");
+  return p.startsWith("/admin") || p.startsWith("/manager") ? p : "/admin";
+};
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
-import { siteUrl } from "@/lib/site";
+import { safePath, siteUrl } from "@/lib/site";
 import { waNumber } from "@/lib/notify";
 
 export type LoginState = null | { step?: "code"; channel?: "email" | "sms"; target?: string; ok?: string; error?: string };

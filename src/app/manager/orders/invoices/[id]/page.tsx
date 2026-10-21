@@ -8,6 +8,7 @@ import { AutoForm } from "@/components/auto-form";
 import { BackButton, Msg } from "../../../ui";
 import { DocRow } from "./doc-buttons";
 import { addCustomLine, addProductLine, cancelInvoice, issueInvoice, markPaid, markUnpaid, removeLine, saveInvoiceDetails, updateLine } from "../actions";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 const BASE = "/manager/orders/invoices";
@@ -18,6 +19,7 @@ const p2 = (n: number) => round2(n).toFixed(2).replace(".", ",");
 type Item = { id: number; product_id: number | null; title: string; sku: string | null; size: string | null; qty: number; unit_net: number; tax_rate: number };
 
 export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ msg?: string; q?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const id = Number((await params).id);
   const { msg, q = "" } = await searchParams;
   const sb = supabaseAdmin();

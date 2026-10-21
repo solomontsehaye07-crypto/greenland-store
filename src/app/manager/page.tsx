@@ -4,12 +4,14 @@ import { money } from "@/lib/format";
 import { berlinDayStart, berlinToday } from "@/lib/designs";
 import { Msg, QuickLink, Section, Tile } from "./ui";
 import { tillTotal } from "./actions";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 const OPEN = ["paid", "processing", "packed", "ready_for_pickup"];
 
 export default async function Today({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const { msg } = await searchParams;
   const sb = supabaseAdmin();
   const today = berlinToday();

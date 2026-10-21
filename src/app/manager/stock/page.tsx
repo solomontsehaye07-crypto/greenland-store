@@ -2,10 +2,12 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { Msg, Section } from "../ui";
 import { addToRefill } from "../actions";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Stock({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const { msg } = await searchParams;
   const sb = supabaseAdmin();
   const [{ data: low }, { data: exp }, { data: drafts }] = await Promise.all([

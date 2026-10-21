@@ -7,6 +7,7 @@ import { Msg, OrdersNav, BackButton } from "../../ui";
 import { QtyField } from "@/components/qty-field";
 import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
 import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ type Prod = { id: number; title: string; image_url: string | null; stock: number
 const BASE = "/manager/orders/suppliers";
 
 export default async function SupplierOrders({ searchParams }: { searchParams: Promise<{ s?: string; q?: string; msg?: string; new?: string; view?: string; tab?: string; find?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const sp = await searchParams;
   const { q = "", msg, find = "" } = sp;
   const sb = supabaseAdmin();

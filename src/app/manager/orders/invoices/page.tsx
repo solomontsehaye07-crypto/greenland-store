@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { formatNumber, getSeries, isOverdue } from "@/lib/invoices";
 import { Msg, OrdersNav } from "../../ui";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ const de = (d: string | null) => (d ? d.split("-").reverse().join(".") : "");
 
 // Invoices for shops and restaurants that pay later by bank transfer.
 export default async function Invoices({ searchParams }: { searchParams: Promise<{ f?: string; msg?: string; q?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const { f = "open", msg, q = "" } = await searchParams;
   const sb = supabaseAdmin();
   const [{ data }, series] = await Promise.all([

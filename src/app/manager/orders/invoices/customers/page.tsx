@@ -3,11 +3,13 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { getSeries } from "@/lib/invoices";
 import { BackButton, Msg } from "../../../ui";
 import { CustomerForm, type Customer } from "../customer-form";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 const BASE = "/manager/orders/invoices";
 
 export default async function Customers({ searchParams }: { searchParams: Promise<{ id?: string; new?: string; msg?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const sp = await searchParams;
   const sb = supabaseAdmin();
   const [{ data }, series] = await Promise.all([sb.from("business_customers").select("*").eq("active", true).order("name"), getSeries()]);

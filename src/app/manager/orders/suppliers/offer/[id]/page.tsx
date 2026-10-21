@@ -7,6 +7,7 @@ import { Msg, BackButton } from "../../../../ui";
 import { CopyButton } from "../../copy-button";
 import { cancelRequestAction, reopenOfferAction } from "../../../../actions";
 import { OfferForm, type OfferLine } from "./offer-form";
+import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ const fmt = (d: string | null) => (d ? new Date(d).toLocaleString("de-DE", { day
 
 // One price request: waiting for prices → prices in → accept → send the order.
 export default async function OfferPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ msg?: string }> }) {
+  await requireStaff(MANAGER_ROLES, "/manager"); // every page checks itself, not only the layout
   const id = Number((await params).id);
   const { msg } = await searchParams;
   const sb = supabaseAdmin();
