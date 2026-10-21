@@ -5,7 +5,6 @@ import { SupplierBadges, SupplierTypePicker } from "@/components/supplier-badges
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
 import { Msg, OrdersNav } from "../../ui";
 import { QtyField } from "@/components/qty-field";
-import { SharePanel } from "./share-panel";
 import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
 import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
 
@@ -157,7 +156,6 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
               <SendPanel poId={po!.id} hasEmail={!!sup.email} hasWhatsApp={!!(sup.whatsapp || sup.phone)} preferred={sup.preferred_channel} status="draft" email={sup.email} whatsapp={sup.whatsapp || sup.phone} quote={po!.request_kind === "quote"} next={`${BASE}/offer/${po!.id}`} />
             </div>
             <Link href={`${BASE}/pdf/${po!.id}?back=${encodeURIComponent(`${BASE}?s=${sup.id}&view=list`)}`} className="btn btn-ghost mt-3 w-full font-semibold">See the PDF first</Link>
-            <div className="mt-3"><SharePanel poId={po!.id} what="this list" /></div>
           </>
         ) : (
           <div className="mt-6 rounded-2xl border border-line bg-white p-6 text-center">

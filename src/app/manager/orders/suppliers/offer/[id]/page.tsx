@@ -4,7 +4,6 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { offerLink } from "@/lib/purchasing";
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
 import { Msg } from "../../../../ui";
-import { SharePanel } from "../../share-panel";
 import { CopyButton } from "../../copy-button";
 import { cancelRequestAction, reopenOfferAction } from "../../../../actions";
 import { OfferForm, type OfferLine } from "./offer-form";
@@ -108,7 +107,6 @@ export default async function OfferPage({ params, searchParams }: { params: Prom
       )}
 
       <Link href={`/manager/orders/suppliers/pdf/${id}?back=${encodeURIComponent(back)}`} className="btn btn-ghost w-full font-semibold">See the PDF</Link>
-      {!closed && <SharePanel poId={id} what={po.status === "quoted" ? "the offer" : quote ? "the price request" : "the order"} />}
       {!closed && !ordered && (
         <form action={cancelRequestAction}>
           <input type="hidden" name="po_id" value={id} />
