@@ -3,6 +3,7 @@ import "@fontsource-variable/bricolage-grotesque";
 import "@fontsource-variable/public-sans";
 import "./globals.css";
 import { CartProvider } from "@/components/cart";
+import { DetailsDismiss } from "@/components/details-dismiss";
 import { getSite, themeCss } from "@/lib/content";
 import { getLang, tx } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
@@ -26,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <CartProvider>{children}</CartProvider>
+        <DetailsDismiss />
       </body>
     </html>
   );

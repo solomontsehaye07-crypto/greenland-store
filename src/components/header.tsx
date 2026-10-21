@@ -38,7 +38,7 @@ export async function Header() {
       <header className="site-header sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur-md transition-shadow">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
           {/* mobile menu, works without JavaScript */}
-          <details className="group lg:hidden">
+          <details data-dismiss className="group lg:hidden">
             <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full hover:bg-surface" aria-label={ui("menu", lang)}>
               <Icon name="menu" size={20} />
             </summary>
@@ -93,7 +93,7 @@ export async function Header() {
           </nav>
 
           <div className="ml-auto flex items-center gap-1 lg:ml-0">
-            <details className="group relative">
+            <details data-dismiss className="group relative">
               <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full hover:bg-surface" aria-label={ui("search", lang)}>
                 <Icon name="search" size={19} />
               </summary>

@@ -45,7 +45,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
           </div>
           <div className="flex items-center gap-1">
           <MagnifierToggle />
-          <details className="relative">
+          <details data-dismiss className="relative">
             <summary className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-xl text-xl font-bold text-muted hover:bg-surface" aria-label="Menu">⋯</summary>
             <div className="absolute right-0 top-9 z-30 w-56 space-y-3 rounded-xl border border-line bg-[var(--card)] p-3 shadow-xl">
               <AdminPrefs lang={lang} theme={theme} easy={easy} />

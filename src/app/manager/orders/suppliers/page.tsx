@@ -4,6 +4,7 @@ import { money } from "@/lib/format";
 import { SupplierBadges, SupplierTypePicker } from "@/components/supplier-badges";
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
 import { Msg, OrdersNav } from "../../ui";
+import { QtyField } from "@/components/qty-field";
 import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
 import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
 
@@ -127,11 +128,7 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
                 <li key={i.id} className="px-3 py-3">
                   <p className="text-[0.9375rem] font-medium leading-snug" data-no-translate>{i.products.title}</p>
                   <div className="mt-2 flex items-center justify-between gap-3">
-                    <div className="flex items-center rounded-full border-2 border-line">
-                      <form action={refillQty}>{keep({ item_id: String(i.id), delta: "-1" })}<button className="h-11 w-12 text-2xl font-bold" aria-label={`One less ${i.products.title}`}>−</button></form>
-                      <span className="w-10 text-center text-lg font-bold tabular-nums">{i.qty}</span>
-                      <form action={refillQty}>{keep({ item_id: String(i.id), delta: "1" })}<button className="h-11 w-12 text-2xl font-bold" aria-label={`One more ${i.products.title}`}>+</button></form>
-                    </div>
+                    <QtyField action={refillQty} qty={i.qty} label={i.products.title}>{keep({ item_id: String(i.id) })}</QtyField>
                     <span className="text-xs text-muted">{i.products.stock} in stock</span>
                     <form action={refillQty}>{keep({ item_id: String(i.id), qty: "0" })}<button className="h-11 rounded-xl border-2 border-terra/40 px-3 text-sm font-semibold text-terra" aria-label={`Remove ${i.products.title}`}>Remove</button></form>
                   </div>
