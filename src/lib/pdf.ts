@@ -9,12 +9,11 @@ export interface PoPdfInput {
   expected?: string | null;
   store: { name: string; street: string; postal: string; city: string; phone: string; email?: string };
   supplier: { name: string; contact_name?: string | null; address?: string | null; email?: string | null; phone?: string | null };
-  items: { sku: string; supplier_sku?: string | null; title: string; qty: number; unit_cost?: number | null; note?: string | null }[];
+  items: { sku: string; supplier_sku?: string | null; title: string; size?: string | null; qty: number; unit_cost?: number | null; note?: string | null }[];
   showPrices?: boolean;
   shipTo?: { name: string; street: string; postal: string; city: string; country: string; phone?: string } | null;
   notes?: string | null;
   requestKind?: "quote" | "order"; // quote = price request, nothing is ordered yet
-  offerUrl?: string | null; // where the supplier can type the prices in
 }
 
 const GREEN = rgb(0.114, 0.361, 0.247);
@@ -75,70 +74,136 @@ export async function buildPurchaseOrderPdf(po: PoPdfInput): Promise<Uint8Array>
     y -= 13;
   }
 
+  // Fits text into a column: wraps onto a second line, then shortens with "..." – never runs into the next column.
+  const wrap = (str: string, w: number, size: number, f = font, maxLines = 2) => {
+    const words = safe(str).split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let cur = "";
+    const fits = (t: string) => f.widthOfTextAtSize(t, size) <= w;
+    // a single word wider than the column (long codes) is split into pieces that fit
+    const pieces = words.flatMap((wd) => {
+      if (fits(wd)) return [wd];
+      const out: string[] = [];
+      let part = "";
+      for (const ch of wd) {
+        if (!fits(part + ch) && part) {
+          out.push(part);
+          part = ch;
+        } else part += ch;
+      }
+      return part ? [...out, part] : out;
+    });
+    for (const word of pieces) {
+      const next = cur ? `${cur} ${word}` : word;
+      if (fits(next)) cur = next;
+      else {
+        if (cur) lines.push(cur);
+        cur = word;
+      }
+    }
+    if (cur) lines.push(cur);
+    const out = lines.slice(0, maxLines).map((l) => {
+      let t = l;
+      while (!fits(t) && t.length > 1) t = t.slice(0, -1);
+      return t;
+    });
+    if (lines.length > maxLines) {
+      let last = out[maxLines - 1];
+      while (!fits(`${last}...`) && last.length > 1) last = last.slice(0, -1);
+      out[maxLines - 1] = `${last.trimEnd()}...`;
+    }
+    return out;
+  };
+
   if (quote) {
     y -= 14;
-    page.drawRectangle({ x: M - 6, y: y - 40, width: width - 2 * M + 12, height: 52, color: rgb(0.99, 0.96, 0.88) });
-    text("This is a price request, not an order. Please send us your best net price per unit and availability.", M, y, 9.5, bold);
-    y -= 13;
-    text("Dies ist eine Preisanfrage, keine Bestellung. Bitte nennen Sie uns Ihren besten Netto-Stueckpreis und die Verfuegbarkeit.", M, y, 9.5);
-    y -= 13;
-    text(po.offerUrl ? "Enter your prices online / Preise online eintragen:" : "We will confirm the order after receiving your offer.", M, y, 9, font, MUTED);
-    if (po.offerUrl) {
-      y -= 12;
-      text(po.offerUrl, M, y, 8.5, bold, GREEN);
-    }
-    y -= 10;
+    const intro = [
+      ...wrap("This is a price request, not an order. Please send us your best net price per unit and tell us if an item is not available.", width - 2 * M, 9.5, bold),
+      ...wrap("Dies ist eine Preisanfrage, keine Bestellung. Bitte nennen Sie uns Ihren besten Netto-Stueckpreis und teilen Sie uns mit, was nicht lieferbar ist.", width - 2 * M, 9.5),
+    ];
+    page.drawRectangle({ x: M - 6, y: y - 13 * (intro.length - 1) - 8, width: width - 2 * M + 12, height: 13 * intro.length + 10, color: rgb(0.99, 0.96, 0.88) });
+    intro.forEach((l, i) => {
+      text(l, M, y, 9.5, i < intro.length / 2 ? bold : font);
+      y -= 13;
+    });
   }
 
-  // table
+  // table: No. | SKU | (Supplier ref) | Product | Size | Qty | (Unit cost)
   y -= 18;
-  const cols = [M, M + 80, M + 170, width - M - 150, width - M - 80];
+  const right = width - M;
+  const showCost = !quote && po.showPrices !== false;
+  const hasRef = po.items.some((i) => i.supplier_sku);
+  type Col = { key: string; label: string; w: number; align?: "right" };
+  const cols: Col[] = [
+    { key: "no", label: "No.", w: 24 },
+    { key: "sku", label: "SKU", w: 62 },
+    ...(hasRef ? [{ key: "ref", label: "Supplier ref", w: 62 }] : []),
+    { key: "title", label: "Product", w: 0 },
+    { key: "size", label: "Size", w: 58 },
+    { key: "qty", label: "Qty", w: 34, align: "right" as const },
+    ...(showCost ? [{ key: "cost", label: "Unit cost", w: 62, align: "right" as const }] : []),
+  ];
+  const GAP = 8;
+  const fixed = cols.reduce((t, c) => t + c.w, 0) + GAP * (cols.length - 1);
+  cols.find((c) => c.key === "title")!.w = right - M - fixed;
+  const xs: number[] = [];
+  cols.reduce((x, c) => (xs.push(x), x + c.w + GAP), M);
+  const put = (c: Col, i: number, str: string, yy: number, size: number, f = font, color = INK) => {
+    const x = c.align === "right" ? xs[i] + c.w - f.widthOfTextAtSize(safe(str), size) : xs[i];
+    text(str, x, yy, size, f, color);
+  };
   const header = () => {
     page.drawRectangle({ x: M - 6, y: y - 6, width: width - 2 * M + 12, height: 20, color: rgb(0.89, 0.93, 0.9) });
-    ["SKU", "Supplier ref", "Product", "Qty", quote ? "Your price/unit" : po.showPrices === false ? "" : "Unit cost"].forEach((h, i) => text(h, cols[i], y, 9, bold));
+    cols.forEach((c, i) => put(c, i, c.label, y, 9, bold));
     y -= 22;
   };
   header();
   let total = 0;
-  for (const it of po.items) {
-    if (y < 90) {
+  po.items.forEach((it, n) => {
+    const cell: Record<string, string[]> = {
+      no: [String(n + 1)],
+      sku: wrap(it.sku, cols[1].w, 9, font, 1),
+      ref: wrap(it.supplier_sku ?? "", 62, 9, font, 2),
+      title: wrap(it.title, cols.find((c) => c.key === "title")!.w, 9),
+      size: wrap(it.size ?? "-", 58, 9, font, 2),
+      qty: [String(it.qty)],
+      cost: showCost && it.unit_cost != null ? [`${Number(it.unit_cost).toFixed(2)} EUR`] : [""],
+    };
+    const note = it.note ? wrap(it.note, cols.find((c) => c.key === "title")!.w, 8, font, 2) : [];
+    const lines = Math.max(...cols.map((c) => (c.key === "title" ? cell.title.length + note.length : cell[c.key].length)), 1);
+    const h = 11 * lines + 7;
+    if (y - h < 80) {
       page = doc.addPage([595.28, 841.89]);
       y = 790;
       header();
     }
-    const title = it.title.length > 48 ? it.title.slice(0, 47) + "…" : it.title;
-    text(it.sku, cols[0], y, 9);
-    text(it.supplier_sku ?? "", cols[1], y, 9);
-    text(title, cols[2], y, 9);
-    text(String(it.qty), cols[3], y, 10, bold);
-    if (quote) {
-      page.drawLine({ start: { x: cols[4], y: y - 2 }, end: { x: width - M, y: y - 2 }, thickness: 0.6, color: MUTED });
-    } else if (it.unit_cost != null && po.showPrices !== false) {
-      text(`${Number(it.unit_cost).toFixed(2)} EUR`, cols[4], y, 9);
-      total += Number(it.unit_cost) * it.qty;
-    }
-    if (it.note) {
-      y -= 11;
-      text(it.note.slice(0, 80), cols[2], y, 8, font, MUTED);
-    }
-    y -= 16;
-    page.drawLine({ start: { x: M - 6, y: y + 10 }, end: { x: width - M + 6, y: y + 10 }, thickness: 0.4, color: rgb(0.85, 0.87, 0.85) });
-  }
+    cols.forEach((c, i) =>
+      cell[c.key].forEach((l, k) => put(c, i, l, y - 11 * k, c.key === "qty" ? 10 : 9, c.key === "qty" || c.key === "no" ? bold : font, c.key === "no" ? MUTED : INK))
+    );
+    const ti = cols.findIndex((c) => c.key === "title");
+    note.forEach((l, k) => text(l, xs[ti], y - 11 * (cell.title.length + k), 8, font, MUTED));
+    if (showCost && it.unit_cost != null) total += Number(it.unit_cost) * it.qty;
+    y -= h;
+    page.drawLine({ start: { x: M - 6, y: y + 9 }, end: { x: right + 6, y: y + 9 }, thickness: 0.4, color: rgb(0.85, 0.87, 0.85) });
+  });
   y -= 8;
-  const units = po.items.reduce((s, i) => s + i.qty, 0);
-  text(`${po.items.length} lines, ${units} units`, M, y, 10, bold);
-  if (total > 0) text(`Estimated total: ${total.toFixed(2)} EUR (net)`, width - M - 200, y, 10, bold);
+  const units = po.items.reduce((t, i) => t + i.qty, 0);
+  text(`${po.items.length} products, ${units} units`, M, y, 10, bold);
+  if (total > 0) {
+    const t = `Total: ${total.toFixed(2)} EUR (net)`;
+    text(t, right - bold.widthOfTextAtSize(t, 10), y, 10, bold);
+  }
 
   if (po.notes) {
     y -= 30;
     text("Notes", M, y, 9, bold, MUTED);
     y -= 13;
-    for (const line of po.notes.split("\n").slice(0, 8)) {
-      text(line.slice(0, 100), M, y, 10);
+    for (const line of po.notes.split("\n").slice(0, 8).flatMap((l) => wrap(l, width - 2 * M, 10, font, 3))) {
+      text(line, M, y, 10);
       y -= 13;
     }
   }
-  text(quote ? "Please reply with your prices by email or WhatsApp, or on the link above. Thank you!" : "Please confirm this order by email or WhatsApp. Thank you!", M, 50, 9, font, MUTED);
+  text(quote ? "Please reply with your prices by email or WhatsApp. Thank you! / Vielen Dank!" : "Please confirm this order by email or WhatsApp. Thank you!", M, 50, 9, font, MUTED);
   return doc.save();
 }
 

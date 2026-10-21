@@ -58,7 +58,7 @@ async function loadPo(id: number) {
   if (!po) throw new Error("Purchase order not found");
   const { data: items } = await sb
     .from("purchase_order_items")
-    .select("qty, unit_cost, note, product_id, ordered, offer_price, products(sku, title, title_de)")
+    .select("qty, unit_cost, note, product_id, ordered, offer_price, products(sku, title, title_de, size_qty, size_unit)")
     .eq("purchase_order_id", id)
     .order("id");
   const { data: sp } = await sb
@@ -89,7 +89,6 @@ function pdfInput(po: any, items: any[], refs: Map<number, string | null>, shipT
   if (!quote) items = items.filter((i) => i.ordered !== false);
   return {
     requestKind: (quote ? "quote" : "order") as "quote" | "order",
-    offerUrl: quote && po.offer_token ? offerLink(po.offer_token) : null,
     number: po.number,
     kind: po.kind,
     date: new Date(po.created_at).toLocaleDateString("de-DE"),
@@ -98,12 +97,25 @@ function pdfInput(po: any, items: any[], refs: Map<number, string | null>, shipT
     supplier: po.suppliers,
     showPrices: !quote && po.show_prices !== false,
     items: items.map((i) => {
-      const prod = i.products as { sku: string; title: string; title_de: string | null };
-      return { sku: prod.sku, title: prod.title_de || prod.title, qty: i.qty, unit_cost: i.unit_cost, supplier_sku: refs.get(i.product_id), note: i.note };
+      const prod = i.products as { sku: string; title: string; title_de: string | null; size_qty: number | null; size_unit: string | null };
+      const { size, title } = packSize(prod.title_de || prod.title, prod.size_qty, prod.size_unit);
+      return { sku: prod.sku, title, size, qty: i.qty, unit_cost: i.unit_cost, supplier_sku: refs.get(i.product_id), note: i.note };
     }),
     shipTo,
     notes: po.notes,
   };
+}
+
+/**
+ * Pack size for the PDF ("500 g", "12 pcs"): from the product's size fields, or read from the end of
+ * the name ("… Flour 500g"). The size is then taken off the name so it is not printed twice.
+ */
+export function packSize(name: string, qty: number | null, unit: string | null) {
+  const re = /[\s,(-]*(\d+(?:[.,]\d+)?\s?(?:x\s?\d+(?:[.,]\d+)?\s?)?(?:kg|g|gr|mg|ml|cl|l|ltr|lb|oz|pcs|pc|stk|st|pieces|pack|sachets?))\)?\s*$/i;
+  const m = name.match(re);
+  const fmt = (s: string) => s.replace(/\s+/g, "").replace(/(\d)([a-z])/gi, "$1 $2").replace(/(\d)\s?x\s?(\d)/i, "$1 x $2").replace(/\s+/g, " ").replace(/\bgr\b/i, "g");
+  const size = qty != null && unit ? `${Number(qty).toLocaleString("de-DE")} ${unit}` : m ? fmt(m[1]) : null;
+  return { size, title: m ? name.slice(0, m.index).trim() || name : name };
 }
 
 /** Renders the PDF, stores it in the private "documents" bucket and returns a 7-day signed URL. */
