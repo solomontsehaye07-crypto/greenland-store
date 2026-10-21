@@ -3,19 +3,17 @@
 Prepared on 21 Oct 2026. The domain is registered in Resend (region eu-west-1) but **not verified yet**.
 Finish these steps once; afterwards customer sign-in codes, order confirmations and invoices go out from your own address.
 
-## 1. DNS records at Porkbun (greenland-afroasia.de → DNS)
+## 1. DNS — done (21 Oct 2026)
 
-| Type  | Name (host)          | Value                                                                                                                                                                                                                                                  | Priority |
-|-------|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| TXT   | `resend._domainkey`  | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDAqtRW8XlHIp73+AIbPbzLxM6Y8nGz4ARsXWlIr3VvzKmy1OFWVgDmV1xGQykaCmx/Tr//RHu3edTW/vbt9FJEIsfIQt8+gFO3cryeNX//d2QIi7vRsfbc32GGWADJEKp49tavmDBpZ0p27IR0jsqToGOuB3OAid3FKYSG4JBlBQIDAQAB` | –        |
-| MX    | `send`               | `feedback-smtp.eu-west-1.amazonses.com`                                                                                                                                                                                                                | 10       |
-| TXT   | `send`               | `v=spf1 include:amazonses.com ~all`                                                                                                                                                                                                                    | –        |
-| CNAME | `rsend`              | `send.forge.rmta.net`                                                                                                                                                                                                                                  | –        |
+DNS for greenland-afroasia.de is now hosted on **Cloudflare** (zone in the same account as the store; nameservers
+`elsa.ns.cloudflare.com` / `mark.ns.cloudflare.com`, set at Porkbun). The zone holds:
 
-(The Porkbun API key saved in the connector is no longer valid, so these must be added by hand — or give the connector a new key and Claude adds them.)
+- Worker custom domains `greenland-afroasia.de` and `www.greenland-afroasia.de` → the store.
+- The Resend records (DKIM `resend._domainkey`, MX + SPF on `send`, CNAME `rsend`) and `_dmarc` (`v=DMARC1; p=none;`).
+- The old A2 Hosting records (`mail`, `webmail`, `cpanel`, …, MX → `mail.greenland-afroasia.de`, DNS only) kept for a future mailbox.
 
 ## 2. Verify in Resend
-Resend → Domains → greenland-afroasia.de → **Verify**. Takes a few minutes after the DNS records exist.
+Resend → Domains → greenland-afroasia.de → **Verify** (Claude triggered it; if it shows "failed", press Verify again once the nameserver change has spread — up to 48 h).
 
 ## 3. API key for the shop
 Resend → API Keys → Create ("greenland-store", Sending access). Paste it in **Admin → Account & receipts → Email**,
