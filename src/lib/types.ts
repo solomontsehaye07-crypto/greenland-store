@@ -73,6 +73,9 @@ export interface Supplier {
   is_dropshipper: boolean;
   notes: string | null;
   active: boolean;
+  website?: string | null;
+  country?: string | null;
+  specialties?: string[];
 }
 
 export interface CartLine {

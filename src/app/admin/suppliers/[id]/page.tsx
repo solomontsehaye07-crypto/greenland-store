@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { saveSupplier } from "../../actions";
+import { SupplierTypePicker } from "@/components/supplier-badges";
 import type { Supplier } from "@/lib/types";
 
 export default async function SupplierEdit({ params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +30,10 @@ export default async function SupplierEdit({ params }: { params: Promise<{ id: s
         </div>
         <div><label className="label">Lead time (days)</label><input name="lead_time_days" type="number" defaultValue={s.lead_time_days} className="input" /></div>
         <div><label className="label">Minimum order (€)</label><input name="min_order_value" type="number" step="0.01" defaultValue={s.min_order_value} className="input" /></div>
+        <div className="sm:col-span-2"><SupplierTypePicker value={s.specialties ?? []} /></div>
         <div className="sm:col-span-2"><label className="label">Address</label><input name="address" defaultValue={s.address ?? ""} className="input" /></div>
+        <div><label className="label">Website</label><input name="website" type="url" placeholder="https://…" defaultValue={s.website ?? ""} className="input" /></div>
+        <div><label className="label">Country (DE, NL …)</label><input name="country" maxLength={2} defaultValue={s.country ?? ""} className="input" /></div>
         <label className="flex items-center gap-2 text-sm sm:col-span-2">
           <input type="checkbox" name="is_dropshipper" defaultChecked={s.is_dropshipper} className="accent-[var(--green)]" />
           This supplier ships orders directly to my customers (dropshipping)

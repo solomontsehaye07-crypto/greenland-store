@@ -6,6 +6,7 @@ import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { setOrderStatus, markOrderPaid } from "../admin/actions";
 import { storeFrom } from "@/lib/designs";
+import { validTypes } from "@/lib/supplier-types";
 
 const back = (path: string, msg: string): never => redirect(`${path}?msg=${encodeURIComponent(msg)}`);
 const dec = (v: FormDataEntryValue | null) => {
@@ -189,7 +190,19 @@ export async function addSupplier(fd: FormData) {
   if (dup) redirect(`/manager/orders/suppliers?s=${dup.id}&msg=${encodeURIComponent("This supplier already exists – opened it.")}`);
   const { data, error } = await sb
     .from("suppliers")
-    .insert({ name, contact_name: t("contact_name") || null, email, whatsapp, phone: whatsapp, preferred_channel: pref, lead_time_days: Math.max(0, Number(t("lead_time_days")) || 3), active: true })
+    .insert({
+      name,
+      contact_name: t("contact_name") || null,
+      email,
+      whatsapp,
+      phone: t("phone") || whatsapp,
+      website: t("website") || null,
+      address: t("address") || null,
+      specialties: validTypes(fd.getAll("specialties")),
+      preferred_channel: pref,
+      lead_time_days: Math.max(0, Number(t("lead_time_days")) || 3),
+      active: true,
+    })
     .select("id")
     .single();
   if (error || !data) redirect("/manager/orders/suppliers?new=1&msg=" + encodeURIComponent(`Could not save: ${error?.message ?? "unknown error"}`));

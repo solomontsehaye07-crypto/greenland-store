@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { assignSupplierToCategory } from "../actions";
+import { SupplierBadges } from "@/components/supplier-badges";
 
 export default async function Suppliers() {
   await requireStaff();
@@ -25,7 +26,16 @@ export default async function Suppliers() {
           <tbody>
             {(sups ?? []).map((s) => (
               <tr key={s.id}>
-                <td className="font-medium">{s.name}{s.is_dropshipper ? <span className="ml-2 rounded-full bg-gold/40 px-2 py-0.5 text-xs">dropship</span> : null}</td>
+                <td className="font-medium">
+                  {s.name}{s.is_dropshipper ? <span className="ml-2 rounded-full bg-gold/40 px-2 py-0.5 text-xs">dropship</span> : null}
+                  <SupplierBadges types={s.specialties} className="mt-1.5 flex" />
+                  {(s.address || s.website) && (
+                    <div className="mt-1 text-xs font-normal text-muted">
+                      {s.address}{s.country ? ` (${s.country})` : ""}
+                      {s.website && <> · <a href={s.website} target="_blank" rel="noreferrer" className="underline">website</a></>}
+                    </div>
+                  )}
+                </td>
                 <td className="text-sm">{s.contact_name}<div className="text-xs text-muted">{s.email} {s.whatsapp ?? s.phone}</div></td>
                 <td>{s.preferred_channel}</td>
                 <td>{s.lead_time_days} days</td>

@@ -1,20 +1,21 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
+import { SupplierBadges, SupplierTypePicker } from "@/components/supplier-badges";
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
 import { Msg, OrdersNav, Section } from "../../ui";
 import { addSupplier, refillAdd, refillMessage, refillQty } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
-type Sup = { id: number; name: string; email: string | null; whatsapp: string | null; preferred_channel: string };
+type Sup = { id: number; name: string; email: string | null; whatsapp: string | null; phone: string | null; preferred_channel: string; specialties: string[]; address: string | null; website: string | null; country: string | null };
 
 export default async function Refill({ searchParams }: { searchParams: Promise<{ s?: string; q?: string; msg?: string; new?: string }> }) {
   const { s = "", q = "", msg, new: adding } = await searchParams;
   const sb = supabaseAdmin();
   const supplierId = Number(s) || 0;
   const [{ data: sups }, { data: drafts }] = await Promise.all([
-    sb.from("suppliers").select("id, name, email, whatsapp, preferred_channel").eq("active", true).order("name"),
+    sb.from("suppliers").select("id, name, email, whatsapp, phone, preferred_channel, specialties, address, website, country").eq("active", true).order("name"),
     sb.from("purchase_orders").select("id, supplier_id, purchase_order_items(id)").eq("status", "draft").eq("kind", "refill"),
   ]);
   const draftCount = new Map<number, number>();
@@ -59,18 +60,21 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
       <Msg msg={msg} />
       <p className="text-xs text-muted">Pick a supplier – or add a new one – then add what you need and send the list as a PDF by WhatsApp or email.</p>
 
-      <div className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {(sups ?? []).map((x) => {
           const on = x.id === supplierId;
           const n = draftCount.get(x.id) ?? 0;
           return (
-            <Link key={x.id} href={`/manager/orders/suppliers?s=${x.id}`} className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-medium ${on ? "mt-c mt-stock2" : "border border-line bg-white"}`} aria-current={on ? "true" : undefined}>
-              <span data-no-translate>{x.name}</span>
-              {n > 0 && <span className={`ml-1.5 rounded-full px-1.5 text-[0.6875rem] ${on ? "bg-white text-[#1c4c86]" : "bg-[#1c4c86] text-white"}`}>{n}</span>}
+            <Link key={x.id} href={`/manager/orders/suppliers?s=${x.id}`} className={`flex min-h-14 flex-col justify-center gap-1.5 rounded-2xl px-4 py-3 ${on ? "mt-c mt-stock2 ring-4 ring-[#1c4c86]/30" : "border-2 border-line bg-white"}`} aria-current={on ? "true" : undefined}>
+              <span className="flex items-center justify-between gap-2 text-[0.9375rem] font-semibold">
+                <span data-no-translate>{x.name}</span>
+                {n > 0 && <span className={`shrink-0 rounded-full px-2 text-xs ${on ? "bg-white text-[#1c4c86]" : "bg-[#1c4c86] text-white"}`}>{n} on list</span>}
+              </span>
+              <SupplierBadges types={(x as Sup).specialties} compact />
             </Link>
           );
         })}
-        <Link href="/manager/orders/suppliers?new=1" className="shrink-0 rounded-full border-2 border-dashed border-[#2d6fb7] px-3.5 py-1.5 text-sm font-semibold text-[#2d6fb7]">+ New supplier</Link>
+        <Link href="/manager/orders/suppliers?new=1" className="flex min-h-14 items-center justify-center rounded-2xl border-2 border-dashed border-[#2d6fb7] px-4 py-3 text-[0.9375rem] font-semibold text-[#2d6fb7]">+ New supplier</Link>
       </div>
 
       {(adding || !sups?.length) && (
@@ -102,6 +106,19 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
               </select>
             </div>
             <div>
+              <label className="label" htmlFor="sup-phone">Phone</label>
+              <input id="sup-phone" name="phone" inputMode="tel" className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="sup-web">Website</label>
+              <input id="sup-web" name="website" type="url" placeholder="https://…" className="input" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="sup-addr">Address</label>
+              <input id="sup-addr" name="address" className="input" />
+            </div>
+            <div className="sm:col-span-2"><SupplierTypePicker /></div>
+            <div>
               <label className="label" htmlFor="sup-lead">Delivers after (days)</label>
               <input id="sup-lead" name="lead_time_days" type="number" min={0} defaultValue={3} className="input" />
             </div>
@@ -115,6 +132,15 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
 
       {sup && (
         <>
+          <div className="mt-4 rounded-2xl border-2 border-[#1c4c86]/25 bg-white p-4 text-sm">
+            <p className="text-base font-semibold" data-no-translate>{sup.name}</p>
+            <SupplierBadges types={sup.specialties} className="mt-2 flex" />
+            <div className="mt-2 space-y-0.5 text-muted" data-no-translate>
+              {sup.address && <p>{sup.address}{sup.country ? ` (${sup.country})` : ""}</p>}
+              {(sup.phone || sup.email) && <p>{sup.phone && <a href={`tel:${sup.phone}`} className="underline">{sup.phone}</a>}{sup.phone && sup.email ? " · " : ""}{sup.email && <a href={`mailto:${sup.email}`} className="underline">{sup.email}</a>}</p>}
+              {sup.website && <p><a href={sup.website} target="_blank" rel="noreferrer" className="underline">{sup.website.replace(/^https?:\/\//, "")}</a></p>}
+            </div>
+          </div>
           <Section color="stock2" title={`Order list for ${sup.name}`} action={po ? <a href={`/admin/purchase-orders/${po.id}/pdf`} target="_blank" rel="noreferrer" className="text-xs font-medium text-forest">PDF preview</a> : undefined}>
             <div className="mt-c mt-stock2 rounded-2xl p-1">
               {items.length ? (

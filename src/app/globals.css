@@ -381,3 +381,6 @@ main:has(> .home > section:last-child:is(.band-forest, .band-indigo, .band-terra
 .mt-loss { --c: #b83227; } .mt-wait { --c: #55606e; }
 /* coloured header strip on white cards (order cards) */
 .mt-head { background: var(--c); color: #fff; }
+
+/* supplier type picker: a chosen type fills with its colour */
+input:checked + span[style*="--b"] { background: var(--b); color: #fff; }

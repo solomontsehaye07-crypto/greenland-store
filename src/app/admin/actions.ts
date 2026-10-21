@@ -7,6 +7,7 @@ import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
 import { draftRefillOrders, receivePo, renderPoPdf, sendPo } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
 import { siteUrl } from "@/lib/site";
+import { validTypes } from "@/lib/supplier-types";
 import { cancelDhlLabel, createDhlLabel, dhlTrackingUrl } from "@/lib/dhl";
 import { createClient } from "@supabase/supabase-js";
 
@@ -120,6 +121,9 @@ export async function saveSupplier(fd: FormData) {
     address: str(fd.get("address")),
     is_dropshipper: fd.get("is_dropshipper") === "on",
     notes: str(fd.get("notes")),
+    website: str(fd.get("website")),
+    country: str(fd.get("country"))?.toUpperCase().slice(0, 2) ?? null,
+    specialties: validTypes(fd.getAll("specialties")),
   };
   const sb = supabaseAdmin();
   if (id) await sb.from("suppliers").update(row).eq("id", id);
