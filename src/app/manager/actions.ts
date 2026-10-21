@@ -118,8 +118,12 @@ const refillBack = (fd: FormData, msg?: string): never => {
   const u = new URLSearchParams();
   const s = String(fd.get("supplier_id") ?? "");
   const q = String(fd.get("q") ?? "");
+  const view = String(fd.get("view") ?? "");
+  const tab = String(fd.get("tab") ?? "");
   if (s) u.set("s", s);
   if (q) u.set("q", q);
+  if (view === "list") u.set("view", "list");
+  if (tab) u.set("tab", tab);
   if (msg) u.set("msg", msg);
   redirect(`/manager/orders/suppliers${u.toString() ? `?${u}` : ""}`);
 };

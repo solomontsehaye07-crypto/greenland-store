@@ -3,279 +3,362 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { SupplierBadges, SupplierTypePicker } from "@/components/supplier-badges";
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
-import { Msg, OrdersNav, Section } from "../../ui";
+import { Msg, OrdersNav } from "../../ui";
 import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
 import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
 
 export const dynamic = "force-dynamic";
 
-type Sup = { id: number; name: string; email: string | null; whatsapp: string | null; phone: string | null; preferred_channel: string; specialties: string[]; address: string | null; website: string | null; country: string | null };
+// Ordering from a supplier in three short steps, one thing per screen:
+//   1. pick a supplier        /manager/orders/suppliers
+//   2. add products (tabs)    ?s=ID&tab=low|before|search
+//   3. review & send          ?s=ID&view=list
+// A bar at the bottom always shows the list and leads to step 3, so nobody has to scroll to find it.
 
-export default async function Refill({ searchParams }: { searchParams: Promise<{ s?: string; q?: string; msg?: string; new?: string }> }) {
-  const { s = "", q = "", msg, new: adding } = await searchParams;
+type Sup = { id: number; name: string; email: string | null; whatsapp: string | null; phone: string | null; preferred_channel: string; specialties: string[]; address: string | null; website: string | null; country: string | null };
+type Item = { id: number; product_id: number; qty: number; unit_cost: number | null; products: { title: string; image_url: string | null; stock: number } };
+type Prod = { id: number; title: string; image_url: string | null; stock: number; reorder_point: number; reorder_qty: number; supplier_id: number | null };
+
+const BASE = "/manager/orders/suppliers";
+
+export default async function SupplierOrders({ searchParams }: { searchParams: Promise<{ s?: string; q?: string; msg?: string; new?: string; view?: string; tab?: string; find?: string }> }) {
+  const sp = await searchParams;
+  const { q = "", msg, find = "" } = sp;
   const sb = supabaseAdmin();
-  const supplierId = Number(s) || 0;
+  const supplierId = Number(sp.s) || 0;
   const [{ data: sups }, { data: drafts }] = await Promise.all([
     sb.from("suppliers").select("id, name, email, whatsapp, phone, preferred_channel, specialties, address, website, country").eq("active", true).order("name"),
     sb.from("purchase_orders").select("id, supplier_id, purchase_order_items(id)").eq("status", "draft").eq("kind", "refill"),
   ]);
-  const draftCount = new Map<number, number>();
-  for (const d of drafts ?? []) draftCount.set(d.supplier_id, (draftCount.get(d.supplier_id) ?? 0) + (d.purchase_order_items as unknown[]).length);
+  const onList = new Map<number, number>();
+  for (const d of drafts ?? []) onList.set(d.supplier_id, (onList.get(d.supplier_id) ?? 0) + (d.purchase_order_items as unknown[]).length);
   const sup = (sups ?? []).find((x) => x.id === supplierId) as Sup | undefined;
 
-  let po: { id: number; number: number; message: string | null } | null = null;
-  let items: { id: number; product_id: number; qty: number; unit_cost: number | null; products: { title: string; sku: string; image_url: string | null; stock: number } }[] = [];
-  let products: { id: number; title: string; sku: string; image_url: string | null; stock: number; reorder_point: number; supplier_id: number | null }[] = [];
-  let before: SupplierInsight[] = [];
-  let lowCount = 0;
-  let hasLast = false;
+  // ---------- step 0: new supplier ----------
+  if (sp.new || !sups?.length) return <NewSupplier msg={msg} canCancel={!!sups?.length} />;
 
-  if (sup) {
-    const { data: d } = await sb.from("purchase_orders").select("id, number, message").eq("supplier_id", sup.id).eq("status", "draft").eq("kind", "refill").order("created_at", { ascending: false }).limit(1).maybeSingle();
-    po = d;
-    if (po) {
-      const { data: it } = await sb.from("purchase_order_items").select("id, product_id, qty, unit_cost, products(title, sku, image_url, stock)").eq("purchase_order_id", po.id).order("id");
-      items = (it ?? []) as unknown as typeof items;
-    }
-    const term = q.trim().replace(/[%,()]/g, " ");
-    let pq = sb.from("products").select("id, title, sku, image_url, stock, reorder_point, supplier_id").neq("status", "draft").order("stock").limit(60);
-    if (term) pq = pq.or(`title.ilike.%${term}%,sku.ilike.%${term}%`);
-    else {
-      const { data: sp } = await sb.from("supplier_products").select("product_id").eq("supplier_id", sup.id);
-      const ids = (sp ?? []).map((r) => r.product_id);
-      pq = ids.length ? pq.or(`supplier_id.eq.${sup.id},id.in.(${ids.join(",")})`) : pq.eq("supplier_id", sup.id);
-    }
-    const [{ data: found }, ins, { data: mine }, { count: sentBefore }] = await Promise.all([
-      pq,
-      supplierInsights(sup.id),
-      sb.from("products").select("stock, reorder_point").eq("supplier_id", sup.id).eq("status", "active"),
-      sb.from("purchase_orders").select("id", { count: "exact", head: true }).eq("supplier_id", sup.id).not("status", "in", "(draft,cancelled)"),
-    ]);
-    products = (found ?? []) as typeof products;
-    before = ins.filter((i) => i.times > 0).sort((a, b) => String(b.last).localeCompare(String(a.last))).slice(0, 20);
-    lowCount = (mine ?? []).filter((p) => (p.stock ?? 0) <= (p.reorder_point ?? 0)).length;
-    hasLast = (sentBefore ?? 0) > 0;
+  // ---------- step 1: pick a supplier ----------
+  if (!sup) {
+    const f = find.trim().toLowerCase();
+    const list = (sups as Sup[]).filter((x) => !f || x.name.toLowerCase().includes(f));
+    return (
+      <div>
+        <OrdersNav active="suppliers" />
+        <Msg msg={msg} />
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg font-bold">Who do you want to order from?</h1>
+          <Link href={`${BASE}?new=1`} className="btn btn-ghost shrink-0 px-3 text-sm font-semibold">+ New</Link>
+        </div>
+        <form action={BASE} className="mt-3">
+          <input name="find" defaultValue={find} type="search" placeholder="Find a supplier" aria-label="Find a supplier" className="input" />
+        </form>
+        <ul className="mt-3 space-y-2">
+          {list.map((x) => {
+            const n = onList.get(x.id) ?? 0;
+            return (
+              <li key={x.id}>
+                <Link href={`${BASE}?s=${x.id}`} className="flex min-h-16 items-center gap-3 rounded-2xl border-2 border-line bg-white px-4 py-3 active:bg-surface">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-semibold" data-no-translate>{x.name}</span>
+                    <SupplierBadges types={x.specialties} compact className="mt-1 flex" />
+                  </span>
+                  {n > 0 && <span className="shrink-0 rounded-full bg-[#1c4c86] px-2.5 py-1 text-xs font-bold text-white">{n} on list</span>}
+                  <span aria-hidden className="text-2xl text-muted">›</span>
+                </Link>
+              </li>
+            );
+          })}
+          {!list.length && <li className="rounded-2xl border border-line bg-white p-5 text-sm text-muted">No supplier matches “{find}”.</li>}
+        </ul>
+      </div>
+    );
   }
-  const inList = new Set(items.map((i) => i.product_id));
+
+  // ---------- data for steps 2 and 3 ----------
+  const { data: po } = await sb.from("purchase_orders").select("id, number, message").eq("supplier_id", sup.id).eq("status", "draft").eq("kind", "refill").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const items: Item[] = po ? (((await sb.from("purchase_order_items").select("id, product_id, qty, unit_cost, products(title, image_url, stock)").eq("purchase_order_id", po.id).order("id")).data ?? []) as unknown as Item[]) : [];
+  const qtyOf = new Map(items.map((i) => [i.product_id, i.qty]));
   const units = items.reduce((t, i) => t + i.qty, 0);
   const value = items.reduce((t, i) => t + i.qty * (Number(i.unit_cost) || 0), 0);
+  const view = sp.view === "list" ? "list" : "add";
   const keep = (extra: Record<string, string> = {}) => (
     <>
-      <input type="hidden" name="supplier_id" value={supplierId || ""} />
+      <input type="hidden" name="supplier_id" value={sup.id} />
       <input type="hidden" name="q" value={q} />
+      <input type="hidden" name="view" value={view} />
+      <input type="hidden" name="tab" value={sp.tab ?? ""} />
       {Object.entries(extra).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
     </>
   );
 
-  return (
-    <div>
-      <OrdersNav active="suppliers" />
-      <Msg msg={msg} />
-      <p className="text-xs text-muted">Pick a supplier – or add a new one – then add what you need and send the list as a PDF by WhatsApp or email.</p>
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {(sups ?? []).map((x) => {
-          const on = x.id === supplierId;
-          const n = draftCount.get(x.id) ?? 0;
-          return (
-            <Link key={x.id} href={`/manager/orders/suppliers?s=${x.id}`} className={`flex min-h-14 flex-col justify-center gap-1.5 rounded-2xl px-4 py-3 ${on ? "mt-c mt-stock2 ring-4 ring-[#1c4c86]/30" : "border-2 border-line bg-white"}`} aria-current={on ? "true" : undefined}>
-              <span className="flex items-center justify-between gap-2 text-[0.9375rem] font-semibold">
-                <span data-no-translate>{x.name}</span>
-                {n > 0 && <span className={`shrink-0 rounded-full px-2 text-xs ${on ? "bg-white text-[#1c4c86]" : "bg-[#1c4c86] text-white"}`}>{n} on list</span>}
-              </span>
-              <SupplierBadges types={(x as Sup).specialties} compact />
-            </Link>
-          );
-        })}
-        <Link href="/manager/orders/suppliers?new=1" className="flex min-h-14 items-center justify-center rounded-2xl border-2 border-dashed border-[#2d6fb7] px-4 py-3 text-[0.9375rem] font-semibold text-[#2d6fb7]">+ New supplier</Link>
+  const header = (extra?: React.ReactNode) => (
+    <div className="sticky top-[calc(57px+env(safe-area-inset-top))] z-10 -mx-4 border-b border-line bg-[var(--paper)]/95 px-4 pb-2 pt-1 backdrop-blur">
+      <div className="flex items-center gap-2">
+        <Link href={view === "list" ? `${BASE}?s=${sup.id}` : BASE} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-line bg-white text-xl" aria-label={view === "list" ? "Back to adding products" : "All suppliers"}>‹</Link>
+        <details className="min-w-0 flex-1">
+          <summary className="cursor-pointer list-none">
+            <span className="block truncate text-base font-bold" data-no-translate>{sup.name}</span>
+            <span className="text-xs text-muted">{view === "list" ? "Review & send" : "Add products"} · tap for contact</span>
+          </summary>
+          <div className="mt-2 space-y-1 rounded-xl border border-line bg-white p-3 text-sm" data-no-translate>
+            <SupplierBadges types={sup.specialties} className="flex" />
+            {sup.address && <p>{sup.address}{sup.country ? ` (${sup.country})` : ""}</p>}
+            {sup.phone && <p><a href={`tel:${sup.phone}`} className="underline">{sup.phone}</a></p>}
+            {sup.email && <p><a href={`mailto:${sup.email}`} className="underline">{sup.email}</a></p>}
+            {sup.website && <p><a href={sup.website} target="_blank" rel="noreferrer" className="underline">{sup.website.replace(/^https?:\/\//, "")}</a></p>}
+          </div>
+        </details>
       </div>
+      {extra}
+    </div>
+  );
 
-      {(adding || !sups?.length) && (
-        <form action={addSupplier} className="mt-4 space-y-3 overflow-hidden rounded-2xl border border-line bg-white">
-          <h2 className="mt-c mt-stock3 px-4 py-2.5 text-sm font-semibold">New supplier</h2>
-          <div className="grid gap-3 px-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="label" htmlFor="sup-name">Company name *</label>
-              <input id="sup-name" name="name" required className="input" />
-            </div>
-            <div>
-              <label className="label" htmlFor="sup-contact">Contact person</label>
-              <input id="sup-contact" name="contact_name" className="input" />
-            </div>
-            <div>
-              <label className="label" htmlFor="sup-wa">WhatsApp number</label>
-              <input id="sup-wa" name="whatsapp" inputMode="tel" placeholder="+49 …" className="input" />
-            </div>
-            <div>
-              <label className="label" htmlFor="sup-email">Email</label>
-              <input id="sup-email" name="email" type="email" className="input" />
-            </div>
-            <div>
-              <label className="label" htmlFor="sup-pref">Send orders by</label>
-              <select id="sup-pref" name="preferred_channel" defaultValue="whatsapp" className="input">
-                <option value="whatsapp">WhatsApp</option>
-                <option value="email">Email</option>
-                <option value="both">Both</option>
-              </select>
-            </div>
-            <div>
-              <label className="label" htmlFor="sup-phone">Phone</label>
-              <input id="sup-phone" name="phone" inputMode="tel" className="input" />
-            </div>
-            <div>
-              <label className="label" htmlFor="sup-web">Website</label>
-              <input id="sup-web" name="website" type="url" placeholder="https://…" className="input" />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="label" htmlFor="sup-addr">Address</label>
-              <input id="sup-addr" name="address" className="input" />
-            </div>
-            <div className="sm:col-span-2"><SupplierTypePicker /></div>
-            <div>
-              <label className="label" htmlFor="sup-lead">Delivers after (days)</label>
-              <input id="sup-lead" name="lead_time_days" type="number" min={0} defaultValue={3} className="input" />
-            </div>
-          </div>
-          <div className="flex gap-2 px-4 pb-4">
-            <button className="btn btn-primary">Add and start the order</button>
-            {!!sups?.length && <Link href="/manager/orders/suppliers" className="btn btn-ghost">Cancel</Link>}
-          </div>
-        </form>
-      )}
-
-      {sup && (
-        <>
-          <div className="mt-4 rounded-2xl border-2 border-[#1c4c86]/25 bg-white p-4 text-sm">
-            <p className="text-base font-semibold" data-no-translate>{sup.name}</p>
-            <SupplierBadges types={sup.specialties} className="mt-2 flex" />
-            <div className="mt-2 space-y-0.5 text-muted" data-no-translate>
-              {sup.address && <p>{sup.address}{sup.country ? ` (${sup.country})` : ""}</p>}
-              {(sup.phone || sup.email) && <p>{sup.phone && <a href={`tel:${sup.phone}`} className="underline">{sup.phone}</a>}{sup.phone && sup.email ? " · " : ""}{sup.email && <a href={`mailto:${sup.email}`} className="underline">{sup.email}</a>}</p>}
-              {sup.website && <p><a href={sup.website} target="_blank" rel="noreferrer" className="underline">{sup.website.replace(/^https?:\/\//, "")}</a></p>}
-            </div>
-          </div>
-          <Section color="stock2" title={`Order list for ${sup.name}`} action={po ? <a href={`/admin/purchase-orders/${po.id}/pdf`} target="_blank" rel="noreferrer" className="text-xs font-medium text-forest">PDF preview</a> : undefined}>
-            <div className="mt-c mt-stock2 rounded-2xl p-1">
-              {items.length ? (
-                <ul className="divide-y divide-line rounded-xl bg-white">
-                  {items.map((i) => (
-                    <li key={i.id} className="flex items-center gap-3 px-3 py-2.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {i.products.image_url ? <img src={i.products.image_url} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain ring-1 ring-line" /> : <span className="h-10 w-10 shrink-0 rounded-lg bg-surface" />}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm" data-no-translate>{i.products.title}</p>
-                        <p className="text-[0.6875rem] text-muted">{i.products.stock} in stock{i.unit_cost != null ? ` · ${money(i.unit_cost)} each` : ""}</p>
-                      </div>
-                      <div className="flex items-center rounded-full border-2 border-line text-base">
-                        <form action={refillQty}>{keep({ item_id: String(i.id), delta: "-1" })}<button className="h-11 w-11 text-xl font-bold" aria-label={`One less ${i.products.title}`}>−</button></form>
-                        <span className="w-9 text-center text-base font-bold tabular-nums" aria-label={`Quantity ${i.qty}`}>{i.qty}</span>
-                        <form action={refillQty}>{keep({ item_id: String(i.id), delta: "1" })}<button className="h-11 w-11 text-xl font-bold" aria-label={`One more ${i.products.title}`}>+</button></form>
-                      </div>
-                      <form action={refillQty}>{keep({ item_id: String(i.id), qty: "0" })}<button className="h-11 rounded-xl border-2 border-terra/40 px-3 text-sm font-semibold text-terra" aria-label={`Remove ${i.products.title}`}>Remove</button></form>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="rounded-xl bg-white p-5 text-center text-sm text-muted">The list is empty. Add products below.</p>
-              )}
-              {items.length > 0 && (
-                <p className="px-3 py-2 text-xs font-semibold">
-                  {items.length} products · {units} units{value > 0 ? ` · about ${money(value)}` : ""}
-                </p>
-              )}
-            </div>
-          </Section>
-
-          {po && items.length > 0 && (
-            <>
-              <form action={refillMessage} className="mt-3 space-y-2">
-                {keep({ po_id: String(po.id) })}
-                <label className="label" htmlFor="message">Message to the supplier (optional)</label>
-                <textarea id="message" name="message" rows={2} defaultValue={po.message ?? ""} className="input" placeholder="e.g. Please deliver by Friday morning." />
-                <button className="btn btn-ghost h-9 px-4 py-1 text-sm">Save message</button>
-              </form>
-              <div className="mt-4">
-                <SendPanel poId={po.id} hasEmail={!!sup.email} hasWhatsApp={!!sup.whatsapp} preferred={sup.preferred_channel} status="draft" email={sup.email} whatsapp={sup.whatsapp} />
-              </div>
-            </>
-          )}
-
-          <Section color="stock" title="Fill the list in one tap">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <form action={refillFillLow}>
-                {keep()}
-                <button disabled={!lowCount} className="mt-c mt-stock flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left text-[0.9375rem] font-semibold disabled:opacity-50">
-                  <span>Add everything running low</span>
-                  <span className="rounded-full bg-white px-2.5 py-0.5 text-sm text-[#2563a8]">{lowCount}</span>
-                </button>
-              </form>
-              <form action={refillRepeatLast}>
-                {keep()}
-                <button disabled={!hasLast} className="mt-c mt-stock3 flex min-h-14 w-full items-center rounded-2xl px-4 py-3 text-left text-[0.9375rem] font-semibold disabled:opacity-50">
-                  Repeat last order
-                </button>
-              </form>
-            </div>
-            {!lowCount && !hasLast && <p className="mt-2 text-xs text-muted">Nothing is running low from this supplier, and there is no earlier order yet.</p>}
-          </Section>
-
-          {before.length > 0 && (
-            <Section color="stock2" title="Ordered before – tap to add again">
-              <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
-                {before.map((b) => {
-                  const usual = Math.max(1, Math.round(b.qty / b.times));
-                  return (
-                    <li key={b.product_id} className="flex items-center gap-3 px-3 py-2.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {b.image_url ? <img src={b.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg bg-white object-contain ring-1 ring-line" /> : <span className="h-11 w-11 shrink-0 rounded-lg bg-surface" />}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium" data-no-translate>{b.title}</p>
-                        <p className="text-xs text-muted">ordered {b.times}× · usually {usual} · {b.stock} in stock</p>
-                      </div>
-                      <form action={refillAdd}>
-                        {keep({ product_id: String(b.product_id), qty: String(usual) })}
-                        <button className="btn btn-primary h-11 px-4 text-sm" aria-label={`Add ${usual} × ${b.title}`}>+ {usual}</button>
-                      </form>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Section>
-          )}
-
-          <Section color="stock3" title={q ? `Search: ${q}` : `Products from ${sup.name}`}>
-            <form className="mb-3 flex gap-2" action="/manager/orders/suppliers">
-              <input type="hidden" name="s" value={sup.id} />
-              <input name="q" defaultValue={q} placeholder="Search any product or SKU" className="input flex-1" type="search" />
-              <button className="btn btn-primary px-4">Search</button>
-            </form>
-            {products.length ? (
-              <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
-                {products.map((p) => (
-                  <li key={p.id} className="flex items-center gap-3 px-3 py-2.5">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {p.image_url ? <img src={p.image_url} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain ring-1 ring-line" /> : <span className="h-10 w-10 shrink-0 rounded-lg bg-surface" />}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm" data-no-translate>{p.title}</p>
-                      <p className="text-xs text-muted">
-                        <b className={p.stock <= p.reorder_point ? "text-terra" : ""}>{p.stock}</b> in stock
-                        {p.supplier_id && p.supplier_id !== sup.id && <> · usually from <span data-no-translate>{(sups ?? []).find((x) => x.id === p.supplier_id)?.name ?? "another supplier"}</span></>}
-                        {p.supplier_id === sup.id && <> · <span className="font-semibold text-[#1c4c86]">your usual supplier</span></>}
-                      </p>
+  // ---------- step 3: review & send ----------
+  if (view === "list") {
+    return (
+      <div className="pb-8">
+        {header()}
+        <div className="mt-3"><Msg msg={msg} /></div>
+        {items.length ? (
+          <>
+            <p className="mt-3 text-sm font-semibold">{items.length} products · {units} units{value > 0 ? ` · about ${money(value)}` : ""}</p>
+            <ul className="mt-2 divide-y divide-line rounded-2xl border-2 border-line bg-white">
+              {items.map((i) => (
+                <li key={i.id} className="px-3 py-3">
+                  <p className="text-[0.9375rem] font-medium leading-snug" data-no-translate>{i.products.title}</p>
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center rounded-full border-2 border-line">
+                      <form action={refillQty}>{keep({ item_id: String(i.id), delta: "-1" })}<button className="h-11 w-12 text-2xl font-bold" aria-label={`One less ${i.products.title}`}>−</button></form>
+                      <span className="w-10 text-center text-lg font-bold tabular-nums">{i.qty}</span>
+                      <form action={refillQty}>{keep({ item_id: String(i.id), delta: "1" })}<button className="h-11 w-12 text-2xl font-bold" aria-label={`One more ${i.products.title}`}>+</button></form>
                     </div>
-                    <form action={refillAdd}>
-                      {keep({ product_id: String(p.id) })}
-                      <button className={`btn h-11 px-4 text-sm font-semibold ${inList.has(p.id) ? "btn-ghost" : "btn-primary"}`} aria-label={`${inList.has(p.id) ? "One more" : "Add"} ${p.title}`}>{inList.has(p.id) ? "+1 more" : "+ Add"}</button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="rounded-2xl border border-line bg-white p-5 text-sm text-muted">{q ? "No products found." : "No products are linked to this supplier yet. Search to add any product."}</p>
+                    <span className="text-xs text-muted">{i.products.stock} in stock</span>
+                    <form action={refillQty}>{keep({ item_id: String(i.id), qty: "0" })}<button className="h-11 rounded-xl border-2 border-terra/40 px-3 text-sm font-semibold text-terra" aria-label={`Remove ${i.products.title}`}>Remove</button></form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Link href={`${BASE}?s=${sup.id}`} className="btn btn-ghost mt-3 w-full font-semibold">+ Add more products</Link>
+            <details className="mt-4 rounded-2xl border border-line bg-white p-3">
+              <summary className="cursor-pointer text-sm font-semibold">Message to the supplier (optional)</summary>
+              <form action={refillMessage} className="mt-2 space-y-2">
+                {keep({ po_id: String(po!.id) })}
+                <textarea name="message" rows={3} defaultValue={po!.message ?? ""} className="input" placeholder="e.g. Please deliver by Friday morning." aria-label="Message to the supplier" />
+                <button className="btn btn-ghost w-full">Save message</button>
+              </form>
+            </details>
+            <div className="mt-4">
+              <SendPanel poId={po!.id} hasEmail={!!sup.email} hasWhatsApp={!!sup.whatsapp} preferred={sup.preferred_channel} status="draft" email={sup.email} whatsapp={sup.whatsapp} />
+            </div>
+            <a href={`/admin/purchase-orders/${po!.id}/pdf`} target="_blank" rel="noreferrer" className="mt-3 block text-center text-sm font-semibold text-forest underline">See the PDF first</a>
+          </>
+        ) : (
+          <div className="mt-6 rounded-2xl border border-line bg-white p-6 text-center">
+            <p className="text-sm text-muted">The list is empty.</p>
+            <Link href={`${BASE}?s=${sup.id}`} className="btn btn-primary mt-4">Add products</Link>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---------- step 2: add products ----------
+  const [ins, { data: mine }, { count: sentBefore }] = await Promise.all([
+    supplierInsights(sup.id),
+    sb.from("products").select("id, title, image_url, stock, reorder_point, reorder_qty, supplier_id").eq("supplier_id", sup.id).eq("status", "active").order("stock"),
+    sb.from("purchase_orders").select("id", { count: "exact", head: true }).eq("supplier_id", sup.id).not("status", "in", "(draft,cancelled)"),
+  ]);
+  const low = ((mine ?? []) as Prod[]).filter((p) => (p.stock ?? 0) <= (p.reorder_point ?? 0));
+  const before: SupplierInsight[] = ins.filter((i) => i.times > 0).sort((a, b) => String(b.last).localeCompare(String(a.last))).slice(0, 30);
+  const tab = sp.tab === "low" || sp.tab === "before" || sp.tab === "search" ? sp.tab : low.length ? "low" : before.length ? "before" : "search";
+
+  let found: Prod[] = [];
+  if (tab === "search") {
+    const term = q.trim().replace(/[%,()]/g, " ");
+    let pq = sb.from("products").select("id, title, image_url, stock, reorder_point, reorder_qty, supplier_id").neq("status", "draft").order("title").limit(50);
+    if (term) pq = pq.or(`title.ilike.%${term}%,sku.ilike.%${term}%,title_de.ilike.%${term}%`);
+    else {
+      const { data: linked } = await sb.from("supplier_products").select("product_id").eq("supplier_id", sup.id);
+      const ids = (linked ?? []).map((r) => r.product_id);
+      pq = ids.length ? pq.in("id", ids.slice(0, 400)) : pq.eq("supplier_id", sup.id);
+    }
+    found = ((await pq).data ?? []) as Prod[];
+  }
+  const supName = (id: number | null) => (sups ?? []).find((x) => x.id === id)?.name;
+
+  const Row = ({ id, title, image, stock, reorder, sub, addQty }: { id: number; title: string; image: string | null; stock: number; reorder: number; sub?: React.ReactNode; addQty?: number }) => {
+    const has = qtyOf.get(id);
+    return (
+      <li className="flex items-center gap-3 px-3 py-2.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {image ? <img src={image} alt="" className="h-12 w-12 shrink-0 rounded-lg bg-white object-contain ring-1 ring-line" /> : <span className="h-12 w-12 shrink-0 rounded-lg bg-surface" />}
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-medium leading-snug" data-no-translate>{title}</p>
+          <p className="mt-0.5 text-xs text-muted">
+            <b className={stock <= reorder ? "text-terra" : ""}>{stock}</b> in stock{sub}
+            {has ? <b className="ml-1 text-forest">· ✓ {has} on list</b> : null}
+          </p>
+        </div>
+        <form action={refillAdd}>
+          {keep({ product_id: String(id), ...(addQty ? { qty: String(addQty) } : {}) })}
+          <button className={`h-12 min-w-14 rounded-xl px-3 text-base font-bold ${has ? "border-2 border-forest text-forest" : "bg-forest text-white"}`} aria-label={`Add ${addQty ?? ""} ${title}`}>
+            {addQty ? `+${addQty}` : has ? "+1" : "+ Add"}
+          </button>
+        </form>
+      </li>
+    );
+  };
+
+  const tabs: [string, string, number | null][] = [
+    ["low", "Running low", low.length],
+    ["before", "Ordered before", before.length],
+    ["search", "Search", null],
+  ];
+
+  return (
+    <div className="pb-28">
+      {header(
+      <nav aria-label="Ways to add products" className="mt-2">
+        <div className="grid grid-cols-3 gap-1 rounded-2xl bg-surface p-1">
+          {tabs.map(([k, label, n]) => (
+            <Link
+              key={k}
+              href={`${BASE}?s=${sup.id}&tab=${k}`}
+              aria-current={tab === k ? "page" : undefined}
+              className={`flex min-h-11 items-center justify-center gap-1 rounded-xl px-1 text-center text-sm font-semibold ${tab === k ? "mt-c mt-stock2" : "text-ink"}`}
+            >
+              {label}
+              {n ? <span className={`rounded-full px-1.5 text-xs ${tab === k ? "bg-white text-[#1c4c86]" : "bg-[#1c4c86] text-white"}`}>{n}</span> : null}
+            </Link>
+          ))}
+        </div>
+      </nav>
+      )}
+      <div className="mt-2"><Msg msg={msg} /></div>
+
+      {tab === "low" &&
+        (low.length ? (
+          <>
+            <form action={refillFillLow} className="mt-2">
+              {keep()}
+              <button className="mt-c mt-stock flex min-h-14 w-full items-center justify-center rounded-2xl px-4 text-base font-bold">Add all {low.length} at once</button>
+            </form>
+            <ul className="mt-3 divide-y divide-line rounded-2xl border-2 border-line bg-white">
+              {low.map((p) => (
+                <Row key={p.id} id={p.id} title={p.title} image={p.image_url} stock={p.stock} reorder={p.reorder_point} addQty={Math.max(1, (p.reorder_qty || 0) + (p.reorder_point || 0) - (p.stock || 0))} />
+              ))}
+            </ul>
+          </>
+        ) : (
+          <Empty text="Nothing you usually order here is running low." />
+        ))}
+
+      {tab === "before" &&
+        (before.length ? (
+          <>
+            {(sentBefore ?? 0) > 0 && (
+              <form action={refillRepeatLast} className="mt-2">
+                {keep()}
+                <button className="mt-c mt-stock3 flex min-h-14 w-full items-center justify-center rounded-2xl px-4 text-base font-bold">Repeat the last order</button>
+              </form>
             )}
-          </Section>
+            <ul className="mt-3 divide-y divide-line rounded-2xl border-2 border-line bg-white">
+              {before.map((b) => {
+                const usual = Math.max(1, Math.round(b.qty / b.times));
+                return <Row key={b.product_id} id={b.product_id} title={b.title} image={b.image_url} stock={b.stock} reorder={b.reorder_point} addQty={usual} sub={<> · usually {usual}</>} />;
+              })}
+            </ul>
+          </>
+        ) : (
+          <Empty text="Nothing ordered from this supplier yet. After your first order, earlier items show up here." />
+        ))}
+
+      {tab === "search" && (
+        <>
+          <form action={BASE} className="mt-2 flex gap-2">
+            <input type="hidden" name="s" value={sup.id} />
+            <input type="hidden" name="tab" value="search" />
+            <input name="q" defaultValue={q} type="search" placeholder="Product name or SKU" aria-label="Search products" className="input flex-1 text-base" />
+            <button className="btn btn-primary px-5">Find</button>
+          </form>
+          {!q && <p className="mt-2 text-xs text-muted">Showing products {sup.name} sells. Search to find any product.</p>}
+          {found.length ? (
+            <ul className="mt-3 divide-y divide-line rounded-2xl border-2 border-line bg-white">
+              {found.map((p) => (
+                <Row
+                  key={p.id}
+                  id={p.id}
+                  title={p.title}
+                  image={p.image_url}
+                  stock={p.stock}
+                  reorder={p.reorder_point}
+                  sub={p.supplier_id && p.supplier_id !== sup.id ? <> · usually from <span data-no-translate>{supName(p.supplier_id)}</span></> : null}
+                />
+              ))}
+            </ul>
+          ) : (
+            <Empty text={q ? "No products found." : "No products are linked to this supplier yet. Search to add any product."} />
+          )}
         </>
       )}
+
+      {/* always-visible list bar, above the app's tab bar */}
+      <div className="fixed inset-x-0 bottom-[calc(61px+env(safe-area-inset-bottom))] z-20 px-4 pb-2">
+        <Link
+          href={`${BASE}?s=${sup.id}&view=list`}
+          className={`mx-auto flex min-h-14 max-w-3xl items-center justify-between gap-3 rounded-2xl px-4 shadow-lg ${items.length ? "mt-c mt-stock2" : "border-2 border-line bg-white text-muted"}`}
+        >
+          <span className="text-base font-bold">🛒 {items.length ? `${items.length} products · ${units} units` : "List is empty"}</span>
+          {items.length > 0 && <span className="rounded-xl bg-white px-3 py-1.5 text-sm font-bold text-[#1c4c86]">Review & send ›</span>}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="mt-3 rounded-2xl border border-line bg-white p-5 text-center text-sm text-muted">{text}</p>;
+}
+
+function NewSupplier({ msg, canCancel }: { msg?: string; canCancel: boolean }) {
+  return (
+    <div className="pb-8">
+      <OrdersNav active="suppliers" />
+      <Msg msg={msg} />
+      <div className="flex items-center gap-2">
+        {canCancel && <Link href={BASE} className="grid h-11 w-11 place-items-center rounded-xl border-2 border-line bg-white text-xl" aria-label="Back to suppliers">‹</Link>}
+        <h1 className="text-lg font-bold">New supplier</h1>
+      </div>
+      <form action={addSupplier} className="mt-3 space-y-3 rounded-2xl border border-line bg-white p-4">
+        <div>
+          <label className="label" htmlFor="sup-name">Company name *</label>
+          <input id="sup-name" name="name" required className="input" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><label className="label" htmlFor="sup-wa">WhatsApp number</label><input id="sup-wa" name="whatsapp" inputMode="tel" placeholder="+49 …" className="input" /></div>
+          <div><label className="label" htmlFor="sup-email">Email</label><input id="sup-email" name="email" type="email" className="input" /></div>
+        </div>
+        <div>
+          <label className="label" htmlFor="sup-pref">Send orders by</label>
+          <select id="sup-pref" name="preferred_channel" defaultValue="whatsapp" className="input">
+            <option value="whatsapp">WhatsApp</option>
+            <option value="email">Email</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <SupplierTypePicker />
+        <details className="rounded-xl border border-line p-3">
+          <summary className="cursor-pointer text-sm font-semibold">More details (optional)</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div><label className="label" htmlFor="sup-contact">Contact person</label><input id="sup-contact" name="contact_name" className="input" /></div>
+            <div><label className="label" htmlFor="sup-phone">Phone</label><input id="sup-phone" name="phone" inputMode="tel" className="input" /></div>
+            <div className="sm:col-span-2"><label className="label" htmlFor="sup-addr">Address</label><input id="sup-addr" name="address" className="input" /></div>
+            <div><label className="label" htmlFor="sup-web">Website</label><input id="sup-web" name="website" type="url" placeholder="https://…" className="input" /></div>
+            <div><label className="label" htmlFor="sup-lead">Delivers after (days)</label><input id="sup-lead" name="lead_time_days" type="number" min={0} defaultValue={3} className="input" /></div>
+          </div>
+        </details>
+        <button className="btn btn-primary w-full">Add and start the order</button>
+      </form>
     </div>
   );
 }
