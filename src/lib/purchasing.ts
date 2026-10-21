@@ -2,6 +2,7 @@ import "server-only";
 import { supabaseAdmin } from "./supabase";
 import { buildPurchaseOrderPdf } from "./pdf";
 import { sendEmail, sendWhatsAppDocument, waLink } from "./notify";
+import { siteUrl } from "./site";
 
 type StoreInfo = { name: string; street: string; postal: string; city: string; phone: string; email?: string };
 
@@ -57,7 +58,7 @@ async function loadPo(id: number) {
   if (!po) throw new Error("Purchase order not found");
   const { data: items } = await sb
     .from("purchase_order_items")
-    .select("qty, unit_cost, note, product_id, products(sku, title, title_de)")
+    .select("qty, unit_cost, note, product_id, ordered, offer_price, products(sku, title, title_de)")
     .eq("purchase_order_id", id)
     .order("id");
   const { data: sp } = await sb
@@ -77,20 +78,25 @@ async function loadPo(id: number) {
 /** The PDF as it looks right now (used by the live preview); nothing is stored. */
 export async function poPdfBytes(id: number) {
   const { po, items, refs, shipTo } = await loadPo(id);
+  if (po.request_kind === "quote" && !po.offer_token) po.offer_token = await ensureOfferToken(id);
   const store = await storeInfo();
   return buildPurchaseOrderPdf(pdfInput(po, items, refs, shipTo, store));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function pdfInput(po: any, items: any[], refs: Map<number, string | null>, shipTo: any, store: StoreInfo) {
+  const quote = po.request_kind === "quote";
+  if (!quote) items = items.filter((i) => i.ordered !== false);
   return {
+    requestKind: (quote ? "quote" : "order") as "quote" | "order",
+    offerUrl: quote && po.offer_token ? offerLink(po.offer_token) : null,
     number: po.number,
     kind: po.kind,
     date: new Date(po.created_at).toLocaleDateString("de-DE"),
     expected: po.expected_at ? new Date(po.expected_at).toLocaleDateString("de-DE") : null,
     store,
     supplier: po.suppliers,
-    showPrices: po.show_prices !== false,
+    showPrices: !quote && po.show_prices !== false,
     items: items.map((i) => {
       const prod = i.products as { sku: string; title: string; title_de: string | null };
       return { sku: prod.sku, title: prod.title_de || prod.title, qty: i.qty, unit_cost: i.unit_cost, supplier_sku: refs.get(i.product_id), note: i.note };
@@ -104,6 +110,7 @@ function pdfInput(po: any, items: any[], refs: Map<number, string | null>, shipT
 export async function renderPoPdf(id: number) {
   const sb = supabaseAdmin();
   const { po, items, refs, shipTo } = await loadPo(id);
+  if (po.request_kind === "quote" && !po.offer_token) po.offer_token = await ensureOfferToken(id);
   const store = await storeInfo();
   const pdf = await buildPurchaseOrderPdf(pdfInput(po, items, refs, shipTo, store));
   const path = `purchase-orders/PO-${po.number}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}.pdf`;
@@ -121,17 +128,21 @@ export async function sendPo(id: number, channel: "email" | "whatsapp") {
   const sb = supabaseAdmin();
   const { pdf, url, po, store, path } = await renderPoPdf(id);
   const sup = po.suppliers;
-  const filename = `PO-${po.number}.pdf`;
-  const message =
-    (po.message ? `${po.message}\n\n` : `Hello ${sup.contact_name ?? sup.name},\n\nplease find our ${po.kind === "dropship" ? "dropship order" : "refill order"} PO-${po.number} from ${store.name}.\n\n`) +
-    `PDF: ${url}\n\n${po.message ? "" : "Please confirm availability and delivery date. Thank you!\n"}${store.name}, ${store.phone}`;
+  const quote = po.request_kind === "quote";
+  const filename = `${quote ? "PR" : "PO"}-${po.number}.pdf`;
+  const hello = `Hello ${sup.contact_name ?? sup.name},\n\n`;
+  const message = quote
+    ? `${hello}${po.message ? po.message + "\n\n" : ""}this is a price request from ${store.name} (PR-${po.number}), not an order yet. Please tell us your best net price per unit and whether you have the items in stock.\n\n` +
+      `Enter your prices here (takes 2 minutes): ${offerLink(po.offer_token)}\n\nList as PDF: ${url}\n\nThank you!\n${store.name}, ${store.phone}`
+    : (po.message ? `${po.message}\n\n` : `${hello}please find our ${po.kind === "dropship" ? "dropship order" : "order"} PO-${po.number} from ${store.name}.\n\n`) +
+      `PDF: ${url}\n\n${po.message ? "" : "Please confirm availability and delivery date. Thank you!\n"}${store.name}, ${store.phone}`;
 
   let result: { ok: boolean; error?: string; link?: string };
   if (channel === "email") {
     if (!sup.email) throw new Error("Supplier has no email address");
     result = await sendEmail({
       to: sup.email,
-      subject: `${po.kind === "dropship" ? "Dropship order" : "Order"} PO-${po.number} – ${store.name}`,
+      subject: quote ? `Price request PR-${po.number} – ${store.name}` : `${po.kind === "dropship" ? "Dropship order" : "Order"} PO-${po.number} – ${store.name}`,
       html: `<p>${message.replace(/\n/g, "<br>")}</p>`,
       attachments: [{ filename, content: pdf }],
       replyTo: store.email || undefined,
@@ -139,14 +150,76 @@ export async function sendPo(id: number, channel: "email" | "whatsapp") {
   } else {
     if (!sup.whatsapp && !sup.phone) throw new Error("Supplier has no WhatsApp number");
     const phone = (sup.whatsapp ?? sup.phone)!;
-    const api = await sendWhatsAppDocument(phone, url, filename, `PO-${po.number} – ${store.name}`);
+    const api = quote ? { ok: false } : await sendWhatsAppDocument(phone, url, filename, `PO-${po.number} – ${store.name}`);
     result = api.ok ? api : { ok: true, link: waLink(phone, message) };
   }
   if (result.ok && !result.link) {
     await sb.from("purchase_order_sends").insert({ purchase_order_id: id, channel, recipient: channel === "email" ? sup.email : sup.whatsapp ?? sup.phone, pdf_path: path });
-    await sb.from("purchase_orders").update({ status: po.status === "draft" ? "sent" : po.status, sent_via: channel, sent_at: new Date().toISOString(), edited_after_send: false }).eq("id", id);
+    await sb.from("purchase_orders").update({ status: nextStatus(po), sent_via: channel, sent_at: new Date().toISOString(), edited_after_send: false }).eq("id", id);
   }
   return { ...result, pdfUrl: url };
+}
+
+/** Status after sending: a price request waits for prices, an order (also an accepted offer) is sent. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const nextStatus = (po: any) => (po.status === "draft" || (po.status === "quoted" && po.request_kind === "order") ? "sent" : po.status);
+
+export const offerLink = (token: string | null | undefined) => (token ? `${siteUrl()}/offer/${token}` : "");
+
+/** Makes sure a price request has its private link for the supplier. */
+export async function ensureOfferToken(id: number) {
+  const sb = supabaseAdmin();
+  const { data } = await sb.from("purchase_orders").select("offer_token").eq("id", id).single();
+  if (data?.offer_token) return data.offer_token as string;
+  const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "").slice(0, 40);
+  await sb.from("purchase_orders").update({ offer_token: token }).eq("id", id);
+  return token;
+}
+
+/** WhatsApp link to share the list with anyone (e.g. for approval). Does not count as sent to the supplier. */
+export async function sharePo(id: number, phone: string, note: string) {
+  const { url, po, store, path } = await renderPoPdf(id);
+  const quote = po.request_kind === "quote";
+  const sb = supabaseAdmin();
+  const { data: items } = await sb.from("purchase_order_items").select("qty, ordered, offer_price, products(title)").eq("purchase_order_id", id).order("id");
+  const lines = (items ?? [])
+    .filter((i) => quote || i.ordered !== false)
+    .slice(0, 25)
+    .map((i) => {
+      const t = (i.products as unknown as { title: string }).title;
+      return `• ${i.qty} × ${t}${i.offer_price != null ? ` – ${Number(i.offer_price).toFixed(2)} €` : ""}`;
+    });
+  const what = po.status === "quoted" ? "the offer from" : quote ? "a price request to" : "an order to";
+  const message =
+    `${note ? note + "\n\n" : ""}Please check ${what} ${po.suppliers.name} (${quote ? "PR" : "PO"}-${po.number}):\n${lines.join("\n")}` +
+    `${(items?.length ?? 0) > 25 ? "\n…" : ""}\n\nPDF: ${url}\n\n${store.name}`;
+  await sb.from("purchase_order_sends").insert({ purchase_order_id: id, channel: "share", recipient: phone, pdf_path: path });
+  return waLink(phone, message);
+}
+
+/** The supplier's prices from the private offer link. */
+export async function saveOfferFromSupplier(token: string, lines: { product_id: number; price: number | null; available: boolean; note: string }[], note: string, by: string) {
+  const sb = supabaseAdmin();
+  const { data: po } = await sb.from("purchase_orders").select("id, number, status, request_kind, suppliers(name)").eq("offer_token", token).single();
+  if (!po || po.request_kind !== "quote" || !["sent", "quoted", "draft"].includes(po.status)) throw new Error("This price request is closed.");
+  for (const l of lines) {
+    await sb
+      .from("purchase_order_items")
+      .update({ offer_price: l.price, offer_available: l.available, offer_note: l.note.slice(0, 200) || null })
+      .eq("purchase_order_id", po.id)
+      .eq("product_id", l.product_id);
+  }
+  await sb.from("purchase_orders").update({ status: "quoted", quoted_at: new Date().toISOString(), offer_note: note.slice(0, 1000) || null, offer_by: by.slice(0, 80) || null }).eq("id", po.id);
+  const store = await storeInfo();
+  if (store.email) {
+    const sup = (po.suppliers as unknown as { name: string }).name;
+    await sendEmail({
+      to: store.email,
+      subject: `Prices received from ${sup} (PR-${po.number})`,
+      html: `<p>${sup} has sent prices for price request PR-${po.number}.</p><p><a href="${siteUrl()}/manager/orders/suppliers/offer/${po.id}">Open the offer in the Manager app</a></p>`,
+    }).catch(() => null);
+  }
+  return po.number as number;
 }
 
 /** Books received quantities into stock as a batch (with optional best-before date). */

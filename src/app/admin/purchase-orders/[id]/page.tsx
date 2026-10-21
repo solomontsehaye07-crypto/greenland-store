@@ -11,7 +11,7 @@ import { PoEditor, type ProdInfo } from "./po-editor";
 
 export const dynamic = "force-dynamic";
 
-const STATUS: Record<string, string> = { draft: "Draft", sent: "Sent", confirmed: "Confirmed", partially_received: "Partly received", received: "Received", cancelled: "Cancelled" };
+const STATUS: Record<string, string> = { draft: "Draft", sent: "Sent", quoted: "Prices received", confirmed: "Confirmed", partially_received: "Partly received", received: "Received", cancelled: "Cancelled" };
 
 export default async function PoDetail({ params }: { params: Promise<{ id: string }> }) {
   await requireStaff();

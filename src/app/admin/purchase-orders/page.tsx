@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 const STATUS: Record<string, [string, string]> = {
   draft: ["Draft", "bg-saffron/25"],
   sent: ["Sent", "bg-indigo/10 text-indigo"],
+  quoted: ["Prices received", "bg-saffron/25"],
   confirmed: ["Confirmed", "bg-indigo/10 text-indigo"],
   partially_received: ["Partly received", "bg-forest/10 text-forest"],
   received: ["Received", "bg-forest text-white"],
@@ -34,7 +35,7 @@ export default async function PurchaseOrders({ searchParams }: { searchParams: P
     .order("created_at", { ascending: false })
     .limit(200);
   if (supplier) q = q.eq("supplier_id", Number(supplier));
-  if (status === "open") q = q.in("status", ["draft", "sent", "confirmed", "partially_received"]);
+  if (status === "open") q = q.in("status", ["draft", "sent", "quoted", "confirmed", "partially_received"]);
   else if (status) q = q.eq("status", status);
   const [{ data: pos }, { data: sups }] = await Promise.all([q, sb.from("suppliers").select("id, name").eq("active", true).order("name")]);
   const sel = supplier ? (sups ?? []).find((s) => String(s.id) === supplier) : undefined;

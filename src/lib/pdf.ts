@@ -13,6 +13,8 @@ export interface PoPdfInput {
   showPrices?: boolean;
   shipTo?: { name: string; street: string; postal: string; city: string; country: string; phone?: string } | null;
   notes?: string | null;
+  requestKind?: "quote" | "order"; // quote = price request, nothing is ordered yet
+  offerUrl?: string | null; // where the supplier can type the prices in
 }
 
 const GREEN = rgb(0.114, 0.361, 0.247);
@@ -42,15 +44,16 @@ export async function buildPurchaseOrderPdf(po: PoPdfInput): Promise<Uint8Array>
   const text = (s: string, x: number, yy: number, size = 10, f = font, color = INK) =>
     page.drawText(safe(s), { x, y: yy, size, font: f, color });
 
+  const quote = po.requestKind === "quote";
   text(po.store.name, M, y, 16, bold, GREEN);
-  text(po.kind === "dropship" ? "DROPSHIP ORDER" : "PURCHASE ORDER / BESTELLUNG", width - M - 220, y, 11, bold);
+  text(quote ? "PRICE REQUEST / PREISANFRAGE" : po.kind === "dropship" ? "DROPSHIP ORDER" : "PURCHASE ORDER / BESTELLUNG", width - M - 220, y, 11, bold);
   y -= 16;
   text(`${po.store.street}, ${po.store.postal} ${po.store.city}`, M, y, 9, font, MUTED);
-  text(`No. PO-${po.number}`, width - M - 220, y, 10);
+  text(`No. ${quote ? "PR" : "PO"}-${po.number}`, width - M - 220, y, 10);
   y -= 12;
   text(`Tel. ${po.store.phone}${po.store.email ? "  " + po.store.email : ""}`, M, y, 9, font, MUTED);
   text(`Date: ${po.date}`, width - M - 220, y, 10);
-  if (po.expected) {
+  if (po.expected && !quote) {
     y -= 12;
     text(`Requested delivery: ${po.expected}`, width - M - 220, y, 10);
   }
@@ -72,12 +75,27 @@ export async function buildPurchaseOrderPdf(po: PoPdfInput): Promise<Uint8Array>
     y -= 13;
   }
 
+  if (quote) {
+    y -= 14;
+    page.drawRectangle({ x: M - 6, y: y - 40, width: width - 2 * M + 12, height: 52, color: rgb(0.99, 0.96, 0.88) });
+    text("This is a price request, not an order. Please send us your best net price per unit and availability.", M, y, 9.5, bold);
+    y -= 13;
+    text("Dies ist eine Preisanfrage, keine Bestellung. Bitte nennen Sie uns Ihren besten Netto-Stueckpreis und die Verfuegbarkeit.", M, y, 9.5);
+    y -= 13;
+    text(po.offerUrl ? "Enter your prices online / Preise online eintragen:" : "We will confirm the order after receiving your offer.", M, y, 9, font, MUTED);
+    if (po.offerUrl) {
+      y -= 12;
+      text(po.offerUrl, M, y, 8.5, bold, GREEN);
+    }
+    y -= 10;
+  }
+
   // table
   y -= 18;
   const cols = [M, M + 80, M + 170, width - M - 150, width - M - 80];
   const header = () => {
     page.drawRectangle({ x: M - 6, y: y - 6, width: width - 2 * M + 12, height: 20, color: rgb(0.89, 0.93, 0.9) });
-    ["SKU", "Supplier ref", "Product", "Qty", po.showPrices === false ? "" : "Unit cost"].forEach((h, i) => text(h, cols[i], y, 9, bold));
+    ["SKU", "Supplier ref", "Product", "Qty", quote ? "Your price/unit" : po.showPrices === false ? "" : "Unit cost"].forEach((h, i) => text(h, cols[i], y, 9, bold));
     y -= 22;
   };
   header();
@@ -93,7 +111,9 @@ export async function buildPurchaseOrderPdf(po: PoPdfInput): Promise<Uint8Array>
     text(it.supplier_sku ?? "", cols[1], y, 9);
     text(title, cols[2], y, 9);
     text(String(it.qty), cols[3], y, 10, bold);
-    if (it.unit_cost != null && po.showPrices !== false) {
+    if (quote) {
+      page.drawLine({ start: { x: cols[4], y: y - 2 }, end: { x: width - M, y: y - 2 }, thickness: 0.6, color: MUTED });
+    } else if (it.unit_cost != null && po.showPrices !== false) {
       text(`${Number(it.unit_cost).toFixed(2)} EUR`, cols[4], y, 9);
       total += Number(it.unit_cost) * it.qty;
     }
@@ -118,7 +138,7 @@ export async function buildPurchaseOrderPdf(po: PoPdfInput): Promise<Uint8Array>
       y -= 13;
     }
   }
-  text("Please confirm this order by email or WhatsApp. Thank you!", M, 50, 9, font, MUTED);
+  text(quote ? "Please reply with your prices by email or WhatsApp, or on the link above. Thank you!" : "Please confirm this order by email or WhatsApp. Thank you!", M, 50, 9, font, MUTED);
   return doc.save();
 }
 

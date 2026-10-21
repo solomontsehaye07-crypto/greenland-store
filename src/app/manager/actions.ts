@@ -135,7 +135,7 @@ async function draftFor(supplierId: number, userId: string) {
   if (po) return po.id as number;
   const { data: sup } = await sb.from("suppliers").select("lead_time_days").eq("id", supplierId).single();
   const expected = new Date(Date.now() + (sup?.lead_time_days ?? 3) * 86400000).toISOString().slice(0, 10);
-  const { data } = await sb.from("purchase_orders").insert({ supplier_id: supplierId, status: "draft", kind: "refill", expected_at: expected, created_by: userId }).select("id").single();
+  const { data } = await sb.from("purchase_orders").insert({ supplier_id: supplierId, status: "draft", kind: "refill", request_kind: "quote", expected_at: expected, created_by: userId }).select("id").single();
   return data!.id as number;
 }
 
@@ -257,4 +257,85 @@ export async function refillRepeatLast(fd: FormData) {
   if (rows.length) await sb.from("purchase_order_items").insert(rows);
   revalidatePath("/manager/orders/suppliers");
   refillBack(fd, `Last order copied: ${rows.length} products added.`);
+}
+
+// ---------- price requests & offers ----------
+const OFFER = (id: number, msg?: string) => `/manager/orders/suppliers/offer/${id}${msg ? `?msg=${encodeURIComponent(msg)}` : ""}`;
+const euro = (v: FormDataEntryValue | null) => {
+  const s = String(v ?? "").trim().replace(/\s|€/g, "").replace(",", ".");
+  if (!s) return null;
+  const n = Math.round(Number(s) * 100) / 100;
+  return Number.isFinite(n) && n >= 0 && n < 100000 ? n : null;
+};
+
+/** Saves prices typed in by the shop (e.g. the supplier answered on WhatsApp) and what to order. */
+async function writeOffer(fd: FormData) {
+  const id = Number(fd.get("po_id"));
+  const sb = supabaseAdmin();
+  const { data: po } = await sb.from("purchase_orders").select("id, status, request_kind").eq("id", id).single();
+  if (!po || !["draft", "sent", "quoted"].includes(po.status)) redirect(OFFER(id, "This request is closed."));
+  const { data: items } = await sb.from("purchase_order_items").select("id").eq("purchase_order_id", id);
+  let priced = 0;
+  for (const it of items ?? []) {
+    const price = euro(fd.get(`price_${it.id}`));
+    const qty = Math.round(Number(fd.get(`qty_${it.id}`)));
+    if (price != null) priced++;
+    await sb
+      .from("purchase_order_items")
+      .update({ offer_price: price, ordered: fd.get(`ordered_${it.id}`) === "on", ...(qty > 0 ? { qty: Math.min(9999, qty) } : {}) })
+      .eq("id", it.id);
+  }
+  if (priced && po!.status !== "quoted") await sb.from("purchase_orders").update({ status: "quoted", quoted_at: new Date().toISOString(), offer_by: "entered in the shop" }).eq("id", id);
+  return id;
+}
+
+export async function saveOfferAction(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const id = await writeOffer(fd);
+  revalidatePath("/manager/orders/suppliers");
+  redirect(OFFER(id, "Prices saved."));
+}
+
+/** Accepts the offer: the ticked lines become the order with the offered prices. */
+export async function acceptOfferAction(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const id = await writeOffer(fd);
+  const sb = supabaseAdmin();
+  const { data: items } = await sb.from("purchase_order_items").select("id, ordered, offer_price").eq("purchase_order_id", id);
+  const take = (items ?? []).filter((i) => i.ordered);
+  if (!take.length) redirect(OFFER(id, "Tick at least one product to order."));
+  for (const i of take) if (i.offer_price != null) await sb.from("purchase_order_items").update({ unit_cost: i.offer_price }).eq("id", i.id);
+  await sb.from("purchase_orders").update({ request_kind: "order", status: "quoted", show_prices: true, updated_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/manager/orders/suppliers");
+  redirect(OFFER(id, "Offer accepted. Now send the order to the supplier."));
+}
+
+/** Back to a price request (e.g. accepted by mistake, before the order was sent). */
+export async function reopenOfferAction(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const id = Number(fd.get("po_id"));
+  await supabaseAdmin().from("purchase_orders").update({ request_kind: "quote" }).eq("id", id).eq("status", "quoted");
+  revalidatePath("/manager/orders/suppliers");
+  redirect(OFFER(id));
+}
+
+export async function cancelRequestAction(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const id = Number(fd.get("po_id"));
+  await supabaseAdmin().from("purchase_orders").update({ status: "cancelled" }).eq("id", id).in("status", ["draft", "sent", "quoted"]);
+  revalidatePath("/manager/orders/suppliers");
+  redirect("/manager/orders/suppliers?msg=Request%20cancelled.");
+}
+
+/** WhatsApp link to send the list or offer to any number, e.g. for approval. */
+export async function shareAction(_: unknown, fd: FormData): Promise<{ link?: string; error?: string }> {
+  await assertStaff(MANAGER_ROLES);
+  const phone = String(fd.get("share_to") ?? "").trim();
+  if (phone.replace(/\D/g, "").length < 7) return { error: "Type the WhatsApp number with country code, e.g. +49 170 1234567." };
+  try {
+    const { sharePo } = await import("@/lib/purchasing");
+    return { link: await sharePo(Number(fd.get("po_id")), phone, String(fd.get("share_note") ?? "").trim().slice(0, 500)) };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
 }

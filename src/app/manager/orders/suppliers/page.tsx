@@ -5,6 +5,7 @@ import { SupplierBadges, SupplierTypePicker } from "@/components/supplier-badges
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
 import { Msg, OrdersNav } from "../../ui";
 import { QtyField } from "@/components/qty-field";
+import { SharePanel } from "./share-panel";
 import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
 import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
 
@@ -27,9 +28,16 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
   const { q = "", msg, find = "" } = sp;
   const sb = supabaseAdmin();
   const supplierId = Number(sp.s) || 0;
-  const [{ data: sups }, { data: drafts }] = await Promise.all([
+  const [{ data: sups }, { data: drafts }, { data: open }] = await Promise.all([
     sb.from("suppliers").select("id, name, email, whatsapp, phone, preferred_channel, specialties, address, website, country").eq("active", true).order("name"),
     sb.from("purchase_orders").select("id, supplier_id, purchase_order_items(id)").eq("status", "draft").eq("kind", "refill"),
+    sb
+      .from("purchase_orders")
+      .select("id, number, status, request_kind, sent_at, quoted_at, suppliers(name)")
+      .eq("kind", "refill")
+      .in("status", ["sent", "quoted", "confirmed"])
+      .order("updated_at", { ascending: false })
+      .limit(30),
   ]);
   const onList = new Map<number, number>();
   for (const d of drafts ?? []) onList.set(d.supplier_id, (onList.get(d.supplier_id) ?? 0) + (d.purchase_order_items as unknown[]).length);
@@ -47,9 +55,10 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
         <OrdersNav active="suppliers" />
         <Msg msg={msg} />
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-lg font-bold">Who do you want to order from?</h1>
+          <h1 className="text-lg font-bold">Order from suppliers</h1>
           <Link href={`${BASE}?new=1`} className="btn btn-ghost shrink-0 px-3 text-sm font-semibold">+ New</Link>
         </div>
+        <OpenRequests rows={(open ?? []) as unknown as OpenRow[]} />
         <form action={BASE} className="mt-3">
           <input name="find" defaultValue={find} type="search" placeholder="Find a supplier" aria-label="Find a supplier" className="input" />
         </form>
@@ -76,7 +85,7 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
   }
 
   // ---------- data for steps 2 and 3 ----------
-  const { data: po } = await sb.from("purchase_orders").select("id, number, message").eq("supplier_id", sup.id).eq("status", "draft").eq("kind", "refill").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: po } = await sb.from("purchase_orders").select("id, number, message, request_kind").eq("supplier_id", sup.id).eq("status", "draft").eq("kind", "refill").order("created_at", { ascending: false }).limit(1).maybeSingle();
   const items: Item[] = po ? (((await sb.from("purchase_order_items").select("id, product_id, qty, unit_cost, products(title, image_url, stock)").eq("purchase_order_id", po.id).order("id")).data ?? []) as unknown as Item[]) : [];
   const qtyOf = new Map(items.map((i) => [i.product_id, i.qty]));
   const units = items.reduce((t, i) => t + i.qty, 0);
@@ -99,7 +108,7 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
         <details className="min-w-0 flex-1">
           <summary className="cursor-pointer list-none">
             <span className="block truncate text-base font-bold" data-no-translate>{sup.name}</span>
-            <span className="text-xs text-muted">{view === "list" ? "Review & send" : "Add products"} · tap for contact</span>
+            <span className="text-xs text-muted">{view === "list" ? "Review & ask for prices" : "Add products"} · tap for contact</span>
           </summary>
           <div className="mt-2 space-y-1 rounded-xl border border-line bg-white p-3 text-sm" data-no-translate>
             <SupplierBadges types={sup.specialties} className="flex" />
@@ -145,9 +154,10 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
               </form>
             </details>
             <div className="mt-4">
-              <SendPanel poId={po!.id} hasEmail={!!sup.email} hasWhatsApp={!!sup.whatsapp} preferred={sup.preferred_channel} status="draft" email={sup.email} whatsapp={sup.whatsapp} />
+              <SendPanel poId={po!.id} hasEmail={!!sup.email} hasWhatsApp={!!(sup.whatsapp || sup.phone)} preferred={sup.preferred_channel} status="draft" email={sup.email} whatsapp={sup.whatsapp || sup.phone} quote={po!.request_kind === "quote"} next={`${BASE}/offer/${po!.id}`} />
             </div>
-            <a href={`/admin/purchase-orders/${po!.id}/pdf`} target="_blank" rel="noreferrer" className="mt-3 block text-center text-sm font-semibold text-forest underline">See the PDF first</a>
+            <Link href={`${BASE}/pdf/${po!.id}?back=${encodeURIComponent(`${BASE}?s=${sup.id}&view=list`)}`} className="btn btn-ghost mt-3 w-full font-semibold">See the PDF first</Link>
+            <div className="mt-3"><SharePanel poId={po!.id} what="this list" /></div>
           </>
         ) : (
           <div className="mt-6 rounded-2xl border border-line bg-white p-6 text-center">
@@ -306,10 +316,42 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
           className={`mx-auto flex min-h-14 max-w-3xl items-center justify-between gap-3 rounded-2xl px-4 shadow-lg ${items.length ? "mt-c mt-stock2" : "border-2 border-line bg-white text-muted"}`}
         >
           <span className="text-base font-bold">🛒 {items.length ? `${items.length} products · ${units} units` : "List is empty"}</span>
-          {items.length > 0 && <span className="rounded-xl bg-white px-3 py-1.5 text-sm font-bold text-[#1c4c86]">Review & send ›</span>}
+          {items.length > 0 && <span className="rounded-xl bg-white px-3 py-1.5 text-sm font-bold text-[#1c4c86]">Review & ask ›</span>}
         </Link>
       </div>
     </div>
+  );
+}
+
+type OpenRow = { id: number; number: number; status: string; request_kind: string; sent_at: string | null; quoted_at: string | null; suppliers: { name: string } | null };
+
+/** Price requests and orders that are under way, most urgent first. */
+function OpenRequests({ rows }: { rows: OpenRow[] }) {
+  const stage = (r: OpenRow): [number, string, string] =>
+    r.request_kind === "quote"
+      ? r.status === "quoted" ? [0, "Prices received – check", "mt-c mt-money"] : [2, "Waiting for prices", "mt-c mt-wait"]
+      : r.status === "quoted" ? [1, "Accepted – send the order", "mt-c mt-order"] : [3, "Ordered – waiting for delivery", "mt-c mt-stock"];
+  const list = rows.map((r) => ({ r, s: stage(r) })).sort((a, b) => a.s[0] - b.s[0]);
+  if (!list.length) return null;
+  return (
+    <section className="mt-4" aria-label="Requests under way">
+      <h2 className="text-sm font-bold">Under way</h2>
+      <ul className="mt-2 space-y-2">
+        {list.map(({ r, s }) => (
+          <li key={r.id}>
+            <Link href={`${BASE}/offer/${r.id}`} className="flex min-h-16 items-center gap-3 overflow-hidden rounded-2xl border-2 border-line bg-white pr-3 active:bg-surface">
+              <span className={`flex w-28 shrink-0 self-stretch items-center px-3 text-xs font-bold leading-tight ${s[2]}`}>{s[1]}</span>
+              <span className="min-w-0 flex-1 py-2">
+                <span className="block truncate text-base font-semibold" data-no-translate>{r.suppliers?.name}</span>
+                <span className="text-xs text-muted">{r.request_kind === "quote" ? "PR" : "PO"}-{r.number}</span>
+              </span>
+              <span aria-hidden className="text-2xl text-muted">›</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <h2 className="mt-5 text-sm font-bold">Ask a supplier for prices</h2>
+    </section>
   );
 }
 
