@@ -87,3 +87,17 @@ Things to know:
 - Fill in the `[brackets]` on the legal pages (`src/app/(shop)/legal/[page]/page.tsx`): Impressum, AGB and Datenschutz. Have them checked by a legal service.
 - Fill in the store details under Admin → Settings. These appear on the refill-order PDFs.
 - Drinks in cans and single-use bottles need the 0.25 € Pfand (deposit) shown and charged separately.
+
+## Adding a table
+
+From 30 Oct 2026 Supabase no longer gives new tables in `public` access through the Data API (supabase-js) on its own.
+Every migration that creates a table must therefore also grant access, or the shop gets "permission denied":
+
+```sql
+alter table public.your_table enable row level security;  -- plus the policies the table needs
+grant select on public.your_table to anon;                                   -- only if the public site reads it
+grant select, insert, update, delete on public.your_table to authenticated;
+grant select, insert, update, delete on public.your_table to service_role;
+```
+
+Existing tables are covered by `0011_explicit_api_grants.sql`.
