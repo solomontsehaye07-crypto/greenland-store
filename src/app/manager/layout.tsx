@@ -9,6 +9,7 @@ import { AdminTranslator } from "@/components/admin/translator";
 import { AdminPrefs } from "@/components/admin/prefs";
 import { ManagerTabs } from "./tabs";
 import { FieldMemory } from "@/components/field-memory";
+import { MagnifierToggle } from "@/components/admin/magnifier";
 
 export const metadata: Metadata = {
   title: "Greenland Manager",
@@ -42,8 +43,10 @@ export default async function ManagerLayout({ children }: { children: React.Reac
               <p className="text-[0.6875rem] text-muted" data-no-translate>{new Date().toLocaleDateString(lang === "ti" ? "ti-ER" : "de-DE", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Berlin" })}</p>
             </div>
           </div>
+          <div className="flex items-center gap-1">
+          <MagnifierToggle />
           <details className="relative">
-            <summary className="cursor-pointer list-none rounded-lg px-2 py-1 text-xs font-medium text-muted hover:bg-surface">⋯</summary>
+            <summary className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-xl text-xl font-bold text-muted hover:bg-surface" aria-label="Menu">⋯</summary>
             <div className="absolute right-0 top-9 z-30 w-56 space-y-3 rounded-xl border border-line bg-[var(--card)] p-3 shadow-xl">
               <AdminPrefs lang={lang} theme={theme} easy={easy} />
               <Link href="/admin" className="block text-sm font-medium text-forest">Open full admin</Link>
@@ -51,6 +54,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
               <p className="truncate text-[0.6875rem] text-muted" data-no-translate>{user.email}</p>
             </div>
           </details>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">{children}</main>

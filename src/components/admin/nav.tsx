@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { MagnifierToggle } from "./magnifier";
 
 // 20px line icons for the admin navigation.
 const I: Record<string, React.ReactNode> = {
@@ -142,11 +143,14 @@ export function AdminNav({ email, signOut, role, prefs }: { email: string; signO
     <>
       {/* desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-white lg:flex">
-        <Link href="/admin" className="flex items-center gap-2.5 px-5 py-5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/greenland-mark.svg" alt="" className="h-7 w-auto" />
-          <span className="display text-[0.9375rem] font-semibold">Greenland admin</span>
-        </Link>
+        <div className="flex items-center justify-between pr-3">
+          <Link href="/admin" className="flex items-center gap-2.5 px-5 py-5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/greenland-mark.svg" alt="" className="h-7 w-auto" />
+            <span className="display text-[0.9375rem] font-semibold">Greenland admin</span>
+          </Link>
+          <MagnifierToggle />
+        </div>
         <div className="flex-1 overflow-y-auto px-2.5 pb-4">
           <Links role={role} />
         </div>
@@ -160,9 +164,12 @@ export function AdminNav({ email, signOut, role, prefs }: { email: string; signO
           <img src="/brand/greenland-mark.svg" alt="" className="h-6 w-auto" />
           <span className="display text-sm font-semibold">Admin</span>
         </Link>
-        <button type="button" onClick={() => setOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-surface" aria-label="Open menu">
-          <AIcon name="menu" size={20} />
-        </button>
+        <div className="flex items-center gap-1">
+          <MagnifierToggle />
+          <button type="button" onClick={() => setOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl hover:bg-surface" aria-label="Open menu">
+            <AIcon name="menu" size={22} />
+          </button>
+        </div>
       </div>
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
