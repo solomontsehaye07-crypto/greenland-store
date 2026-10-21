@@ -13,27 +13,19 @@ returns boolean language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.role = 'admin');
 $$;
 
--- settings: everyone reads public.*, staff read nothing private, managers read/write all but admin_emails
-drop policy if exists "staff settings" on public.settings;
-drop policy if exists "public settings readable" on public.settings;
-create policy "settings read" on public.settings for select
-  using (key like 'public.%' or (select public.is_manager()));
-create policy "settings write" on public.settings for all
-  using ((select public.is_manager()) and key <> 'admin_emails')
-  with check ((select public.is_manager()) and key <> 'admin_emails');
+-- settings: everyone reads public.*, managers read/write the rest (never admin_emails)
+alter policy "public settings readable" on public.settings using (key like 'public.%' or (select public.is_manager()));
+alter policy "staff settings" on public.settings
+  using ((select public.is_manager()) and key <> 'admin_emails') with check ((select public.is_manager()) and key <> 'admin_emails');
 
--- money and invoices: managers and the owner only
-do $$
-declare t text;
-begin
-  foreach t in array array['expenses', 'store_sales', 'price_changes', 'invoices', 'invoice_items', 'invoice_series', 'business_customers'] loop
-    if to_regclass('public.' || t) is not null then
-      execute format('drop policy if exists %I on public.%I', 'staff ' || replace(t, '_', ' '), t);
-      execute format('drop policy if exists %I on public.%I', 'staff ' || t, t);
-      execute format('create policy %I on public.%I for all using ((select public.is_manager())) with check ((select public.is_manager()))', 'manager ' || t, t);
-    end if;
-  end loop;
-end $$;
+-- money and invoices: managers and the owner only (policy names kept; they were altered in place)
+alter policy "staff expenses" on public.expenses using ((select public.is_manager())) with check ((select public.is_manager()));
+alter policy "staff store_sales" on public.store_sales using ((select public.is_manager())) with check ((select public.is_manager()));
+alter policy "staff price_changes" on public.price_changes using ((select public.is_manager())) with check ((select public.is_manager()));
+alter policy "staff invoices" on public.invoices using ((select public.is_manager())) with check ((select public.is_manager()));
+alter policy "staff invoice items" on public.invoice_items using ((select public.is_manager())) with check ((select public.is_manager()));
+alter policy "staff invoice series" on public.invoice_series using ((select public.is_manager())) with check ((select public.is_manager()));
+alter policy "staff business customers" on public.business_customers using ((select public.is_manager())) with check ((select public.is_manager()));
 
 -- new accounts: customer, unless this is the first admin ever (bootstrap from admin_emails)
 create or replace function public.handle_new_user()
