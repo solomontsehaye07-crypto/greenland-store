@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
@@ -59,7 +59,7 @@ export async function updateProduct(fd: FormData) {
   if (patch.image_url) patch.images = [patch.image_url];
   const { error } = await supabaseAdmin().from("products").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
-  revalidateTag("catalog");
+  updateTag("catalog");
   revalidatePath(`/admin/products/${id}`);
 }
 
@@ -99,7 +99,7 @@ export async function adjustStock(fd: FormData) {
       created_by: user.id,
     });
   }
-  revalidateTag("catalog");
+  updateTag("catalog");
   revalidatePath(`/admin/products/${product_id}`);
   revalidatePath("/admin/products");
   revalidatePath("/admin/finance");
@@ -248,7 +248,7 @@ export async function receivePoAction(fd: FormData) {
     if (m) lines.push({ product_id: Number(m[1]), qty: Number(v || 0), best_before: str(fd.get(`bb_${m[1]}`)) });
   }
   await receivePo(id, lines, user.id);
-  revalidateTag("catalog");
+  updateTag("catalog");
   revalidatePath(`/admin/purchase-orders/${id}`);
 }
 

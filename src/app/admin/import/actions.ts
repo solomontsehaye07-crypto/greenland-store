@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { updateTag } from "next/cache";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -167,7 +167,7 @@ export async function runImport(kind: ImportKind, rows: Row[], apply: boolean, f
       created_by: user.id,
     });
     res.applied = true;
-    revalidateTag("catalog");
+    updateTag("catalog");
   }
   return res;
 }

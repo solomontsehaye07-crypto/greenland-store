@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -23,7 +23,7 @@ function back(fd: FormData, msg: string, keepOpen = true): never {
 }
 
 function refresh(id?: number) {
-  revalidateTag("catalog");
+  updateTag("catalog");
   revalidatePath("/", "layout");
   revalidatePath("/admin/products");
   if (id) revalidatePath(`/admin/products/${id}`);

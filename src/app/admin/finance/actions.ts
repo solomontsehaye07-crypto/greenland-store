@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -31,7 +31,7 @@ async function productFrom(fd: FormData) {
 }
 
 function done() {
-  revalidateTag("catalog");
+  updateTag("catalog");
   revalidatePath("/admin/finance");
   revalidatePath("/admin/pricing");
   revalidatePath("/admin/products");

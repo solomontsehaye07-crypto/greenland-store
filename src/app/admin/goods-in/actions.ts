@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { bookDelivery, createProduct, type Delivery, type NewProduct } from "@/lib/products-admin";
@@ -15,7 +15,7 @@ export async function quickCreate(p: NewProduct): Promise<{ product?: Found; err
     if (!(Number(p.price) > 0)) return { error: "Enter the selling price." };
     if (!p.category_id) return { error: "Choose a category." };
     const d = await createProduct({ ...p, price: Number(p.price), tax_rate: Number(p.tax_rate) || 7 });
-    revalidateTag("catalog");
+    updateTag("catalog");
     return { product: { id: d.id, sku: d.sku, title: d.title_de || d.title, image_url: d.image_url, stock: d.stock, cost: d.cost_price, price: Number(p.price) } };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not create the product." };
@@ -30,7 +30,7 @@ export async function bookGoodsIn(input: { lines: Delivery[]; supplierId: number
     const done = await bookDelivery(lines, { userId: user.id, supplierId: input.supplierId, note: input.note || "Goods in" });
     if ((await getPricingSettings()).autoApply) await applyRecommended(done.map((d) => d.product_id), user.id, "auto (delivery)");
     const { data } = await supabaseAdmin().from("products").select("id, stock").in("id", done.map((d) => d.product_id));
-    revalidateTag("catalog");
+    updateTag("catalog");
     revalidatePath("/admin/products");
     revalidatePath("/admin/finance");
     const units = done.reduce((s, d) => s + d.qty, 0);

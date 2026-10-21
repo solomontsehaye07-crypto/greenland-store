@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -73,7 +73,7 @@ export async function saveCosts(fd: FormData) {
   let repriced = 0;
   if (s.autoApply && changed.length) {
     repriced = await applyRecommended(changed, user.id, "auto (cost change)");
-    revalidateTag("catalog");
+    updateTag("catalog");
   }
   revalidatePath("/admin/pricing");
   back(fd, `${changed.length} cost${changed.length === 1 ? "" : "s"} saved${s.autoApply ? `, ${repriced} price${repriced === 1 ? "" : "s"} adjusted automatically` : ""}.`);
@@ -86,7 +86,7 @@ export async function applyPrices(fd: FormData) {
   const ids = (one ? [one] : fd.getAll("ids")).map(Number).filter((x) => Number.isInteger(x) && x > 0);
   if (!ids.length) back(fd, "Tick at least one product first.");
   const changed = await applyRecommended(ids, user.id);
-  revalidateTag("catalog");
+  updateTag("catalog");
   revalidatePath("/admin/pricing");
   back(fd, `${changed} price${changed === 1 ? "" : "s"} updated.`);
 }
@@ -116,7 +116,7 @@ export async function importCosts(fd: FormData) {
   let repriced = 0;
   if (s.autoApply && ids.length) {
     repriced = await applyRecommended(ids, user.id, "auto (cost import)");
-    revalidateTag("catalog");
+    updateTag("catalog");
   }
   revalidatePath("/admin/pricing");
   back(fd, `${ids.length} costs imported${missing ? `, ${missing} SKU${missing === 1 ? "" : "s"} not found` : ""}${s.autoApply ? `, ${repriced} prices adjusted` : ""}.`);
