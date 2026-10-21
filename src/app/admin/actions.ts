@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
-import { draftRefillOrders, receivePo, renderPoPdf, sendPo, nextStatus } from "@/lib/purchasing";
+import { draftRefillOrders, receivePo, renderPoPdf, sendPo, nextStatus, poShareText } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
 import { siteUrl } from "@/lib/site";
 import { validTypes } from "@/lib/supplier-types";
@@ -224,6 +224,7 @@ export async function markPoSent(fd: FormData) {
   await assertStaff();
   const id = Number(fd.get("po_id"));
   const sb = supabaseAdmin();
+  await renderPoPdf(id); // keep the exact PDF that was shared in the archive
   const { data: po } = await sb.from("purchase_orders").select("status, request_kind, pdf_path, suppliers(whatsapp, phone)").eq("id", id).single();
   await sb.from("purchase_orders").update({ status: nextStatus(po), sent_via: "whatsapp", sent_at: new Date().toISOString(), edited_after_send: false }).eq("id", id);
   const sup = po?.suppliers as unknown as { whatsapp: string | null; phone: string | null } | null;
@@ -232,6 +233,19 @@ export async function markPoSent(fd: FormData) {
   revalidatePath("/manager/orders/suppliers");
   const next = String(fd.get("next") ?? "");
   if (next.startsWith("/manager/")) redirect(`${next}${next.includes("?") ? "&" : "?"}msg=${encodeURIComponent("Marked as sent on WhatsApp.")}`);
+}
+
+/** Message for sharing the PDF file on WhatsApp through the phone's share sheet. */
+export async function poShareTextAction(id: number, audience: "supplier" | "other") {
+  await assertStaff();
+  return poShareText(id, audience);
+}
+
+/** Notes in the archive that the PDF was shared with someone else (e.g. for approval). */
+export async function logShareAction(id: number) {
+  await assertStaff();
+  const { path } = await renderPoPdf(id);
+  await supabaseAdmin().from("purchase_order_sends").insert({ purchase_order_id: id, channel: "share", recipient: "shared from the app", pdf_path: path });
 }
 
 export async function setPoStatus(fd: FormData) {

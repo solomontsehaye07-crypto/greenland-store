@@ -142,12 +142,7 @@ export async function sendPo(id: number, channel: "email" | "whatsapp") {
   const sup = po.suppliers;
   const quote = po.request_kind === "quote";
   const filename = `${quote ? "PR" : "PO"}-${po.number}.pdf`;
-  const hello = `Hello ${sup.contact_name ?? sup.name},\n\n`;
-  const message = quote
-    ? `${hello}${po.message ? po.message + "\n\n" : ""}this is a price request from ${store.name} (PR-${po.number}), not an order yet. Please tell us your best net price per unit and whether you have the items in stock.\n\n` +
-      `Enter your prices here (takes 2 minutes): ${offerLink(po.offer_token)}\n\nList as PDF: ${url}\n\nThank you!\n${store.name}, ${store.phone}`
-    : (po.message ? `${po.message}\n\n` : `${hello}please find our ${po.kind === "dropship" ? "dropship order" : "order"} PO-${po.number} from ${store.name}.\n\n`) +
-      `PDF: ${url}\n\n${po.message ? "" : "Please confirm availability and delivery date. Thank you!\n"}${store.name}, ${store.phone}`;
+  const message = buildMessage(po, store, "supplier");
 
   let result: { ok: boolean; error?: string; link?: string };
   if (channel === "email") {
@@ -164,12 +159,42 @@ export async function sendPo(id: number, channel: "email" | "whatsapp") {
     const phone = (sup.whatsapp ?? sup.phone)!;
     const api = quote ? { ok: false } : await sendWhatsAppDocument(phone, url, filename, `PO-${po.number} – ${store.name}`);
     result = api.ok ? api : { ok: true, link: waLink(phone, message) };
+    void url;
   }
   if (result.ok && !result.link) {
     await sb.from("purchase_order_sends").insert({ purchase_order_id: id, channel, recipient: channel === "email" ? sup.email : sup.whatsapp ?? sup.phone, pdf_path: path });
     await sb.from("purchase_orders").update({ status: nextStatus(po), sent_via: channel, sent_at: new Date().toISOString(), edited_after_send: false }).eq("id", id);
   }
   return { ...result, pdfUrl: url };
+}
+
+/** Message text that goes with the PDF file (the PDF itself is attached, never linked). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildMessage(po: any, store: StoreInfo, audience: "supplier" | "other") {
+  const quote = po.request_kind === "quote";
+  const code = `${quote ? "PR" : "PO"}-${po.number}`;
+  const sup = po.suppliers;
+  if (audience === "other") {
+    const what = po.status === "quoted" ? "the offer from" : quote ? "the price request to" : "the order to";
+    return `Please check ${what} ${sup.name} (${code}) – PDF attached.\n\n${store.name}`;
+  }
+  const hello = `Hello ${sup.contact_name ?? sup.name},\n\n`;
+  return quote
+    ? `${hello}${po.message ? po.message + "\n\n" : ""}attached is a price request from ${store.name} (${code}). This is not an order yet. Please tell us your best net price per unit and whether you have the items in stock.\n\n` +
+        (po.offer_token ? `You can also type your prices here: ${offerLink(po.offer_token)}\n\n` : "") +
+        `Thank you!\n${store.name}, ${store.phone}`
+    : (po.message ? `${po.message}\n\n` : `${hello}attached is our ${po.kind === "dropship" ? "dropship order" : "order"} ${code} from ${store.name}.\n\n`) +
+        `${po.message ? "" : "Please confirm availability and delivery date. Thank you!\n"}${store.name}, ${store.phone}`;
+}
+
+/** Text and file name for sharing the PDF file through the phone's share sheet (WhatsApp etc.). */
+export async function poShareText(id: number, audience: "supplier" | "other") {
+  const sb = supabaseAdmin();
+  const { data: po } = await sb.from("purchase_orders").select("id, number, status, kind, request_kind, message, offer_token, suppliers(name, contact_name, whatsapp, phone)").eq("id", id).single();
+  if (!po) throw new Error("Request not found");
+  if (po.request_kind === "quote" && !po.offer_token) po.offer_token = await ensureOfferToken(id);
+  const store = await storeInfo();
+  return { message: buildMessage(po, store, audience), filename: `${po.request_kind === "quote" ? "PR" : "PO"}-${po.number}.pdf` };
 }
 
 /** Status after sending: a price request waits for prices, an order (also an accepted offer) is sent. */
@@ -186,27 +211,6 @@ export async function ensureOfferToken(id: number) {
   const token = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "").slice(0, 40);
   await sb.from("purchase_orders").update({ offer_token: token }).eq("id", id);
   return token;
-}
-
-/** WhatsApp link to share the list with anyone (e.g. for approval). Does not count as sent to the supplier. */
-export async function sharePo(id: number, phone: string, note: string) {
-  const { url, po, store, path } = await renderPoPdf(id);
-  const quote = po.request_kind === "quote";
-  const sb = supabaseAdmin();
-  const { data: items } = await sb.from("purchase_order_items").select("qty, ordered, offer_price, products(title)").eq("purchase_order_id", id).order("id");
-  const lines = (items ?? [])
-    .filter((i) => quote || i.ordered !== false)
-    .slice(0, 25)
-    .map((i) => {
-      const t = (i.products as unknown as { title: string }).title;
-      return `• ${i.qty} × ${t}${i.offer_price != null ? ` – ${Number(i.offer_price).toFixed(2)} €` : ""}`;
-    });
-  const what = po.status === "quoted" ? "the offer from" : quote ? "a price request to" : "an order to";
-  const message =
-    `${note ? note + "\n\n" : ""}Please check ${what} ${po.suppliers.name} (${quote ? "PR" : "PO"}-${po.number}):\n${lines.join("\n")}` +
-    `${(items?.length ?? 0) > 25 ? "\n…" : ""}\n\nPDF: ${url}\n\n${store.name}`;
-  await sb.from("purchase_order_sends").insert({ purchase_order_id: id, channel: "share", recipient: phone, pdf_path: path });
-  return waLink(phone, message);
 }
 
 /** The supplier's prices from the private offer link. */

@@ -327,15 +327,3 @@ export async function cancelRequestAction(fd: FormData) {
   redirect("/manager/orders/suppliers?msg=Request%20cancelled.");
 }
 
-/** WhatsApp link to send the list or offer to any number, e.g. for approval. */
-export async function shareAction(_: unknown, fd: FormData): Promise<{ link?: string; error?: string }> {
-  await assertStaff(MANAGER_ROLES);
-  const phone = String(fd.get("share_to") ?? "").trim();
-  if (phone.replace(/\D/g, "").length < 7) return { error: "Type the WhatsApp number with country code, e.g. +49 170 1234567." };
-  try {
-    const { sharePo } = await import("@/lib/purchasing");
-    return { link: await sharePo(Number(fd.get("po_id")), phone, String(fd.get("share_note") ?? "").trim().slice(0, 500)) };
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
-}
