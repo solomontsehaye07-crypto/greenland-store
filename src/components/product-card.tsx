@@ -43,7 +43,7 @@ export function ProductCard({ p, lang = "de", badge }: { p: CardProduct; lang?: 
           <span className={`text-base font-bold ${sale > 0 ? "text-terra" : "text-ink"}`}>{money(p.price)}</span>
           {sale > 0 && <span className="text-xs text-muted line-through">{money(Number(p.compare_at_price))}</span>}
         </p>
-        <div className="relative z-10 mt-3">
+        <div className="relative z-10 mt-auto pt-3">
           <AddToCart product={p} disabled={out} block lang={lang} />
         </div>
       </div>
