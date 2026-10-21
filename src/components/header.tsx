@@ -7,6 +7,7 @@ import { CartButton } from "./cart-button";
 import { Announce } from "./announce";
 import { LangSwitch } from "./lang-switch";
 import { Icon } from "./icons";
+import { img } from "@/lib/img";
 
 export async function Header() {
   const [tree, { site }, lang, { count: saleCount }] = await Promise.all([
@@ -18,13 +19,6 @@ export async function Header() {
   const name = site.name || "Greenland";
   const announcements = (site.announcements ?? []).map((a) => tx(a.text, lang)).filter(Boolean);
   const catTitle = (c: { title: string; title_de: string | null }) => (lang === "de" ? c.title_de || c.title : c.title);
-  const extra = [
-    { href: "/laender", label: ui("countries", lang) },
-    { href: "/rezepte", label: ui("recipes", lang) },
-    // "Offers" appears as soon as at least one product has a compare-at (sale) price
-    ...(saleCount ? [{ href: "/shop?sale=1", label: ui("offers", lang) }] : []),
-    ...(site.navLinks ?? []).map((l) => ({ href: l.href || "/", label: tx(l.label, lang) })),
-  ];
   const logoSrc = site.icon || site.logo;
   const logo = logoSrc ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -32,17 +26,29 @@ export async function Header() {
   ) : (
     <span className="display text-lg font-semibold tracking-tight">{name.split(" ")[0]}<span className="text-forest">.</span></span>
   );
+  const account = lang === "de" ? "Einloggen" : "Sign in";
+  const highlights = [
+    ...(saleCount ? [{ href: "/shop?sale=1", label: ui("offers", lang), hot: true }] : []),
+    { href: "/shop?sort=new", label: lang === "de" ? "Neu" : "New" },
+    { href: "/rezepte", label: ui("recipes", lang) },
+    { href: "/laender", label: ui("countries", lang) },
+    ...(site.navLinks ?? []).map((l) => ({ href: l.href || "/", label: tx(l.label, lang) })),
+  ];
   return (
     <>
       <Announce items={announcements} />
-      <header className="site-header sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur-md transition-shadow">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4">
-          {/* mobile menu, works without JavaScript */}
+      <header className="site-header sticky top-0 z-30 border-b border-line bg-paper/95 backdrop-blur-md transition-shadow">
+        {/* row 1: menu (mobile) · logo · search · account · language · cart */}
+        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center gap-3 px-4 sm:gap-5">
           <details data-dismiss className="group lg:hidden">
-            <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full hover:bg-surface" aria-label={ui("menu", lang)}>
-              <Icon name="menu" size={20} />
+            <summary className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-full hover:bg-surface" aria-label={ui("menu", lang)}>
+              <Icon name="menu" size={22} />
             </summary>
-            <nav className="fixed inset-x-0 top-[6.25rem] z-40 max-h-[calc(100vh-6.25rem)] overflow-y-auto border-t border-line bg-paper px-4 pb-10 pt-4 shadow-lg" aria-label={ui("menu", lang)}>
+            <nav className="fixed inset-x-0 top-[4.25rem] z-40 max-h-[calc(100vh-4.25rem)] overflow-y-auto border-t border-line bg-paper px-4 pb-10 pt-4 shadow-lg" aria-label={ui("menu", lang)}>
+              <form action="/search" role="search" className="mb-3 lg:hidden">
+                <label htmlFor="q-m" className="sr-only">{ui("search", lang)}</label>
+                <input id="q-m" name="q" type="search" placeholder={ui("searchPlaceholder", lang)} className="input rounded-full" />
+              </form>
               <Link href="/shop" className="block py-2.5 text-sm font-medium">{ui("shopAll", lang)}</Link>
               {tree.map((d) => (
                 <div key={d.id} className="border-t border-line py-2">
@@ -55,27 +61,51 @@ export async function Header() {
                 </div>
               ))}
               <div className="border-t border-line pt-2">
-                {extra.map((l) => <Link key={l.href} href={l.href} className="block py-2 text-sm">{l.label}</Link>)}
+                {highlights.map((l) => <Link key={l.href} href={l.href} className={`block py-2 text-sm ${l.hot ? "font-semibold text-terra" : ""}`}>{l.label}</Link>)}
+                <Link href="/account" className="block py-2 text-sm font-medium">{account}</Link>
+                <div className="pt-3 sm:hidden"><LangSwitch lang={lang} /></div>
               </div>
             </nav>
           </details>
 
           <Link href="/" className="flex shrink-0 items-center" aria-label={`${name} – ${ui("home", lang)}`}>{logo}</Link>
 
-          <nav className="hidden flex-1 lg:block" aria-label={ui("shop", lang)}>
-            <ul className="flex items-center gap-1 text-[0.8125rem]">
-              <li><Link href="/shop" className="rounded-full px-3 py-2 hover:bg-surface">{ui("shopAll", lang)}</Link></li>
+          <form action="/search" role="search" className="search-bar hidden flex-1 lg:flex">
+            <label htmlFor="q" className="sr-only">{ui("search", lang)}</label>
+            <input id="q" name="q" type="search" placeholder={ui("searchPlaceholder", lang)} autoComplete="off" />
+            <button type="submit" aria-label={ui("search", lang)}><Icon name="search" size={20} /></button>
+          </form>
+
+          <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:gap-2">
+            <Link href="/search" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface lg:hidden" aria-label={ui("search", lang)}>
+              <Icon name="search" size={21} />
+            </Link>
+            <Link href="/account" className="flex h-11 items-center gap-2 rounded-full px-2 text-[0.8125rem] font-semibold uppercase tracking-wide hover:bg-surface sm:px-3" aria-label={account} title={account}>
+              <span className="hidden sm:inline">{account}</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+            </Link>
+            <span aria-hidden className="hidden h-6 w-px bg-line sm:block" />
+            <div className="hidden px-1 sm:block"><LangSwitch lang={lang} /></div>
+            <CartButton label={ui("cart", lang)} />
+          </div>
+        </div>
+
+        {/* row 2 (desktop): categories with drop-downs · highlights on the right */}
+        <nav className="hidden border-t border-line/70 lg:block" aria-label={ui("shop", lang)}>
+          <div className="mx-auto flex max-w-7xl items-center gap-1 px-4">
+            <ul className="flex items-center gap-1 text-[0.9375rem]">
+              <li><Link href="/shop" className="block rounded-full px-3 py-3 font-medium hover:bg-surface">{ui("shopAll", lang)}</Link></li>
               {tree.map((d) => (
                 <li key={d.id} className="group relative">
-                  <Link href={`/c/${d.slug}`} className="rounded-full px-3 py-2 hover:bg-surface">{catTitle(d)}</Link>
-                  <div className="invisible absolute left-0 top-full z-40 pt-3 opacity-0 transition-opacity duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-                    <ul className="grid w-[30rem] grid-cols-2 gap-x-6 gap-y-0.5 rounded-xl border border-line bg-white p-4 shadow-[0_20px_40px_-24px_rgba(0,0,0,.25)]">
+                  <Link href={`/c/${d.slug}`} className="block rounded-full px-3 py-3 font-medium hover:bg-surface">{catTitle(d)}</Link>
+                  <div className="invisible absolute left-0 top-full z-40 pt-1 opacity-0 transition-opacity duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                    <ul className="grid w-[32rem] grid-cols-2 gap-x-6 gap-y-0.5 rounded-2xl border border-line bg-white p-4 shadow-[0_20px_40px_-24px_rgba(0,0,0,.25)]">
                       {d.children.map((c) => (
                         <li key={c.id}>
-                          <Link href={`/c/${c.slug}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[0.8125rem] hover:bg-surface">
+                          <Link href={`/c/${c.slug}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[0.875rem] hover:bg-surface">
                             {c.image_url && (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={c.image_url} alt="" className="h-8 w-8 rounded-md bg-surface object-cover" loading="lazy" />
+                              <img src={img(c.image_url, 64)} alt="" className="h-9 w-9 rounded-lg bg-surface object-cover" loading="lazy" />
                             )}
                             {catTitle(c)}
                           </Link>
@@ -85,30 +115,19 @@ export async function Header() {
                   </div>
                 </li>
               ))}
-              <li aria-hidden className="mx-2 h-4 w-px bg-line" />
-              {extra.map((l) => (
-                <li key={l.href}><Link href={l.href} className="rounded-full px-3 py-2 text-muted hover:bg-surface hover:text-ink">{l.label}</Link></li>
+            </ul>
+            <ul className="ml-auto flex items-center gap-1 text-[0.9375rem]">
+              {highlights.map((l) => (
+                <li key={l.href}>
+                  <Link href={l.href} className={`block rounded-full px-3 py-3 font-medium hover:bg-surface ${l.hot ? "text-terra" : ""}`}>
+                    {l.hot && <span aria-hidden className="mr-1.5 inline-block h-2 w-2 rounded-full bg-terra align-middle" />}
+                    {l.label}
+                  </Link>
+                </li>
               ))}
             </ul>
-          </nav>
-
-          <div className="ml-auto flex items-center gap-1 lg:ml-0">
-            <details data-dismiss className="group relative">
-              <summary className="grid h-10 w-10 cursor-pointer list-none place-items-center rounded-full hover:bg-surface" aria-label={ui("search", lang)}>
-                <Icon name="search" size={19} />
-              </summary>
-              <form action="/search" role="search" className="fixed inset-x-0 top-[6.25rem] z-40 border-b border-line bg-paper px-4 py-4 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:rounded-xl sm:border sm:shadow-lg">
-                <label htmlFor="q" className="sr-only">{ui("search", lang)}</label>
-                <input id="q" name="q" autoFocus placeholder={ui("searchPlaceholder", lang)} className="input rounded-full" />
-              </form>
-            </details>
-            <Link href="/account" className="grid h-10 w-10 place-items-center rounded-full hover:bg-surface" aria-label={lang === "de" ? "Mein Konto" : "My account"} title={lang === "de" ? "Mein Konto" : "My account"}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
-            </Link>
-            <div className="px-2"><LangSwitch lang={lang} /></div>
-            <CartButton label={ui("cart", lang)} />
           </div>
-        </div>
+        </nav>
       </header>
     </>
   );
