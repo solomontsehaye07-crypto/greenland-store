@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { logShareAction, poShareTextAction } from "@/app/admin/actions";
+import { archiveSharedPdfAction } from "@/app/admin/actions";
+import { loadPoPdf, toBase64 } from "@/lib/po-pdf-client";
 
 type Nav = Navigator & { canShare?: (d: ShareData) => boolean };
 
@@ -30,24 +31,31 @@ export function WhatsAppPdf({
   const [err, setErr] = useState("");
   const [hint, setHint] = useState("");
 
+  const [bytes, setBytes] = useState<Uint8Array | null>(null);
+  const [try_, setTry] = useState(0);
+
   useEffect(() => {
     let off = false;
+    setErr("");
     (async () => {
       try {
-        const [res, t] = await Promise.all([fetch(`/admin/purchase-orders/${poId}/pdf`, { cache: "no-store" }), poShareTextAction(poId, audience)]);
-        if (!res.ok) throw new Error();
-        const buf = await res.arrayBuffer();
+        const r = await loadPoPdf(poId, audience);
         if (off) return;
-        setFile(new File([buf], t.filename, { type: "application/pdf" }));
-        setText(t.message);
-      } catch {
-        if (!off) setErr("The PDF could not be prepared. Reload the page and try again.");
+        setBytes(r.bytes);
+        setFile(new File([r.bytes as BlobPart], r.filename, { type: "application/pdf" }));
+        setText(r.message);
+      } catch (e) {
+        if (!off) setErr(`The PDF could not be prepared: ${(e as Error).message}`);
       }
     })();
     return () => {
       off = true;
     };
-  }, [poId, audience]);
+  }, [poId, audience, try_]);
+
+  const archive = () => {
+    if (bytes) archiveSharedPdfAction(poId, toBase64(bytes), audience).catch(() => null);
+  };
 
   const message = note.trim() ? `${note.trim()}\n\n${text}` : text;
 
@@ -61,7 +69,7 @@ export function WhatsAppPdf({
       try {
         await nav.share({ files: [file], text: message, title: file.name });
         setHint("If the message text is missing in WhatsApp, paste it – it is copied.");
-        if (audience === "other") logShareAction(poId).catch(() => null);
+        archive();
         onShared?.();
       } catch (e) {
         if ((e as Error).name !== "AbortError") setErr("Sharing did not work on this device.");
@@ -77,16 +85,21 @@ export function WhatsAppPdf({
     const num = (phone ?? "").replace(/[^\d+]/g, "").replace(/^\+/, "").replace(/^00/, "").replace(/^0/, "49");
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
     setHint(`The PDF was downloaded (${file.name}). Attach it in the WhatsApp chat with the 📎 button.`);
-    if (audience === "other") logShareAction(poId).catch(() => null);
+    archive();
     onShared?.();
   };
 
   return (
     <div>
       <button type="button" onClick={send} disabled={!file} className={className}>
-        {file ? label : "Preparing the PDF…"}
+        {file ? label : err ? label : "Preparing the PDF…"}
       </button>
-      {err && <p className="mt-2 text-sm text-danger" role="alert">{err}</p>}
+      {err && (
+        <p className="mt-2 text-sm text-danger" role="alert">
+          {err}{" "}
+          <button type="button" onClick={() => setTry((n) => n + 1)} className="font-semibold underline">Try again</button>
+        </p>
+      )}
       {hint && <p className="mt-2 text-xs text-muted" role="status">{hint}</p>}
     </div>
   );

@@ -4,7 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase";
-import { draftRefillOrders, receivePo, renderPoPdf, sendPo, nextStatus, poShareText } from "@/lib/purchasing";
+import { draftRefillOrders, receivePo, renderPoPdf, sendPo, nextStatus, poShareText, archivePdf } from "@/lib/purchasing";
 import { sendEmail } from "@/lib/notify";
 import { siteUrl } from "@/lib/site";
 import { validTypes } from "@/lib/supplier-types";
@@ -209,7 +209,10 @@ export async function sendPoAction(_: unknown, fd: FormData) {
   const id = Number(fd.get("po_id"));
   const channel = String(fd.get("channel")) as "email" | "whatsapp";
   try {
-    const r = await sendPo(id, channel);
+    const b64 = String(fd.get("pdf_b64") ?? "");
+    const built = b64 ? Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) : undefined;
+    if (built && (built.length > 5_000_000 || String.fromCharCode(...built.slice(0, 4)) !== "%PDF")) return { error: "The PDF is not valid." };
+    const r = await sendPo(id, channel, built);
     revalidatePath(`/admin/purchase-orders/${id}`);
     if (channel === "email") revalidatePath("/manager/orders/suppliers");
     if (!r.ok) return { error: r.error ?? "Sending failed" };
@@ -224,7 +227,6 @@ export async function markPoSent(fd: FormData) {
   await assertStaff();
   const id = Number(fd.get("po_id"));
   const sb = supabaseAdmin();
-  await renderPoPdf(id); // keep the exact PDF that was shared in the archive
   const { data: po } = await sb.from("purchase_orders").select("status, request_kind, pdf_path, suppliers(whatsapp, phone)").eq("id", id).single();
   await sb.from("purchase_orders").update({ status: nextStatus(po), sent_via: "whatsapp", sent_at: new Date().toISOString(), edited_after_send: false }).eq("id", id);
   const sup = po?.suppliers as unknown as { whatsapp: string | null; phone: string | null } | null;
@@ -241,11 +243,13 @@ export async function poShareTextAction(id: number, audience: "supplier" | "othe
   return poShareText(id, audience);
 }
 
-/** Notes in the archive that the PDF was shared with someone else (e.g. for approval). */
-export async function logShareAction(id: number) {
+/** Keeps the PDF that was shared from the device in the archive (and notes a share with someone else). */
+export async function archiveSharedPdfAction(id: number, b64: string, audience: "supplier" | "other") {
   await assertStaff();
-  const { path } = await renderPoPdf(id);
-  await supabaseAdmin().from("purchase_order_sends").insert({ purchase_order_id: id, channel: "share", recipient: "shared from the app", pdf_path: path });
+  const pdf = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  if (pdf.length > 5_000_000 || String.fromCharCode(...pdf.slice(0, 4)) !== "%PDF") throw new Error("Not a PDF");
+  const path = await archivePdf(id, pdf);
+  if (audience === "other") await supabaseAdmin().from("purchase_order_sends").insert({ purchase_order_id: id, channel: "share", recipient: "shared from the app", pdf_path: path });
 }
 
 export async function setPoStatus(fd: FormData) {

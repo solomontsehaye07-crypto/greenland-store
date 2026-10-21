@@ -75,6 +75,26 @@ async function loadPo(id: number) {
   return { po, items: items ?? [], refs, shipTo };
 }
 
+/** Everything the PDF shows, so the phone/computer can build it (keeps the server's CPU time tiny). */
+export async function poPdfData(id: number) {
+  const { po, items, refs, shipTo } = await loadPo(id);
+  if (po.request_kind === "quote" && !po.offer_token) po.offer_token = await ensureOfferToken(id);
+  const store = await storeInfo();
+  return pdfInput(po, items, refs, shipTo, store);
+}
+
+/** Stores a PDF built on the device in the archive and remembers it on the request. */
+export async function archivePdf(id: number, pdf: Uint8Array) {
+  const sb = supabaseAdmin();
+  const { data: po } = await sb.from("purchase_orders").select("number, request_kind").eq("id", id).single();
+  const code = `${po?.request_kind === "quote" ? "PR" : "PO"}-${po?.number ?? id}`;
+  const path = `purchase-orders/${code}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}.pdf`;
+  const { error } = await sb.storage.from("documents").upload(path, pdf, { contentType: "application/pdf", upsert: true });
+  if (error) throw new Error(error.message);
+  await sb.from("purchase_orders").update({ pdf_path: path }).eq("id", id);
+  return path;
+}
+
 /** The PDF as it looks right now (used by the live preview); nothing is stored. */
 export async function poPdfBytes(id: number) {
   const { po, items, refs, shipTo } = await loadPo(id);
@@ -136,9 +156,17 @@ export async function renderPoPdf(id: number) {
  * Sends a PO to the supplier. Email is sent automatically (Resend). For WhatsApp we use the
  * Cloud API when configured; otherwise we return a wa.me link that opens WhatsApp prefilled.
  */
-export async function sendPo(id: number, channel: "email" | "whatsapp") {
+export async function sendPo(id: number, channel: "email" | "whatsapp", built?: Uint8Array) {
   const sb = supabaseAdmin();
-  const { pdf, url, po, store, path } = await renderPoPdf(id);
+  // a PDF built on the device is used as is (no PDF work on the server)
+  const { pdf, url, po, store, path } = built
+    ? await (async () => {
+        const path = await archivePdf(id, built);
+        const { po } = await loadPo(id);
+        const { data: signed } = await sb.storage.from("documents").createSignedUrl(path, 60 * 60 * 24 * 7);
+        return { pdf: built, url: signed?.signedUrl ?? "", po, store: await storeInfo(), path };
+      })()
+    : await renderPoPdf(id);
   const sup = po.suppliers;
   const quote = po.request_kind === "quote";
   const filename = `${quote ? "PR" : "PO"}-${po.number}.pdf`;

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { WhatsAppPdf } from "@/components/whatsapp-pdf";
+import { loadPoPdf, toBase64 } from "@/lib/po-pdf-client";
 import Link from "next/link";
 import { markPoSent, sendPoAction } from "../../actions";
 
@@ -10,6 +11,12 @@ type State = null | { ok?: string; error?: string; link?: string; pdfUrl?: strin
 export function SendPanel({ poId, hasEmail, hasWhatsApp, preferred, status, email, whatsapp, quote = false, next }: { poId: number; hasEmail: boolean; hasWhatsApp: boolean; preferred: string; status: string; email?: string | null; whatsapp?: string | null; quote?: boolean; next?: string }) {
   const [state, action, pending] = useActionState<State, FormData>(sendPoAction, null);
   const [shared, setShared] = useState(false);
+  const [b64, setB64] = useState("");
+  useEffect(() => {
+    // the email gets the same PDF, built here on the device
+    if (!hasEmail) return;
+    loadPoPdf(poId).then((r) => setB64(toBase64(r.bytes))).catch(() => setB64(""));
+  }, [poId, hasEmail]);
   useEffect(() => {
     if (next && state?.ok) window.location.href = `${next}${next.includes("?") ? "&" : "?"}msg=${encodeURIComponent(state.ok)}`;
   }, [state, next]);
@@ -25,6 +32,7 @@ export function SendPanel({ poId, hasEmail, hasWhatsApp, preferred, status, emai
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <form action={action}>
           <input type="hidden" name="po_id" value={poId} />
+          <input type="hidden" name="pdf_b64" value={b64} />
           <button name="channel" value="email" disabled={!hasEmail || pending} className="btn btn-primary w-full">
             {pending ? "Sending…" : quote ? "Ask by email" : "Email the order"}
           </button>

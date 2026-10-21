@@ -1,27 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { loadPoPdf } from "@/lib/po-pdf-client";
 
 // Shows a PDF inside the app (no new browser tab): every page is drawn as a sharp image that fits the
 // screen width. Pinch to zoom works as on any page. "Share" hands the real PDF file to WhatsApp, Mail …
 
-export function PdfView({ src, filename }: { src: string; filename: string }) {
+export function PdfView({ src, filename, poId }: { src?: string; filename: string; poId?: number }) {
   const box = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [why, setWhy] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(src, { cache: "no-store" });
-        if (!res.ok) throw new Error(String(res.status));
-        const buf = await res.arrayBuffer();
+        let buf: ArrayBuffer;
+        if (poId) {
+          // built here on the device from the request's data
+          const r = await loadPoPdf(poId);
+          buf = r.bytes.slice().buffer as ArrayBuffer;
+        } else {
+          const res = await fetch(src!, { cache: "no-store" });
+          if (!res.ok) throw new Error(`The server answered ${res.status}.`);
+          buf = await res.arrayBuffer();
+        }
         if (cancelled) return;
         setFile(new File([buf], filename, { type: "application/pdf" }));
         const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
-        const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+        const doc = await pdfjs.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
         const el = box.current;
         if (!el || cancelled) return;
         el.replaceChildren();
@@ -43,14 +52,17 @@ export function PdfView({ src, filename }: { src: string; filename: string }) {
           if (cancelled) return;
         }
         setState("ready");
-      } catch {
-        if (!cancelled) setState("error");
+      } catch (e) {
+        if (!cancelled) {
+          setWhy((e as Error).message);
+          setState("error");
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [src, filename]);
+  }, [src, filename, poId]);
 
   const share = async () => {
     if (!file) return;
@@ -76,7 +88,7 @@ export function PdfView({ src, filename }: { src: string; filename: string }) {
         <button type="button" onClick={share} disabled={!file} className="btn btn-primary flex-1">Share or save the PDF</button>
       </div>
       {state === "loading" && <p className="py-10 text-center text-sm text-muted" role="status">Loading the PDF…</p>}
-      {state === "error" && <p className="rounded-xl border border-line bg-white p-4 text-sm text-danger" role="alert">The PDF could not be shown. Try again in a moment.</p>}
+      {state === "error" && <p className="rounded-xl border border-line bg-white p-4 text-sm text-danger" role="alert">The PDF could not be shown. {why}</p>}
       <div ref={box} className="space-y-3" />
     </div>
   );

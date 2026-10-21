@@ -20,7 +20,7 @@ export default async function PdfPreview({ params, searchParams }: { params: Pro
           <p className="truncate text-xs text-muted" data-no-translate>{(po?.suppliers as unknown as { name: string } | null)?.name}</p>
         </div>
       </div>
-      <PdfView src={`/admin/purchase-orders/${id}/pdf`} filename={`${code}.pdf`} />
+      <PdfView poId={id} filename={`${code}.pdf`} />
     </div>
   );
 }
