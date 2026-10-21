@@ -75,6 +75,20 @@ export async function saveProduct(fd: FormData) {
   if (before && Number(before.price) !== Number(patch.price))
     await sb.from("price_changes").insert({ product_id: id, old_price: before.price, new_price: patch.price, cost_price: patch.cost_price, source: offer !== null ? "offer" : "manual" });
 
+  // suppliers: every ticked supplier sells it; the chosen one is where it is normally ordered
+  if (fd.has("suppliers__present")) {
+    const ticked = fd.getAll("sup").map(Number).filter(Boolean);
+    let pref = Number(fd.get("sup_pref")) || null;
+    if (pref && !ticked.includes(pref)) ticked.push(pref);
+    if (!pref && ticked.length) pref = ticked[0];
+    const { data: had } = await sb.from("supplier_products").select("supplier_id").eq("product_id", id);
+    const gone = (had ?? []).map((h) => h.supplier_id as number).filter((x) => !ticked.includes(x));
+    if (gone.length) await sb.from("supplier_products").delete().eq("product_id", id).in("supplier_id", gone);
+    if (ticked.length)
+      await sb.from("supplier_products").upsert(ticked.map((sid) => ({ supplier_id: sid, product_id: id, is_preferred: sid === pref })), { onConflict: "supplier_id,product_id" });
+    await sb.from("products").update({ supplier_id: pref }).eq("id", id);
+  }
+
   // home sections with hand-picked products
   const offered = fd.getAll("sections").map(Number);
   const { data: secs } = await sb.from("home_sections").select("id, data").in("type", ["products", "offers"]);

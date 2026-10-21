@@ -68,28 +68,28 @@ export default async function Orders({ searchParams }: { searchParams: Promise<{
                         <form key={s} action={moveOrder}>
                           <input type="hidden" name="order_id" value={o.id} />
                           <input type="hidden" name="status" value={s} />
-                          <button className={`btn h-9 px-4 py-1 text-sm ${s === "cancelled" ? "btn-ghost" : "btn-primary"}`}>{l}</button>
+                          <button className={`btn h-11 px-4 text-sm font-semibold ${s === "cancelled" ? "btn-ghost" : "btn-primary"}`}>{l}</button>
                         </form>
                       ))}
                       {o.fulfillment_type === "parcel" && dhl.enabled && !o.tracking_number && ["paid", "processing", "packed"].includes(o.status) && (
                         <form action={createLabelAction}>
                           <input type="hidden" name="order_id" value={o.id} />
                           <input type="hidden" name="back" value="/manager/orders" />
-                          <button className="btn btn-ghost h-9 px-4 py-1 text-sm">DHL label</button>
+                          <button className="btn btn-ghost h-11 px-4 text-sm font-semibold">DHL label</button>
                         </form>
                       )}
                       {o.tracking_number && String(o.carrier ?? "").startsWith("DHL") && (
-                        <a href={`/admin/orders/${o.id}/label`} target="_blank" rel="noreferrer" className="btn btn-ghost h-9 px-4 py-1 text-sm">Print label</a>
+                        <a href={`/admin/orders/${o.id}/label`} target="_blank" rel="noreferrer" className="btn btn-ghost h-11 px-4 text-sm font-semibold">Print label</a>
                       )}
                       {Number(o.balance_due) > 0 && (
                         <form action={collectRest}>
                           <input type="hidden" name="order_id" value={o.id} />
                           <input type="hidden" name="what" value={o.payment_method === "bank" ? "full" : "balance"} />
-                          <button className="btn btn-ghost h-9 px-4 py-1 text-sm">{o.payment_method === "bank" ? "Transfer received" : "Paid on collection"}</button>
+                          <button className="btn btn-ghost h-11 px-4 text-sm font-semibold">{o.payment_method === "bank" ? "Transfer received" : "Paid on collection"}</button>
                         </form>
                       )}
-                      {o.phone && <a href={waLink(o.phone, `Hallo ${a.name ?? ""}, hier ist Greenland Afro Asia Store wegen Ihrer Bestellung #${o.number}.`)} target="_blank" rel="noreferrer" className="btn btn-ghost h-9 px-4 py-1 text-sm">WhatsApp</a>}
-                      {o.phone && <a href={`tel:${o.phone}`} className="btn btn-ghost h-9 px-4 py-1 text-sm">Call</a>}
+                      {o.phone && <a href={waLink(o.phone, `Hallo ${a.name ?? ""}, hier ist Greenland Afro Asia Store wegen Ihrer Bestellung #${o.number}.`)} target="_blank" rel="noreferrer" className="btn btn-ghost h-11 px-4 text-sm font-semibold">WhatsApp</a>}
+                      {o.phone && <a href={`tel:${o.phone}`} className="btn btn-ghost h-11 px-4 text-sm font-semibold">Call</a>}
                     </div>
                     </div>
                   </li>

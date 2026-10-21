@@ -158,12 +158,21 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
 
 async function ProductPanelLoader({ id, closeHref, returnHref, msg }: { id: number; closeHref: string; returnHref: string; msg?: string }) {
   const sb = supabaseAdmin();
-  const [{ data: prod }, { data: cats }, { data: secs }] = await Promise.all([
+  const [{ data: prod }, { data: cats }, { data: secs }, { data: allSups }, { data: links }] = await Promise.all([
     sb.from("products").select("*").eq("id", id).maybeSingle(),
     sb.from("categories").select("id, title, title_de, parent_id").order("sort"),
     sb.from("home_sections").select("id, type, enabled, data").in("type", ["products", "offers"]).order("position"),
+    sb.from("suppliers").select("id, name, specialties").eq("active", true).order("name"),
+    sb.from("supplier_products").select("supplier_id, is_preferred").eq("product_id", id),
   ]);
   if (!prod) return null;
+  const supplierChoice = (allSups ?? []).map((x) => ({
+    id: x.id as number,
+    name: x.name as string,
+    specialties: (x.specialties ?? []) as string[],
+    linked: (links ?? []).some((l) => l.supplier_id === x.id),
+    preferred: prod.supplier_id === x.id || (links ?? []).some((l) => l.supplier_id === x.id && l.is_preferred),
+  }));
   const picked = (secs ?? [])
     .filter((s) => (s.data as Record<string, unknown>)?.source === "picked")
     .map((s) => {
@@ -173,7 +182,7 @@ async function ProductPanelLoader({ id, closeHref, returnHref, msg }: { id: numb
   return (
     <SidePanel title={prod.title_de || prod.title} subtitle={<>{prod.sku} · <Link href={`/p/${prod.slug}`} target="_blank" className="underline">view in shop</Link> · <Link href={`/admin/products/${prod.id}`} className="underline">stock & supplier</Link></>} closeHref={closeHref} wide>
       <Notice msg={msg} />
-      <ProductPanel p={prod} cats={cats ?? []} sections={picked} returnHref={returnHref} />
+      <ProductPanel p={prod} cats={cats ?? []} sections={picked} suppliers={supplierChoice} returnHref={returnHref} />
     </SidePanel>
   );
 }

@@ -15,12 +15,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const jar = await cookies();
   const lang = jar.get("admin_lang")?.value === "ti" ? "ti" : "en";
   const theme = ["light", "dark"].includes(jar.get("admin_theme")?.value ?? "") ? jar.get("admin_theme")!.value : "system";
+  const easy = jar.get("admin_easy")?.value === "1";
   const sb = await supabaseServer();
   const {
     data: { user },
   } = await sb.auth.getUser();
   const shell = (inner: React.ReactNode, overrides: Record<string, string> = {}) => (
-    <div className="admin min-h-screen" data-lang={lang} data-theme={theme} lang={lang === "ti" ? "ti" : "en"}>
+    <div className="admin min-h-screen" data-lang={lang} data-theme={theme} data-easy={easy ? "" : undefined} lang={lang === "ti" ? "ti" : "en"}>
       {inner}
       <AdminTranslator lang={lang} overrides={overrides} />
       <FieldMemory seedsUrl={user ? "/api/admin/suggest" : undefined} />
@@ -36,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminNav
         email={user.email ?? ""}
         role={(profile?.role as string) ?? "staff"}
-        prefs={<AdminPrefs lang={lang} theme={theme} />}
+        prefs={<AdminPrefs lang={lang} theme={theme} easy={easy} />}
         signOut={
           <form action={signOut}>
             <button className="font-medium text-muted hover:text-ink hover:underline">Sign out</button>

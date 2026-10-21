@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SupplierBadges } from "@/components/supplier-badges";
 import { ImageGallery } from "@/components/admin/media-picker";
 import { Toggle } from "@/components/admin/ui";
 import { endOffer, saveProduct } from "./actions";
@@ -21,7 +22,9 @@ function Group({ title, text, children }: { title: string; text?: string; childr
   );
 }
 
-export function ProductPanel({ p, cats, sections, returnHref }: { p: P; cats: Cat[]; sections: Sec[]; returnHref: string }) {
+type SupChoice = { id: number; name: string; specialties: string[]; linked: boolean; preferred: boolean };
+
+export function ProductPanel({ p, cats, sections, suppliers = [], returnHref }: { p: P; cats: Cat[]; sections: Sec[]; suppliers?: SupChoice[]; returnHref: string }) {
   const onOffer = p.compare_at_price && Number(p.compare_at_price) > Number(p.price);
   const regular = onOffer ? p.compare_at_price : p.price;
   const images: string[] = Array.isArray(p.images) && p.images.length ? p.images : p.image_url ? [p.image_url] : [];
@@ -132,6 +135,31 @@ export function ProductPanel({ p, cats, sections, returnHref }: { p: P; cats: Ca
             <Toggle name="age_restricted" defaultChecked={p.age_restricted} label="18+" hint="Customer confirms age at checkout" />
             <Toggle name="is_dropship" defaultChecked={p.is_dropship} label="Dropship" hint="The supplier ships it directly" />
           </div>
+        </Group>
+
+        <Group title="Suppliers" text="Tick every supplier that sells this product, and choose the one you normally order from. Supplier orders and the “running low” list use your choice.">
+          <input type="hidden" name="suppliers__present" value="1" />
+          {suppliers.length ? (
+            <ul className="divide-y divide-line rounded-xl border border-line">
+              {suppliers.map((s) => (
+                <li key={s.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+                  <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                    <input type="checkbox" name="sup" value={s.id} defaultChecked={s.linked || s.preferred} className="h-5 w-5 shrink-0 accent-[var(--green)]" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium" data-no-translate>{s.name}</span>
+                      <SupplierBadges types={s.specialties} compact />
+                    </span>
+                  </label>
+                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs font-medium">
+                    <input type="radio" name="sup_pref" value={s.id} defaultChecked={s.preferred} className="h-4 w-4 accent-[var(--green)]" />
+                    Order from here
+                  </label>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted">No suppliers yet.</p>
+          )}
         </Group>
 
         <Group title="Description">

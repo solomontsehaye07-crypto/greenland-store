@@ -144,9 +144,10 @@ export async function refillAdd(fd: FormData) {
   const poId = await draftFor(supplierId, user.id);
   const { data: p } = await sb.from("products").select("reorder_qty, reorder_point, stock, cost_price").eq("id", pid).single();
   const { data: has } = await sb.from("purchase_order_items").select("id, qty").eq("purchase_order_id", poId).eq("product_id", pid).maybeSingle();
-  if (has) await sb.from("purchase_order_items").update({ qty: has.qty + 1 }).eq("id", has.id);
+  const wanted = Math.round(Number(fd.get("qty")) || 0);
+  if (has) await sb.from("purchase_order_items").update({ qty: has.qty + (wanted > 0 ? wanted : 1) }).eq("id", has.id);
   else {
-    const suggested = p ? Math.max(1, (p.reorder_qty || 0) + (p.reorder_point || 0) - (p.stock || 0)) : 1;
+    const suggested = wanted > 0 ? wanted : p ? Math.max(1, (p.reorder_qty || 0) + (p.reorder_point || 0) - (p.stock || 0)) : 1;
     await sb.from("purchase_order_items").insert({ purchase_order_id: poId, product_id: pid, qty: suggested, unit_cost: p?.cost_price ?? null });
   }
   await sb.from("purchase_orders").update({ updated_at: new Date().toISOString() }).eq("id", poId);
@@ -208,4 +209,48 @@ export async function addSupplier(fd: FormData) {
   if (error || !data) redirect("/manager/orders/suppliers?new=1&msg=" + encodeURIComponent(`Could not save: ${error?.message ?? "unknown error"}`));
   revalidatePath("/manager/orders/suppliers");
   redirect(`/manager/orders/suppliers?s=${data.id}&msg=${encodeURIComponent(`${name} added. Now add the products you need.`)}`);
+}
+
+/** Adds every product that is running low and normally ordered from this supplier. */
+export async function refillFillLow(fd: FormData) {
+  const user = await assertStaff(MANAGER_ROLES);
+  const supplierId = Number(fd.get("supplier_id"));
+  const sb = supabaseAdmin();
+  const { data: low } = await sb.from("products").select("id, stock, reorder_point, reorder_qty, cost_price").eq("supplier_id", supplierId).eq("status", "active");
+  const need = (low ?? []).filter((p) => (p.stock ?? 0) <= (p.reorder_point ?? 0));
+  if (!need.length) refillBack(fd, "Nothing from this supplier is running low right now.");
+  const poId = await draftFor(supplierId, user.id);
+  const { data: has } = await sb.from("purchase_order_items").select("product_id").eq("purchase_order_id", poId);
+  const already = new Set((has ?? []).map((h) => h.product_id));
+  const rows = need
+    .filter((p) => !already.has(p.id))
+    .map((p) => ({ purchase_order_id: poId, product_id: p.id, qty: Math.max(1, (p.reorder_qty || 0) + (p.reorder_point || 0) - (p.stock || 0)), unit_cost: p.cost_price }));
+  if (rows.length) await sb.from("purchase_order_items").insert(rows);
+  revalidatePath("/manager/orders/suppliers");
+  refillBack(fd, rows.length ? `${rows.length} products added that are running low.` : "Everything running low is already on the list.");
+}
+
+/** Copies the last order sent to this supplier onto the open list. */
+export async function refillRepeatLast(fd: FormData) {
+  const user = await assertStaff(MANAGER_ROLES);
+  const supplierId = Number(fd.get("supplier_id"));
+  const sb = supabaseAdmin();
+  const { data: last } = await sb
+    .from("purchase_orders")
+    .select("id, purchase_order_items(product_id, qty, unit_cost)")
+    .eq("supplier_id", supplierId)
+    .neq("status", "draft")
+    .neq("status", "cancelled")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const items = (last?.purchase_order_items ?? []) as { product_id: number; qty: number; unit_cost: number | null }[];
+  if (!items.length) refillBack(fd, "There is no earlier order to this supplier yet.");
+  const poId = await draftFor(supplierId, user.id);
+  const { data: has } = await sb.from("purchase_order_items").select("product_id").eq("purchase_order_id", poId);
+  const already = new Set((has ?? []).map((h) => h.product_id));
+  const rows = items.filter((i) => !already.has(i.product_id)).map((i) => ({ purchase_order_id: poId, product_id: i.product_id, qty: i.qty, unit_cost: i.unit_cost }));
+  if (rows.length) await sb.from("purchase_order_items").insert(rows);
+  revalidatePath("/manager/orders/suppliers");
+  refillBack(fd, `Last order copied: ${rows.length} products added.`);
 }

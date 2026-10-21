@@ -46,7 +46,7 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
                 ) : (
                   <form action={addToRefill}>
                     <input type="hidden" name="product_id" value={p.id} />
-                    <button className="btn btn-ghost h-8 px-3 py-1 text-xs">+ Refill</button>
+                    <button className="btn btn-ghost h-11 px-4 text-sm font-semibold">+ Order</button>
                   </form>
                 )}
               </li>

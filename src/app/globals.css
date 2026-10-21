@@ -384,3 +384,18 @@ main:has(> .home > section:last-child:is(.band-forest, .band-indigo, .band-terra
 
 /* supplier type picker: a chosen type fills with its colour */
 input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
+
+/* ---------- accessibility: bigger targets for everyone in admin & manager ---------- */
+.admin .btn { min-height: 44px; }
+.admin .input, .admin select.input { min-height: 44px; }
+.admin :focus-visible { outline: 3px solid #e5a532 !important; outline-offset: 2px; }
+.admin .text-muted { color: color-mix(in oklab, var(--muted) 80%, var(--ink)); }
+
+/* Easy view: large text, strong contrast, thick outlines, bigger buttons (switch in the ⋯ / menu) */
+.admin[data-easy] { zoom: 1.18; --muted: #3d3a35; --line: #9a958c; }
+.admin[data-easy][data-theme="dark"] { --muted: #dcd7ce; --line: #6b716e; }
+@media (prefers-color-scheme: dark) { .admin[data-easy][data-theme="system"] { --muted: #dcd7ce; --line: #6b716e; } }
+.admin[data-easy] .btn { min-height: 52px; font-weight: 700; }
+.admin[data-easy] .input, .admin[data-easy] .btn-ghost, .admin[data-easy] .border, .admin[data-easy] .border-line { border-width: 2px; }
+.admin[data-easy] .text-xs, .admin[data-easy] [class*="text-[0.6"] { font-weight: 600; }
+.admin[data-easy] a:not(.btn):not(.mt-c) { text-decoration: underline; text-underline-offset: 3px; }

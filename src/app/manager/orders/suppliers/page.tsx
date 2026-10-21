@@ -4,7 +4,8 @@ import { money } from "@/lib/format";
 import { SupplierBadges, SupplierTypePicker } from "@/components/supplier-badges";
 import { SendPanel } from "@/app/admin/purchase-orders/[id]/send-panel";
 import { Msg, OrdersNav, Section } from "../../ui";
-import { addSupplier, refillAdd, refillMessage, refillQty } from "../../actions";
+import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
+import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,10 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
 
   let po: { id: number; number: number; message: string | null } | null = null;
   let items: { id: number; product_id: number; qty: number; unit_cost: number | null; products: { title: string; sku: string; image_url: string | null; stock: number } }[] = [];
-  let products: { id: number; title: string; sku: string; image_url: string | null; stock: number; reorder_point: number }[] = [];
+  let products: { id: number; title: string; sku: string; image_url: string | null; stock: number; reorder_point: number; supplier_id: number | null }[] = [];
+  let before: SupplierInsight[] = [];
+  let lowCount = 0;
+  let hasLast = false;
 
   if (sup) {
     const { data: d } = await sb.from("purchase_orders").select("id, number, message").eq("supplier_id", sup.id).eq("status", "draft").eq("kind", "refill").order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -34,14 +38,23 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
       items = (it ?? []) as unknown as typeof items;
     }
     const term = q.trim().replace(/[%,()]/g, " ");
-    let pq = sb.from("products").select("id, title, sku, image_url, stock, reorder_point").neq("status", "draft").order("stock").limit(40);
+    let pq = sb.from("products").select("id, title, sku, image_url, stock, reorder_point, supplier_id").neq("status", "draft").order("stock").limit(60);
     if (term) pq = pq.or(`title.ilike.%${term}%,sku.ilike.%${term}%`);
     else {
       const { data: sp } = await sb.from("supplier_products").select("product_id").eq("supplier_id", sup.id);
       const ids = (sp ?? []).map((r) => r.product_id);
       pq = ids.length ? pq.or(`supplier_id.eq.${sup.id},id.in.(${ids.join(",")})`) : pq.eq("supplier_id", sup.id);
     }
-    products = ((await pq).data ?? []) as typeof products;
+    const [{ data: found }, ins, { data: mine }, { count: sentBefore }] = await Promise.all([
+      pq,
+      supplierInsights(sup.id),
+      sb.from("products").select("stock, reorder_point").eq("supplier_id", sup.id).eq("status", "active"),
+      sb.from("purchase_orders").select("id", { count: "exact", head: true }).eq("supplier_id", sup.id).not("status", "in", "(draft,cancelled)"),
+    ]);
+    products = (found ?? []) as typeof products;
+    before = ins.filter((i) => i.times > 0).sort((a, b) => String(b.last).localeCompare(String(a.last))).slice(0, 20);
+    lowCount = (mine ?? []).filter((p) => (p.stock ?? 0) <= (p.reorder_point ?? 0)).length;
+    hasLast = (sentBefore ?? 0) > 0;
   }
   const inList = new Set(items.map((i) => i.product_id));
   const units = items.reduce((t, i) => t + i.qty, 0);
@@ -153,12 +166,12 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
                         <p className="truncate text-sm" data-no-translate>{i.products.title}</p>
                         <p className="text-[0.6875rem] text-muted">{i.products.stock} in stock{i.unit_cost != null ? ` · ${money(i.unit_cost)} each` : ""}</p>
                       </div>
-                      <div className="flex items-center rounded-full border border-line text-sm">
-                        <form action={refillQty}>{keep({ item_id: String(i.id), delta: "-1" })}<button className="h-9 w-9" aria-label={`One less ${i.products.title}`}>−</button></form>
-                        <span className="w-8 text-center font-semibold tabular-nums">{i.qty}</span>
-                        <form action={refillQty}>{keep({ item_id: String(i.id), delta: "1" })}<button className="h-9 w-9" aria-label={`One more ${i.products.title}`}>+</button></form>
+                      <div className="flex items-center rounded-full border-2 border-line text-base">
+                        <form action={refillQty}>{keep({ item_id: String(i.id), delta: "-1" })}<button className="h-11 w-11 text-xl font-bold" aria-label={`One less ${i.products.title}`}>−</button></form>
+                        <span className="w-9 text-center text-base font-bold tabular-nums" aria-label={`Quantity ${i.qty}`}>{i.qty}</span>
+                        <form action={refillQty}>{keep({ item_id: String(i.id), delta: "1" })}<button className="h-11 w-11 text-xl font-bold" aria-label={`One more ${i.products.title}`}>+</button></form>
                       </div>
-                      <form action={refillQty}>{keep({ item_id: String(i.id), qty: "0" })}<button className="h-9 w-9 text-muted hover:text-terra" aria-label={`Remove ${i.products.title}`}>×</button></form>
+                      <form action={refillQty}>{keep({ item_id: String(i.id), qty: "0" })}<button className="h-11 rounded-xl border-2 border-terra/40 px-3 text-sm font-semibold text-terra" aria-label={`Remove ${i.products.title}`}>Remove</button></form>
                     </li>
                   ))}
                 </ul>
@@ -187,6 +200,49 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
             </>
           )}
 
+          <Section color="stock" title="Fill the list in one tap">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <form action={refillFillLow}>
+                {keep()}
+                <button disabled={!lowCount} className="mt-c mt-stock flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left text-[0.9375rem] font-semibold disabled:opacity-50">
+                  <span>Add everything running low</span>
+                  <span className="rounded-full bg-white px-2.5 py-0.5 text-sm text-[#2563a8]">{lowCount}</span>
+                </button>
+              </form>
+              <form action={refillRepeatLast}>
+                {keep()}
+                <button disabled={!hasLast} className="mt-c mt-stock3 flex min-h-14 w-full items-center rounded-2xl px-4 py-3 text-left text-[0.9375rem] font-semibold disabled:opacity-50">
+                  Repeat last order
+                </button>
+              </form>
+            </div>
+            {!lowCount && !hasLast && <p className="mt-2 text-xs text-muted">Nothing is running low from this supplier, and there is no earlier order yet.</p>}
+          </Section>
+
+          {before.length > 0 && (
+            <Section color="stock2" title="Ordered before – tap to add again">
+              <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
+                {before.map((b) => {
+                  const usual = Math.max(1, Math.round(b.qty / b.times));
+                  return (
+                    <li key={b.product_id} className="flex items-center gap-3 px-3 py-2.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {b.image_url ? <img src={b.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg bg-white object-contain ring-1 ring-line" /> : <span className="h-11 w-11 shrink-0 rounded-lg bg-surface" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium" data-no-translate>{b.title}</p>
+                        <p className="text-xs text-muted">ordered {b.times}× · usually {usual} · {b.stock} in stock</p>
+                      </div>
+                      <form action={refillAdd}>
+                        {keep({ product_id: String(b.product_id), qty: String(usual) })}
+                        <button className="btn btn-primary h-11 px-4 text-sm" aria-label={`Add ${usual} × ${b.title}`}>+ {usual}</button>
+                      </form>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Section>
+          )}
+
           <Section color="stock3" title={q ? `Search: ${q}` : `Products from ${sup.name}`}>
             <form className="mb-3 flex gap-2" action="/manager/orders/suppliers">
               <input type="hidden" name="s" value={sup.id} />
@@ -201,13 +257,15 @@ export default async function Refill({ searchParams }: { searchParams: Promise<{
                     {p.image_url ? <img src={p.image_url} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-white object-contain ring-1 ring-line" /> : <span className="h-10 w-10 shrink-0 rounded-lg bg-surface" />}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm" data-no-translate>{p.title}</p>
-                      <p className="text-[0.6875rem] text-muted">
+                      <p className="text-xs text-muted">
                         <b className={p.stock <= p.reorder_point ? "text-terra" : ""}>{p.stock}</b> in stock
+                        {p.supplier_id && p.supplier_id !== sup.id && <> · usually from <span data-no-translate>{(sups ?? []).find((x) => x.id === p.supplier_id)?.name ?? "another supplier"}</span></>}
+                        {p.supplier_id === sup.id && <> · <span className="font-semibold text-[#1c4c86]">your usual supplier</span></>}
                       </p>
                     </div>
                     <form action={refillAdd}>
                       {keep({ product_id: String(p.id) })}
-                      <button className={`btn h-9 px-3 py-1 text-xs ${inList.has(p.id) ? "btn-ghost" : "btn-primary"}`}>{inList.has(p.id) ? "+1" : "+ Add"}</button>
+                      <button className={`btn h-11 px-4 text-sm font-semibold ${inList.has(p.id) ? "btn-ghost" : "btn-primary"}`} aria-label={`${inList.has(p.id) ? "One more" : "Add"} ${p.title}`}>{inList.has(p.id) ? "+1 more" : "+ Add"}</button>
                     </form>
                   </li>
                 ))}

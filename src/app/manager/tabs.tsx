@@ -21,8 +21,8 @@ export function ManagerTabs() {
           const on = href === "/manager" ? path === href : path.startsWith(href);
           return (
             <li key={href}>
-              <Link href={href} aria-current={on ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-2.5 text-[0.6875rem] font-medium ${on ? "text-forest" : "text-muted"}`}>
-                <AIcon name={icon} size={22} />
+              <Link href={href} aria-current={on ? "page" : undefined} className={`flex min-h-[60px] flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold ${on ? "text-forest" : "text-muted"}`}>
+                <AIcon name={icon} size={24} />
                 {label}
               </Link>
             </li>
