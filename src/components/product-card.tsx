@@ -5,6 +5,7 @@ import type { Lang } from "@/lib/i18n";
 import { ui } from "@/lib/i18n";
 import { AddToCart } from "./add-to-cart";
 import { countryFlag } from "@/lib/countries";
+import { img, imgSet } from "@/lib/img";
 
 export function productTitle(p: { title: string; title_de?: string | null }, lang: Lang) {
   return lang === "de" ? p.title_de || p.title : p.title;
@@ -22,7 +23,7 @@ export function ProductCard({ p, lang = "de", badge }: { p: CardProduct; lang?: 
       <Link href={`/p/${p.slug}`} className="pcard-img relative block aspect-square overflow-hidden">
         {p.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.image_url} alt={title} loading="lazy" className="h-full w-full object-cover mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
+          <img src={img(p.image_url, 360)} srcSet={imgSet(p.image_url, 360)} sizes="(min-width: 1024px) 300px, 50vw" alt={title} loading="lazy" decoding="async" className="h-full w-full object-cover mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
         ) : (
           <div className="grid h-full place-items-center text-xs text-muted">{ui("noPhoto", lang)}</div>
         )}

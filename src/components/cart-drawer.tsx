@@ -1,5 +1,7 @@
 "use client";
 
+import { img } from "@/lib/img";
+
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useCart } from "./cart";
@@ -61,7 +63,7 @@ export function CartDrawer({ lang, frozen }: { lang: "de" | "en"; frozen: { pack
                     <li key={l.id} className="flex gap-3 py-3.5">
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-surface">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        {l.image_url && <img src={l.image_url} alt="" className="h-full w-full object-cover mix-blend-multiply" />}
+                        {l.image_url && <img src={img(l.image_url, 160)} alt="" className="h-full w-full object-cover mix-blend-multiply" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <Link href={`/p/${l.slug}`} onClick={() => setDrawerOpen(false)} className="line-clamp-2 text-[0.8125rem] leading-snug hover:underline">{l.title}</Link>

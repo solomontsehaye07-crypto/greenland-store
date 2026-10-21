@@ -1,5 +1,7 @@
 "use client";
 
+import { img } from "@/lib/img";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CardProduct } from "@/lib/catalog";
@@ -37,7 +39,7 @@ export function Upsell({ ids, lang, layout = "list" }: { ids: number[]; lang: "d
             <li key={p.id} className="flex flex-col">
               <Link href={`/p/${p.slug}`} className="block aspect-square overflow-hidden rounded-lg bg-surface">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply" />}
+                {p.image_url && <img src={img(p.image_url, 160)} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply" />}
               </Link>
               <Link href={`/p/${p.slug}`} className="mt-2 line-clamp-2 text-xs leading-snug hover:underline">{title(p)}</Link>
               <div className="mt-auto flex items-center justify-between pt-2">
@@ -49,7 +51,7 @@ export function Upsell({ ids, lang, layout = "list" }: { ids: number[]; lang: "d
             <li key={p.id} className="flex items-center gap-3 py-2.5">
               <Link href={`/p/${p.slug}`} className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-surface">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {p.image_url && <img src={p.image_url} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply" />}
+                {p.image_url && <img src={img(p.image_url, 160)} alt="" loading="lazy" className="h-full w-full object-cover mix-blend-multiply" />}
               </Link>
               <div className="min-w-0 flex-1">
                 <Link href={`/p/${p.slug}`} className="line-clamp-1 text-xs hover:underline">{title(p)}</Link>

@@ -9,6 +9,7 @@ import { supabasePublic } from "@/lib/supabase";
 import { countryFlag, countryLabel } from "@/lib/countries";
 import { tx, ui, type L10n, type Lang } from "@/lib/i18n";
 import { Icon } from "../icons";
+import { img, imgSet } from "@/lib/img";
 import { Markdown } from "../markdown";
 import { ProductCard, ProductGrid } from "../product-card";
 import { Rail } from "./rail";
@@ -210,7 +211,7 @@ function Tiles({ d, lang }: { d: D; lang: Lang }) {
                 <div className={`tile-img ${round ? "rounded-full" : ""}`}>
                   {t.image && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={t.image} alt="" loading="lazy" className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-[1.06]" />
+                    <img src={img(t.image, 320)} srcSet={imgSet(t.image, 320)} sizes="(min-width: 1024px) 200px, 33vw" alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-[1.06]" />
                   )}
                 </div>
                 <span className="tile-label">{L(t.label, lang)}</span>
@@ -321,7 +322,7 @@ function Banners({ d, lang }: { d: D; lang: Lang }) {
               <div className="promo-img">
                 {b.image && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={b.image} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+                  <img src={img(b.image, 900)} srcSet={imgSet(b.image, 900)} sizes="(min-width: 768px) 50vw, 100vw" alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                 )}
               </div>
               <div className="promo-body">
