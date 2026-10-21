@@ -33,12 +33,14 @@ export function AddToCart({
   disabled,
   compact,
   inline,
+  block,
   lang = "de",
 }: {
   product: CardProduct;
   disabled?: boolean;
   compact?: boolean;
   inline?: boolean;
+  block?: boolean; // full-width pill (product cards)
   lang?: "de" | "en";
 }) {
   const t = T[lang];
@@ -47,7 +49,7 @@ export function AddToCart({
   const [qty, setQty] = useState(1);
 
   const onAdd = () => {
-    add(toLine(product), compact || inline ? 1 : qty);
+    add(toLine(product), compact || inline || block ? 1 : qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 1400);
     if (!inline) setDrawerOpen(true);
@@ -63,6 +65,19 @@ export function AddToCart({
         className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-40 ${added ? "border-forest bg-forest text-white" : "border-line bg-white hover:border-ink"}`}
       >
         {added ? "✓" : "+ " + (lang === "de" ? "Dazu" : "Add")}
+      </button>
+    );
+
+  if (block)
+    return (
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={disabled}
+        aria-label={t.add(product.title)}
+        className={`card-add ${added ? "is-added" : ""}`}
+      >
+        {disabled ? t.out : added ? t.added : t.cta}
       </button>
     );
 

@@ -399,3 +399,39 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
 .admin[data-easy] .input, .admin[data-easy] .btn-ghost, .admin[data-easy] .border, .admin[data-easy] .border-line { border-width: 2px; }
 .admin[data-easy] .text-xs, .admin[data-easy] [class*="text-[0.6"] { font-weight: 600; }
 .admin[data-easy] a:not(.btn):not(.mt-c) { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Storefront redesign (warm, photo-led) ---------- */
+@layer components {
+  /* photo hero */
+  .hero-photo-layout { color: #fff; background: #163F2D; }
+  .hero-photo-layout .hero-photo::after { background: linear-gradient(180deg, rgb(0 0 0 / .15) 0%, rgb(0 0 0 / .05) 35%, rgb(0 0 0 / .62) 100%); opacity: 1; }
+  .hero-title-xl { font-size: clamp(2.75rem, 7vw, 5.5rem); max-width: 14ch; text-shadow: 0 2px 24px rgb(0 0 0 / .25); }
+  .btn-hero-glass { border: 1.5px solid rgb(255 255 255 / .7); color: #fff; font-weight: 600; background: rgb(255 255 255 / .12); backdrop-filter: blur(6px); }
+  .btn-hero-glass:hover { background: #fff; color: var(--ink); }
+
+  /* trust band under the hero */
+  .trust-band { background: var(--terra); color: #fff; }
+
+  /* product cards */
+  .pcard-img { border-radius: 1.5rem; background: var(--sand); }
+  .card-add { display: flex; width: 100%; align-items: center; justify-content: center; min-height: 2.75rem; border-radius: 9999px; background: var(--forest); color: #fff; font-size: .875rem; font-weight: 600; transition: background-color .15s, transform .15s; }
+  .card-add:hover { background: color-mix(in oklab, var(--forest) 85%, black); }
+  .card-add:active { transform: scale(.98); }
+  .card-add:disabled { background: var(--sand); color: var(--muted); cursor: not-allowed; }
+  .card-add.is-added { background: var(--saffron); color: var(--ink); }
+
+  /* promo cards: photo + text */
+  .promo { display: grid; overflow: hidden; border-radius: 2rem; }
+  .promo-sand { background: var(--sand); color: var(--ink); }
+  .promo-img { aspect-ratio: 4 / 3; overflow: hidden; }
+  .promo-body { padding: 1.75rem; display: flex; flex-direction: column; justify-content: center; }
+  .promo-cta { margin-top: 1.5rem; align-self: flex-start; display: inline-flex; align-items: center; gap: .5rem; border-radius: 9999px; background: #fff; color: var(--ink); padding: .8rem 1.4rem; font-size: .875rem; font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .06); transition: transform .15s; }
+  .promo:hover .promo-cta { transform: translateX(3px); }
+  :is(.band-terra, .band-forest, .band-indigo, .band-ink).promo .text-muted { color: rgb(255 255 255 / .8); }
+  @media (min-width: 768px) {
+    .promo { grid-template-columns: 1fr 1fr; min-height: 22rem; }
+    .promo-img { aspect-ratio: auto; height: 100%; }
+    .promo-right .promo-img { order: 2; }
+    .promo-body { padding: 2.75rem 3rem; }
+  }
+}

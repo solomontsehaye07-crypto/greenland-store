@@ -35,7 +35,24 @@ const base = { ...DEFAULT_THEME };
 delete (base as Partial<Theme>).pattern;
 
 export const BUILT_IN: Design[] = [
-  { id: "standard", name: "Standard (marigold)", heroBg: "#F2B632", heroText: "#1C1915", heroAccent: "#1D5C3F", ...base, paper: "#FBFAF7", sand: "#EFE9DF", ink: "#1C1915", terra: "#B5482A", saffron: "#E5A532", forest: "#1D5C3F", indigo: "#2C3A73" },
+  {
+    id: "standard",
+    name: "Standard (warm, photo hero)",
+    heroBg: "#163F2D",
+    heroText: "#FFFFFF",
+    heroAccent: "#E5A532",
+    ...base,
+    // temporary Unsplash photo (jollof with grilled fish) until the shop's own pictures exist
+    heroImage: "https://images.unsplash.com/photo-1665332195309-9d75071138f0?w=1800&q=72&auto=format&fit=crop",
+    heroDim: 0,
+    paper: "#F8F4EC",
+    sand: "#F1E7D8",
+    ink: "#1C2A22",
+    terra: "#B8552B",
+    saffron: "#E5A532",
+    forest: "#1D5C3F",
+    indigo: "#2C3A73",
+  },
   { id: "habesha-new-year", name: "Enkutatash & Meskel", heroBg: "#F7C948", heroText: "#14301F", heroAccent: "#2E7D32", from: "2026-09-08", to: "2026-09-30", yearly: true, paper: "#FBFAF2", sand: "#F1EBD3", ink: "#1A1F14", terra: "#C0392B", saffron: "#F2B705", forest: "#2E7D32", indigo: "#25406E", announcement: { de: "Melkam Addis Amet! Alles für Buna und Doro Wat.", en: "Melkam Addis Amet! Everything for buna and doro wat." } },
   { id: "ramadan-eid", name: "Ramadan & Eid", heroBg: "#1B2A4A", heroText: "#FFF8EA", heroAccent: "#E8B54A", paper: "#FAF8F3", sand: "#ECE6DA", ink: "#1A1C24", terra: "#B5482A", saffron: "#E8B54A", forest: "#1F5E4B", indigo: "#1B2A4A", announcement: { de: "Ramadan Kareem – Datteln, Reis und Gewürze für das Iftar.", en: "Ramadan Kareem – dates, rice and spices for iftar." } },
   { id: "christmas", name: "Christmas & Genna", heroBg: "#8E1C1C", heroText: "#FFF6EC", heroAccent: "#E9B949", from: "2026-11-28", to: "2027-01-08", yearly: true, paper: "#FBF8F4", sand: "#EFE6DC", ink: "#1E1715", terra: "#A62626", saffron: "#E9B949", forest: "#1E5A3C", indigo: "#2B3566", announcement: { de: "Frohe Weihnachten & Melkam Genna!", en: "Merry Christmas & Melkam Genna!" } },

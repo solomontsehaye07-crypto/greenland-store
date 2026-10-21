@@ -98,7 +98,34 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
       </SmartLink>
     </li>
   );
-  const moving = showProducts && strip.length >= 6;
+  const moving = showProducts && strip.length >= 6 && !d.photoHero;
+
+  if (d.photoHero !== false && !moving) {
+    // full-bleed photo hero: headline bottom-left over the picture, like a food magazine cover
+    return (
+      <section className="hero hero-photo-layout">
+        <div className="hero-photo" aria-hidden />
+        <div className={`${WRAP} relative flex min-h-[34rem] flex-col justify-end pb-12 pt-28 sm:min-h-[38rem] lg:min-h-[44rem] lg:pb-16`}>
+          <div className="max-w-2xl animate-[fade_.9s_ease-out_both]">
+            <h1 className="hero-title hero-title-xl" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h1>
+            {L(d.text, lang) && <p className="mt-5 max-w-lg text-base leading-relaxed opacity-90 sm:text-lg">{L(d.text, lang)}</p>}
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              {L(d.cta1Label, lang) && <SmartLink href={d.cta1Href} className="btn btn-hero h-12 px-7 text-[0.9375rem]">{L(d.cta1Label, lang)}<Icon name="arrowR" size={16} /></SmartLink>}
+              {L(d.cta2Label, lang) && <SmartLink href={d.cta2Href} className="btn btn-hero-glass h-12 px-7 text-[0.9375rem]">{L(d.cta2Label, lang)}</SmartLink>}
+            </div>
+            <ul className="mt-9 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+              {stats.map((st) => (
+                <li key={st.l} className="flex items-baseline gap-2">
+                  <span className="display text-2xl font-semibold" style={{ color: "var(--hero-accent)" }}>{st.n}</span>
+                  <span className="opacity-85">{st.l}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="hero">
@@ -282,27 +309,27 @@ async function Offers({ d, lang }: { d: D; lang: Lang }) {
 function Banners({ d, lang }: { d: D; lang: Lang }) {
   const items: D[] = d.items ?? [];
   if (!items.length) return null;
-  const tones = ["terra", "indigo", "forest"];
   return (
-    <section className="band-paper py-16 sm:py-20">
-      <div className={`${WRAP} grid gap-5 ${items.length > 1 ? "lg:grid-cols-2" : ""}`}>
+    <section className="band-paper py-14 sm:py-20">
+      <div className={`${WRAP} grid gap-6`}>
         {items.map((b, i) => {
-          const tone = band(b.color && b.color !== "sand" ? b.color : tones[i % 3], "terra", true);
+          const photoRight = i % 2 === 1;
+          const dark = ["terra", "forest", "indigo", "ink"].includes(b.color);
+          const tone = dark ? band(b.color, "terra", true) : "promo-sand";
           return (
-            <SmartLink key={i} href={b.href} className={`feature group ${tone}`}>
-              <div className="relative z-10 flex max-w-[56%] flex-col">
-                <h3 className="display text-2xl font-semibold leading-tight sm:text-[1.75rem]" style={{ textWrap: "balance" }}>{L(b.title, lang)}</h3>
-                {L(b.text, lang) && <p className="mt-3 text-sm leading-relaxed opacity-80">{L(b.text, lang)}</p>}
-                {L(b.ctaLabel, lang) && (
-                  <span className="btn btn-light mt-6 self-start">{L(b.ctaLabel, lang)}<Icon name="arrowR" size={14} /></span>
+            <SmartLink key={i} href={b.href} className={`promo group ${tone} ${photoRight ? "promo-right" : ""}`}>
+              <div className="promo-img">
+                {b.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={b.image} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
                 )}
               </div>
-              {b.image && (
-                <div className="feature-img">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={b.image} alt="" loading="lazy" className="h-full w-full object-contain p-4 transition-transform duration-700 group-hover:scale-105" />
-                </div>
-              )}
+              <div className="promo-body">
+                {L(b.kicker, lang) && <p className="text-base text-muted">{L(b.kicker, lang)}</p>}
+                <h3 className="display mt-2 text-2xl font-semibold leading-tight sm:text-3xl lg:text-[2.25rem]" style={{ textWrap: "balance" }}>{L(b.title, lang)}</h3>
+                {L(b.text, lang) && <p className="mt-3 max-w-md text-[0.9375rem] leading-relaxed text-muted">{L(b.text, lang)}</p>}
+                {L(b.ctaLabel, lang) && <span className="promo-cta">{L(b.ctaLabel, lang)}<Icon name="arrowR" size={14} /></span>}
+              </div>
             </SmartLink>
           );
         })}
@@ -314,6 +341,21 @@ function Banners({ d, lang }: { d: D; lang: Lang }) {
 // ---------- promises: a trust bar straight under the hero ----------
 function Usp({ d, lang }: { d: D; lang: Lang }) {
   const items: D[] = d.items ?? [];
+  const compact = d.style !== "cards";
+  if (compact)
+    return (
+      <section className="trust-band">
+        {L(d.title, lang) && <h2 className="sr-only">{L(d.title, lang)}</h2>}
+        <ul className={`${WRAP} grid grid-cols-2 gap-x-4 gap-y-2 py-3 text-center lg:grid-cols-4`}>
+          {items.map((u, i) => (
+            <li key={i} className="flex items-center justify-center gap-2 text-[0.8125rem] font-semibold leading-snug">
+              <Icon name={u.icon} size={16} />
+              <span>{L(u.title, lang)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
   return (
     <section className={`${band(d.color, "none")} border-b border-line`}>
       {L(d.title, lang) && <h2 className="sr-only">{L(d.title, lang)}</h2>}
