@@ -9,11 +9,13 @@ export function QtyField({
   qty,
   label,
   children,
+  compact = false,
 }: {
   action: (fd: FormData) => Promise<void>;
   qty: number;
   label: string;
   children: React.ReactNode; // hidden fields (item id, page state)
+  compact?: boolean; // small stepper for lists
 }) {
   const [v, setV] = useState(String(qty));
   const [saving, setSaving] = useState(false);
@@ -57,10 +59,10 @@ export function QtyField({
         setSaving(true);
         setTimeout(() => setSaving(false), 4000);
       }}
-      className={`flex items-center rounded-full border-2 border-line ${saving ? "opacity-60" : ""}`}
+      className={`inline-flex items-center rounded-full border border-line bg-white ${saving ? "opacity-60" : ""}`}
     >
       {children}
-      <button type="button" onClick={() => step(-1)} className="h-11 w-11 text-2xl font-bold" aria-label={`One less ${label}`}>−</button>
+      <button type="button" onClick={() => step(-1)} className={`${compact ? "h-9 w-9 text-xl" : "h-11 w-11 text-2xl"} font-bold text-muted`} aria-label={`One less ${label}`}>−</button>
       <input
         name="qty"
         value={v}
@@ -77,9 +79,9 @@ export function QtyField({
         autoComplete="off"
         data-no-memory
         aria-label={`Quantity of ${label}`}
-        className="h-11 w-16 rounded-lg border-2 border-forest/40 bg-white text-center text-lg font-bold tabular-nums outline-none focus:border-forest"
+        className={`${compact ? "h-8 w-11 text-base" : "h-11 w-16 text-lg"} rounded-md bg-surface text-center font-bold tabular-nums outline-none focus:ring-2 focus:ring-forest`}
       />
-      <button type="button" onClick={() => step(1)} className="h-11 w-11 text-2xl font-bold" aria-label={`One more ${label}`}>+</button>
+      <button type="button" onClick={() => step(1)} className={`${compact ? "h-9 w-9 text-xl" : "h-11 w-11 text-2xl"} font-bold text-muted`} aria-label={`One more ${label}`}>+</button>
     </form>
   );
 }

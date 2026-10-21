@@ -133,13 +133,22 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
             <p className="mt-3 text-sm font-semibold">{items.length} products · {units} units{value > 0 ? ` · about ${money(value)}` : ""}</p>
             <ul className="mt-2 divide-y divide-line rounded-2xl border-2 border-line bg-white">
               {items.map((i) => (
-                <li key={i.id} className="px-3 py-3">
-                  <p className="text-[0.9375rem] font-medium leading-snug" data-no-translate>{i.products.title}</p>
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <QtyField action={refillQty} qty={i.qty} label={i.products.title}>{keep({ item_id: String(i.id) })}</QtyField>
-                    <span className="text-xs text-muted">{i.products.stock} in stock</span>
-                    <form action={refillQty}>{keep({ item_id: String(i.id), qty: "0" })}<button className="h-11 rounded-xl border-2 border-terra/40 px-3 text-sm font-semibold text-terra" aria-label={`Remove ${i.products.title}`}>Remove</button></form>
+                <li key={i.id} className="flex items-center gap-3 py-3 pl-3 pr-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {i.products.image_url ? <img src={i.products.image_url} alt="" className="h-14 w-14 shrink-0 rounded-xl border border-line bg-white object-contain" /> : <span className="h-14 w-14 shrink-0 rounded-xl bg-surface" aria-hidden />}
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-base font-semibold leading-snug text-ink" data-no-translate>{i.products.title}</p>
+                    <p className="mt-0.5 text-xs text-muted">{i.products.stock} in stock</p>
+                    <div className="mt-2">
+                      <QtyField action={refillQty} qty={i.qty} label={i.products.title} compact>{keep({ item_id: String(i.id) })}</QtyField>
+                    </div>
                   </div>
+                  <form action={refillQty} className="self-start">
+                    {keep({ item_id: String(i.id), qty: "0" })}
+                    <button className="grid h-9 w-9 place-items-center rounded-full text-muted hover:bg-surface hover:text-terra" aria-label={`Remove ${i.products.title}`} title="Remove">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6L6 18" /></svg>
+                    </button>
+                  </form>
                 </li>
               ))}
             </ul>
