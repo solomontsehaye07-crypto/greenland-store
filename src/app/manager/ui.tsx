@@ -48,12 +48,12 @@ export function Msg({ msg }: { msg?: string }) {
 }
 
 /** Sub-tabs inside Orders: customer orders and orders to suppliers. */
-export function OrdersNav({ active }: { active: "customers" | "suppliers" }) {
-  const item = (key: "customers" | "suppliers", href: string, label: string, color: TileColor) => (
+export function OrdersNav({ active }: { active: "customers" | "suppliers" | "invoices" }) {
+  const item = (key: "customers" | "suppliers" | "invoices", href: string, label: string, color: TileColor) => (
     <Link
       href={href}
       aria-current={active === key ? "page" : undefined}
-      className={`flex-1 rounded-xl px-3 py-2.5 text-center text-sm font-semibold ${active === key ? `mt-c mt-${color}` : "border border-line bg-white text-muted"}`}
+      className={`flex flex-1 items-center justify-center rounded-xl px-2 py-2.5 text-center text-sm font-semibold leading-tight ${active === key ? `mt-c mt-${color}` : "border border-line bg-white text-muted"}`}
     >
       {label}
     </Link>
@@ -62,6 +62,7 @@ export function OrdersNav({ active }: { active: "customers" | "suppliers" }) {
     <nav aria-label="Orders" className="mb-5 flex gap-2">
       {item("customers", "/manager/orders", "Customer orders", "order")}
       {item("suppliers", "/manager/orders/suppliers", "Order from suppliers", "stock2")}
+      {item("invoices", "/manager/orders/invoices", "Invoices", "money2")}
     </nav>
   );
 }

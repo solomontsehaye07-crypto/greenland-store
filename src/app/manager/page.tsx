@@ -69,6 +69,7 @@ export default async function Today({ searchParams }: { searchParams: Promise<{ 
       <Section title="Quick actions">
         <div className="grid grid-cols-2 gap-3">
           <QuickLink href="/manager/orders/suppliers" label="Order from a supplier" color="stock2" icon="refill" />
+          <QuickLink href="/manager/orders/invoices/new" label="Write an invoice" color="money2" icon="page" />
           <QuickLink href="/admin/goods-in" label="Book a delivery" color="stock3" icon="truck" />
           <QuickLink href="/admin/finance" label="Book spoiled or stolen items" color="loss" icon="box" />
           <QuickLink href="/admin/products?new=1" label="New product" color="product" icon="tag" />

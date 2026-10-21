@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { loadPoPdf } from "@/lib/po-pdf-client";
+import { loadDoc, type DocSource } from "@/lib/doc-client";
 
 // Shows a PDF inside the app (no new browser tab): every page is drawn as a sharp image that fits the
 // screen width. Pinch to zoom works as on any page. "Share" hands the real PDF file to WhatsApp, Mail …
 
-export function PdfView({ src, filename, poId }: { src?: string; filename: string; poId?: number }) {
+export function PdfView({ src, filename, poId, source }: { src?: string; filename: string; poId?: number; source?: DocSource }) {
   const box = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [why, setWhy] = useState("");
@@ -17,9 +17,9 @@ export function PdfView({ src, filename, poId }: { src?: string; filename: strin
     (async () => {
       try {
         let buf: ArrayBuffer;
-        if (poId) {
-          // built here on the device from the request's data
-          const r = await loadPoPdf(poId);
+        if (poId || source) {
+          // built here on the device from the data
+          const r = await loadDoc(source ?? { type: "po", id: poId! });
           buf = r.bytes.slice().buffer as ArrayBuffer;
         } else {
           const res = await fetch(src!, { cache: "no-store" });
@@ -62,7 +62,8 @@ export function PdfView({ src, filename, poId }: { src?: string; filename: strin
     return () => {
       cancelled = true;
     };
-  }, [src, filename, poId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, filename, poId, JSON.stringify(source)]);
 
   const share = async () => {
     if (!file) return;

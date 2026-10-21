@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { archiveSharedPdfAction } from "@/app/admin/actions";
-import { loadPoPdf, toBase64 } from "@/lib/po-pdf-client";
+import { toBase64 } from "@/lib/po-pdf-client";
+import { loadDoc, type DocSource } from "@/lib/doc-client";
 
 type Nav = Navigator & { canShare?: (d: ShareData) => boolean };
 
@@ -11,15 +12,17 @@ type Nav = Navigator & { canShare?: (d: ShareData) => boolean };
 // share sheet straight after a tap. On a computer the PDF is downloaded and WhatsApp opens to attach it.
 export function WhatsAppPdf({
   poId,
-  audience,
+  audience = "supplier",
+  source,
   phone,
   note = "",
   label,
   className = "btn btn-primary w-full",
   onShared,
 }: {
-  poId: number;
-  audience: "supplier" | "other";
+  poId?: number;
+  audience?: "supplier" | "other";
+  source?: DocSource; // any document; default: the supplier request poId
   phone?: string | null;
   note?: string;
   label: string;
@@ -31,6 +34,8 @@ export function WhatsAppPdf({
   const [err, setErr] = useState("");
   const [hint, setHint] = useState("");
 
+  const src: DocSource = source ?? { type: "po", id: poId!, audience };
+  const key = JSON.stringify(src);
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [try_, setTry] = useState(0);
 
@@ -39,7 +44,7 @@ export function WhatsAppPdf({
     setErr("");
     (async () => {
       try {
-        const r = await loadPoPdf(poId, audience);
+        const r = await loadDoc(src);
         if (off) return;
         setBytes(r.bytes);
         setFile(new File([r.bytes as BlobPart], r.filename, { type: "application/pdf" }));
@@ -51,10 +56,11 @@ export function WhatsAppPdf({
     return () => {
       off = true;
     };
-  }, [poId, audience, try_]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, try_]);
 
   const archive = () => {
-    if (bytes) archiveSharedPdfAction(poId, toBase64(bytes), audience).catch(() => null);
+    if (bytes && src.type === "po") archiveSharedPdfAction(src.id, toBase64(bytes), audience).catch(() => null);
   };
 
   const message = note.trim() ? `${note.trim()}\n\n${text}` : text;
