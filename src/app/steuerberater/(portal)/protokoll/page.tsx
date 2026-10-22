@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
-import { deDate } from "../toolbar";
+import { Crumbs, deDate } from "../toolbar";
 
 export const metadata = { title: { absolute: "Änderungsprotokoll – Steuerberater-Portal" } };
 
@@ -19,9 +19,10 @@ export default async function PortalLog() {
     .limit(1000);
   const rows = (data ?? []) as unknown as Row[];
   return (
-    <div className="stb-panel">
-      <h2 className="flex flex-wrap justify-between gap-2"><span>Änderungsprotokoll Kassenbuch</span><span className="font-normal text-[#555]">{rows.length} Einträge · unveränderbar</span></h2>
-      <div className="max-h-[75vh] overflow-auto">
+    <>
+      <Crumbs a="Kassenbuch Laden" b="Änderungsprotokoll" />
+      <p className="px-2 py-1.5 text-[#666]">{rows.length} Einträge · jede Änderung mit Grund, Person und Zeitpunkt · das Protokoll kann nicht geändert oder gelöscht werden</p>
+      <div className="mx-2 mb-2 max-h-[75vh] overflow-auto border border-[#c3c3c3]">
         <table className="stb-grid min-w-[62rem]">
           <thead>
             <tr><th>Zeitpunkt</th><th>Buchung</th><th>Datum</th><th>Buchungstext</th><th>Feld</th><th>Alter Wert</th><th>Neuer Wert</th><th className="w-full">Grund</th><th>Geändert von</th></tr>
@@ -49,6 +50,6 @@ export default async function PortalLog() {
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }

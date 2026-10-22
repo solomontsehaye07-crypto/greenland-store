@@ -5,11 +5,11 @@ export const metadata = { title: "Anmeldung – Steuerberater-Portal", robots: {
 export default async function PortalLoginPage({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const sp = await searchParams;
   return (
-    <main className="stb grid min-h-screen place-items-center bg-[#ececec] px-4">
+    <main className="stb grid min-h-screen place-items-center border-t-[3px] border-[#c0222b] bg-[#e9e9e9] px-4">
       <div className="w-full max-w-sm border border-[#b9b9b9] bg-white shadow-sm">
-        <div className="border-b-2 border-[#b4232a] px-5 py-3">
-          <p className="text-[0.8125rem] font-bold text-[#b4232a]">Greenland Afro Asia Store</p>
-          <h1 className="text-lg font-semibold text-[#333]">Steuerberater-Portal</h1>
+        <div className="border-b border-[#c3c3c3] px-5 py-3">
+          <h1 className="stb-brand text-[20px] leading-tight"><span className="font-bold">Greenland:</span> Steuerberater-Portal</h1>
+          <p className="mt-0.5 text-[#666]">Greenland Afro Asia Store, Kaiserslautern</p>
         </div>
         <div className="p-5">
           {sp.denied && <p role="alert" className="mb-3 border border-[#e2b4b4] bg-[#fbeaea] px-3 py-2 text-sm text-[#8a1f1f]">Dieses Konto hat keinen Zugang zum Portal.</p>}
