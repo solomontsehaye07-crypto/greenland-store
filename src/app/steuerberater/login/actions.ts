@@ -33,7 +33,7 @@ export async function verifyPortalCode(_: PortalLogin, fd: FormData): Promise<Po
   const { data: profile } = await supabaseAdmin().from("profiles").select("role").eq("id", data.user.id).maybeSingle();
   if (!profile || !["tax_advisor", "admin"].includes(profile.role)) {
     await sb.auth.signOut();
-    return { error: "Dieses Konto hat keinen Zugang zum Steuerberater-Portal." };
+    return { error: "Dieses Konto ist nicht für den Kanzlei-Zugang freigeschaltet." };
   }
   redirect("/steuerberater");
 }
