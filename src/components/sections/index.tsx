@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import type { HomeSection } from "@/lib/content";
 import { getCategories, getCountryCounts, getOffers, getRailProducts, getRecommended } from "@/lib/catalog";
 import { money } from "@/lib/format";
@@ -74,6 +75,12 @@ function Head({ title, text, lang, link, center }: { title?: unknown; text?: unk
 }
 
 // ---------- hero: headline on deep green, three columns of products drifting past ----------
+/** Headline split into words that rise one after another (see .hero-in in globals.css). */
+const words = (t: string) =>
+  t.split(/(\s+)/).map((w, i) =>
+    /^\s+$/.test(w) ? w : <span key={i} style={{ animationDelay: `${0.12 + i * 0.045}s` }}>{w}</span>
+  );
+
 async function Hero({ d, lang }: { d: D; lang: Lang }) {
   let strip: { image: string; href?: string; label?: string }[] = (d.images ?? []).filter((x: D) => x.image);
   const showProducts = d.showProducts !== false;
@@ -109,8 +116,8 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
       <section className="hero hero-photo-layout">
         <div className="hero-photo" aria-hidden />
         <div className={`${WRAP} relative flex min-h-[34rem] flex-col justify-end pb-12 pt-28 sm:min-h-[38rem] lg:min-h-[44rem] lg:pb-16`}>
-          <div className="max-w-2xl animate-[fade_.9s_ease-out_both]">
-            <h1 className="hero-title hero-title-xl" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h1>
+          <div className="hero-in max-w-2xl">
+            <h1 className="hero-title hero-title-xl" style={{ textWrap: "balance" }}>{words(L(d.title, lang))}</h1>
             {L(d.text, lang) && <p className="mt-5 max-w-lg text-base leading-relaxed opacity-90 sm:text-lg">{L(d.text, lang)}</p>}
             <div className="mt-7 flex flex-wrap items-center gap-3">
               {L(d.cta1Label, lang) && <SmartLink href={d.cta1Href} className="btn btn-hero h-12 px-7 text-[0.9375rem]">{L(d.cta1Label, lang)}<Icon name="arrowR" size={16} /></SmartLink>}
@@ -135,8 +142,8 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
       <div className="hero-photo" aria-hidden />
       <div className="hero-weave" aria-hidden />
       <div className={`${WRAP} relative grid items-stretch gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-14 ${moving ? "" : "lg:grid-cols-1"}`}>
-        <div className="animate-[fade_.9s_ease-out_both] py-14 sm:py-16 lg:py-24">
-          <h1 className="hero-title" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h1>
+        <div className="hero-in py-14 sm:py-16 lg:py-24">
+          <h1 className="hero-title" style={{ textWrap: "balance" }}>{words(L(d.title, lang))}</h1>
           {L(d.text, lang) && <p className="mt-6 max-w-lg text-base leading-relaxed opacity-80">{L(d.text, lang)}</p>}
           <div className="mt-9 flex flex-wrap items-center gap-3">
             {L(d.cta1Label, lang) && <SmartLink href={d.cta1Href} className="btn btn-hero h-12 px-7 text-[0.9375rem]">{L(d.cta1Label, lang)}<Icon name="arrowR" size={16} /></SmartLink>}
@@ -209,7 +216,7 @@ function Tiles({ d, lang }: { d: D; lang: Lang }) {
         <ul className="tiles-grid">
           {items.map((t, i) => (
             <li key={i}>
-              <SmartLink href={t.href} className="tile group">
+              <SmartLink href={t.href} className="tile reveal-item group">
                 <div className={`tile-img ${round ? "rounded-full" : ""}`}>
                   {t.image && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -320,7 +327,7 @@ function Banners({ d, lang }: { d: D; lang: Lang }) {
           const dark = ["terra", "forest", "indigo", "ink"].includes(b.color);
           const tone = dark ? band(b.color, "terra", true) : "promo-sand";
           return (
-            <SmartLink key={i} href={b.href} className={`promo group ${tone} ${photoRight ? "promo-right" : ""}`}>
+            <SmartLink key={i} href={b.href} className={`promo reveal-item group ${tone} ${photoRight ? "promo-right" : ""}`}>
               <div className="promo-img">
                 {b.image && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -507,6 +514,28 @@ const PAIRS: { countries: [string, string]; title: L10n; text: L10n }[] = [
   },
 ];
 
+/** Countries of origin drifting slowly left to right under the hero; each one opens that country's products. */
+async function FlagStrip({ lang }: { lang: Lang }) {
+  const list = (await getCountryCounts()).slice(0, 30);
+  if (list.length < 4) return null;
+  const item = (c: { country: string }, hidden: boolean) => (
+    <li key={`${c.country}-${hidden ? "b" : "a"}`} aria-hidden={hidden || undefined}>
+      <Link href={`/shop?country=${encodeURIComponent(c.country)}`} tabIndex={hidden ? -1 : undefined} className="flag-chip">
+        <span className="flag-chip-flag" aria-hidden>{countryFlag(c.country)}</span>
+        {countryLabel(c.country, lang)}
+      </Link>
+    </li>
+  );
+  return (
+    <nav className="flag-strip marquee" aria-label={lang === "de" ? "Produkte nach Herkunftsland" : "Products by country of origin"} style={{ ["--marquee-s" as string]: `${Math.max(40, list.length * 3.2)}s` }}>
+      <ul className="marquee-track marquee-rev">
+        {list.map((c) => item(c, false))}
+        {list.map((c) => item(c, true))}
+      </ul>
+    </nav>
+  );
+}
+
 async function Countries({ d, lang }: { d: D; lang: Lang }) {
   const list = await getCountryCounts();
   if (!list.length) return null;
@@ -537,7 +566,7 @@ async function Countries({ d, lang }: { d: D; lang: Lang }) {
           <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
             {rest.map((c, i) => (
               <li key={c.country} className={i >= 11 ? "hidden sm:block" : undefined}>
-                <Link href={`/shop?country=${encodeURIComponent(c.country)}`} className="country-chip">
+                <Link href={`/shop?country=${encodeURIComponent(c.country)}`} className="country-chip reveal-item">
                   <span className="text-2xl leading-none" aria-hidden>{countryFlag(c.country)}</span>
                   <span className="min-w-0 flex-1 truncate">{countryLabel(c.country, lang)}</span>
                   <span className="text-xs opacity-60">{c.count}</span>
@@ -610,7 +639,13 @@ export async function Sections({ sections, lang }: { sections: HomeSection[]; la
       {sections.map((s) => {
         const d = s.data as D;
         switch (s.type) {
-          case "hero": return <Hero key={s.id} d={d} lang={lang} />;
+          case "hero":
+            return (
+              <Fragment key={s.id}>
+                <Hero d={d} lang={lang} />
+                {d.flagStrip !== false && <FlagStrip lang={lang} />}
+              </Fragment>
+            );
           case "marquee": return <Marquee key={s.id} d={d} lang={lang} />;
           case "tiles": return <Tiles key={s.id} d={d} lang={lang} />;
           case "products": return <Products key={s.id} d={d} lang={lang} />;

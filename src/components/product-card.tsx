@@ -19,7 +19,7 @@ export function ProductCard({ p, lang = "de", badge }: { p: CardProduct; lang?: 
   const sale = p.compare_at_price && Number(p.compare_at_price) > Number(p.price) ? Math.round((1 - Number(p.price) / Number(p.compare_at_price)) * 100) : 0;
   const flag = p.country ? countryFlag(p.country) : "";
   return (
-    <article className="pcard group relative flex flex-col">
+    <article className="pcard reveal-item group relative flex flex-col">
       <Link href={`/p/${p.slug}`} className="pcard-img relative block aspect-square overflow-hidden">
         {p.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element

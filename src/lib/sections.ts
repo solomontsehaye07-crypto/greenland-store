@@ -98,6 +98,7 @@ export const SECTION_DEFS: SectionDef[] = [
         ],
       },
       { key: "showProducts", label: "Show moving product photos (switch off to show only the design’s background photo)", kind: "toggle" },
+      { key: "flagStrip", label: "Moving strip of country flags under the hero", kind: "toggle" },
       { key: "autoFill", label: "Fill the moving photos with recommended products", kind: "toggle" },
     ],
     defaults: { title: { de: "", en: "" }, images: [], facts: [], autoFill: true, showProducts: true },

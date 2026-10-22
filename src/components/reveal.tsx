@@ -5,23 +5,36 @@ import { useEffect } from "react";
 /** Marks every `.reveal` element as shown the first time it scrolls into view. Mounted once in the shop layout. */
 export function RevealOnScroll() {
   useEffect(() => {
-    const els = () => Array.from(document.querySelectorAll<HTMLElement>(".reveal:not([data-shown='true'])"));
+    // .reveal = whole sections; .reveal-item = cards, which come in one after another (--i = place in the batch)
+    const els = () => Array.from(document.querySelectorAll<HTMLElement>(".reveal:not([data-shown='true']), .reveal-item:not([data-shown='true'])"));
     if (!("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       els().forEach((e) => (e.dataset.shown = "true"));
       return;
     }
+    const seen = new WeakSet<Element>();
     const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => {
-        if (e.isIntersecting) {
-          (e.target as HTMLElement).dataset.shown = "true";
-          io.unobserve(e.target);
-        }
-      }),
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.05 }
+      (entries) => {
+        let i = 0;
+        entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => (a.target.compareDocumentPosition(b.target) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+          .forEach((e) => {
+            const el = e.target as HTMLElement;
+            if (el.classList.contains("reveal-item")) el.style.setProperty("--i", String(Math.min(i++, 8)));
+            el.dataset.shown = "true";
+            io.unobserve(el);
+          });
+      },
+      { rootMargin: "0px 0px -6% 0px", threshold: 0.05 }
     );
-    const observe = () => els().forEach((e) => io.observe(e));
+    const observe = () =>
+      els().forEach((e) => {
+        if (seen.has(e)) return;
+        seen.add(e);
+        io.observe(e);
+      });
     observe();
-    // pick up sections rendered after navigation
+    // pick up sections and cards rendered after navigation or "show more"
     const mo = new MutationObserver(observe);
     mo.observe(document.body, { childList: true, subtree: true });
     return () => { io.disconnect(); mo.disconnect(); };
