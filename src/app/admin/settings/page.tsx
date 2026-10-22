@@ -2,7 +2,8 @@ import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { decryptJson } from "@/lib/commerce";
 import { Card, Notice, PageHead } from "@/components/admin/ui";
-import { saveReceiptSettings } from "./actions";
+import { saveGoogleReviews, saveReceiptSettings } from "./actions";
+import { getGoogleKey } from "@/lib/google-reviews";
 import { PasswordForm } from "./password-form";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,8 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   const get = (k: string) => (data ?? []).find((r) => r.key === k)?.value;
   const v = (get("public.store") ?? {}) as Record<string, string>;
   const r = (get("public.receipt") ?? {}) as Record<string, string>;
+  const [gKey, { data: gRow }] = await Promise.all([getGoogleKey(), supabaseAdmin().from("settings").select("value").eq("key", "public.google_reviews").maybeSingle()]);
+  const g = (gRow?.value ?? {}) as { placeId?: string; name?: string; rating?: number; count?: number; fetchedAt?: string; error?: string; minRating?: number };
   const mail = (await decryptJson<{ resendKey?: string; from?: string; alertTo?: string }>(get("private.email"))) ?? {};
   const envKey = !!process.env.RESEND_API_KEY;
   return (
@@ -64,6 +67,42 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         </Card>
         <button className="btn btn-primary px-6">Save</button>
       </form>
+      <Card
+        className="mt-8"
+        title="Google reviews on the home page"
+        text={<>The home page shows your Google rating and the latest reviews, updated twice a day. You need a Google Maps Platform API key with the <b>Places API (New)</b> switched on (console.cloud.google.com → APIs & Services). Restrict the key to that API. Paste it yourself – it is stored encrypted.</>}
+      >
+        <form action={saveGoogleReviews} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="google_key">Google API key</label>
+              <input id="google_key" name="google_key" type="password" autoComplete="off" placeholder={gKey ? "•••••••• (leave empty to keep)" : "AIza…"} className="input font-mono text-sm" />
+              <div className="mt-1 flex justify-between text-xs text-muted">
+                <span>{gKey ? `saved · ends in ${gKey.slice(-4)}` : "not set"}</span>
+                {gKey && <label className="flex items-center gap-1"><input type="checkbox" name="google_key__clear" /> remove</label>}
+              </div>
+            </div>
+            <div>
+              <label className="label" htmlFor="google_place">Your shop on Google</label>
+              <input id="google_place" name="google_place" defaultValue={g.placeId ?? ""} placeholder="Greenland Afro Asia Store Kaiserslautern" className="input" />
+              <p className="mt-1 text-xs text-muted">Name and town, or the Place ID. {g.name ? <>Found: <b>{g.name}</b></> : null}</p>
+            </div>
+            <div>
+              <label className="label" htmlFor="google_min">Show reviews with at least</label>
+              <select id="google_min" name="google_min" defaultValue={String(g.minRating ?? 4)} className="input">
+                {[5, 4, 3, 1].map((n) => <option key={n} value={n}>{n === 1 ? "all stars" : `${n} stars`}</option>)}
+              </select>
+            </div>
+          </div>
+          {g.placeId && (
+            <p className={`text-sm ${g.error ? "text-danger" : "text-muted"}`}>
+              {g.error ? `Last try: ${g.error}` : g.rating ? `${g.rating} ★ from ${g.count} reviews` : "No reviews loaded yet."}
+              {g.fetchedAt ? ` · checked ${new Date(g.fetchedAt).toLocaleString("de-DE")}` : ""}
+            </p>
+          )}
+          <button className="btn btn-primary">Save and load reviews</button>
+        </form>
+      </Card>
       <div className="mt-8"><PasswordForm /></div>
     </div>
   );

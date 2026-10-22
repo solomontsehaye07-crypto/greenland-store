@@ -14,6 +14,8 @@ import { Markdown } from "../markdown";
 import { ProductCard, ProductGrid } from "../product-card";
 import { Rail } from "./rail";
 import { NewsletterForm } from "./newsletter-form";
+import { getGoogleReviews } from "@/lib/google-reviews";
+import { Stars } from "../reviews";
 
 type D = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const L = (v: unknown, lang: Lang) => tx(v as L10n, lang);
@@ -421,6 +423,52 @@ function Faq({ d, lang }: { d: D; lang: Lang }) {
   );
 }
 
+async function GoogleReviewsSection({ d, lang }: { d: D; lang: Lang }) {
+  const g = await getGoogleReviews();
+  if (!g.placeId || !g.rating) return null;
+  const de = lang === "de";
+  const items = g.reviews.filter((r) => r.rating >= (g.minRating ?? 4) && r.text).slice(0, 6);
+  const write = `https://search.google.com/local/writereview?placeid=${encodeURIComponent(g.placeId)}`;
+  const rating = g.rating.toLocaleString(de ? "de-DE" : "en-GB", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return (
+    <section className={`${band(d.color, "sand")} py-16 sm:py-20`}>
+      <div className={`${WRAP} grid items-start gap-10 lg:grid-cols-[18rem_1fr] lg:gap-14`}>
+        <div>
+          <h2 className="h-section" style={{ textWrap: "balance" }}>{L(d.title, lang) || (de ? "Das sagen unsere Kund:innen" : "What our customers say")}</h2>
+          <div className="mt-6 flex items-center gap-4">
+            <span className="text-6xl font-semibold leading-none tabular-nums">{rating}</span>
+            <div>
+              <Stars value={g.rating} size={20} />
+              <p className="mt-1 text-sm text-muted">{de ? `${g.count} Bewertungen auf Google` : `${g.count} reviews on Google`}</p>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {g.url && <a href={g.url} target="_blank" rel="noopener" className="btn btn-ghost text-sm">{de ? "Alle ansehen" : "See all"}</a>}
+            <a href={write} target="_blank" rel="noopener" className="btn btn-primary text-sm">{de ? "Bewertung schreiben" : "Write a review"}</a>
+          </div>
+        </div>
+        <div>
+        {items.length > 0 && (
+          <ul className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0">
+            {items.map((r, i) => (
+              <li key={i} className="flex w-[17rem] shrink-0 snap-start flex-col rounded-2xl bg-white p-5 lg:w-auto">
+                <Stars value={r.rating} size={15} />
+                <p className="mt-3 line-clamp-6 flex-1 text-sm leading-relaxed" data-no-translate>{r.text}</p>
+                <p className="mt-4 text-xs">
+                  {r.authorUrl ? <a href={r.authorUrl} target="_blank" rel="noopener nofollow" className="font-semibold hover:underline" data-no-translate>{r.author}</a> : <span className="font-semibold" data-no-translate>{r.author}</span>}
+                  {r.when && <span className="text-muted"> · {r.when}</span>}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-3 text-[0.6875rem] text-muted">{de ? "Bewertungen von Google" : "Reviews from Google"}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Newsletter({ d, lang }: { d: D; lang: Lang }) {
   const tone = band(d.color === "sand" ? "ink" : d.color, "ink", true);
   return (
@@ -576,6 +624,7 @@ export async function Sections({ sections, lang }: { sections: HomeSection[]; la
           case "text": return <TextBlock key={s.id} d={d} lang={lang} />;
           case "countries": return <Countries key={s.id} d={d} lang={lang} />;
           case "recipes": return <Recipes key={s.id} d={d} lang={lang} />;
+          case "reviews": return <GoogleReviewsSection key={s.id} d={d} lang={lang} />;
           default: return null;
         }
       })}

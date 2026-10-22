@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sanitizeTiers } from "@/lib/tiers";
+import { findPlace, getGoogleKey, refreshGoogleReviews, saveGooglePlace } from "@/lib/google-reviews";
 import { decryptJson, DEFAULT_PAYMENTS, DEFAULT_PICKUP, encryptJson, type PaymentPublic, type PaymentSecrets, type PickupSettings, type Window } from "@/lib/commerce";
 
 const txt = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -303,4 +304,38 @@ export async function saveQtyTiers(fd: FormData) {
   await upsert("public.qty_tiers", sanitizeTiers({ enabled, tiers }));
   revalidatePath("/", "layout");
   back("/admin/settings/shipping", enabled ? "Quantity discounts saved." : "Quantity discounts switched off.");
+}
+
+// ---------------- Google reviews ----------------
+
+/** Saves the Google API key (encrypted) and the shop's Google place, then loads the reviews once. */
+export async function saveGoogleReviews(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const path = "/admin/settings";
+  const newKey = txt(fd.get("google_key"));
+  if (on(fd, "google_key__clear")) await upsert("private.google", await encryptJson({ apiKey: "" }));
+  else if (newKey) await upsert("private.google", await encryptJson({ apiKey: newKey }));
+  const key = await getGoogleKey();
+  const place = txt(fd.get("google_place"));
+  const minRating = Math.min(5, Math.max(1, Number(fd.get("google_min")) || 4));
+  if (!place) back(path, "Please enter your Google Place ID or your shop's name and town.");
+  if (!key) back(path, "Please paste a Google Maps Platform API key first.");
+  let id = place!;
+  let name: string | null = null;
+  if (!/^[A-Za-z0-9_-]{20,}$/.test(place!)) {
+    try {
+      const found = await findPlace(place!, key!);
+      if (!found) back(path, `Google found no place for “${place}”. Try the exact name and town, or paste the Place ID.`);
+      id = found!.id;
+      name = `${found!.name} – ${found!.address}`;
+    } catch (e) {
+      if (e && typeof e === "object" && "digest" in e) throw e; // redirect from back()
+      back(path, `Google refused the search: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+  await saveGooglePlace(id, name, minRating);
+  const r = await refreshGoogleReviews();
+  revalidatePath("/", "layout");
+  if (r.error) back(path, `Saved, but Google answered: ${r.error}`);
+  back(path, `Google reviews connected: ${r.name ?? name ?? id} · ${r.rating ?? "–"} ★ from ${r.count ?? 0} reviews.`);
 }

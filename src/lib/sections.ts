@@ -64,7 +64,7 @@ const ICONS = [
   { value: "gift", label: "Gift" },
 ];
 
-export type SectionType = "hero" | "marquee" | "tiles" | "products" | "offers" | "scene" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text" | "countries" | "recipes";
+export type SectionType = "hero" | "marquee" | "tiles" | "products" | "offers" | "scene" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text" | "countries" | "recipes" | "reviews";
 
 export interface SectionDef {
   type: SectionType;
@@ -298,6 +298,13 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "items", label: "Questions", kind: "list", itemLabel: "Question", max: 20, item: [{ key: "q", label: "Question", kind: "text" }, { key: "a", label: "Answer", kind: "textarea" }] },
     ],
     defaults: { items: [] },
+  },
+  {
+    type: "reviews",
+    label: "Google reviews",
+    description: "Your Google rating and the latest reviews, updated twice a day. Connect your Google place under Admin → Account & receipts; the section stays hidden until then.",
+    fields: [{ key: "title", label: "Title", kind: "text" }, BAND],
+    defaults: { color: "sand" },
   },
   {
     type: "newsletter",
