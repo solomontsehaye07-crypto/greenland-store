@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useCart } from "./cart";
 import { money } from "@/lib/format";
-import { GiftLine, PerksBar, Upsell } from "./cart-extras";
+import { GiftLine, LinePrice, PerksBar, Upsell } from "./cart-extras";
 import type { CartPerks } from "@/lib/perks";
 import { RecipeSuggestions } from "./recipe-suggestions";
 import { FrozenBoxes } from "./frozen-boxes";
@@ -68,13 +68,13 @@ export function CartDrawer({ lang, frozen, perks }: { lang: "de" | "en"; frozen:
                       </div>
                       <div className="min-w-0 flex-1">
                         <Link href={`/p/${l.slug}`} onClick={() => setDrawerOpen(false)} className="line-clamp-2 text-[0.8125rem] leading-snug hover:underline">{l.title}</Link>
-                        <div className="mt-2 flex items-center justify-between">
+                        <div className="mt-2 flex items-start justify-between gap-2">
                           <div className="flex items-center rounded-full border border-line text-xs">
                             <button className="h-7 w-7" onClick={() => setQty(l.id, l.qty - 1)} aria-label="−">−</button>
                             <span className="w-5 text-center">{l.qty}</span>
                             <button className="h-7 w-7" onClick={() => setQty(l.id, Math.min(99, l.qty + 1))} aria-label="+">+</button>
                           </div>
-                          <span className="text-sm font-medium">{money(l.price * l.qty)}</span>
+                          <LinePrice line={l} lang={lang} />
                         </div>
                         <button onClick={() => remove(l.id)} className="mt-1 text-[0.6875rem] text-muted underline-offset-2 hover:underline">{t.remove}</button>
                       </div>

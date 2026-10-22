@@ -72,6 +72,7 @@ export const NAV_GROUPS: { label: string; items: Item[] }[] = [
       { href: "/admin/website/media", label: "Media", icon: "image" },
       { href: "/admin/website/pages", label: "Pages", icon: "page" },
       { href: "/admin/recipes", label: "Recipes", icon: "pot" },
+      { href: "/admin/reviews", label: "Reviews", icon: "sparkle" },
       { href: "/admin/subscribers", label: "Subscribers", icon: "mail" },
     ],
   },

@@ -20,7 +20,7 @@ export async function getCategoryTree() {
 
 export type CardProduct = Pick<
   Product,
-  "id" | "sku" | "slug" | "title" | "title_de" | "brand" | "price" | "compare_at_price" | "image_url" | "size_qty" | "size_unit" | "stock" | "is_frozen" | "age_restricted" | "weight_g" | "category_id" | "country" | "featured" | "sale_ends_at"
+  "id" | "sku" | "slug" | "title" | "title_de" | "brand" | "price" | "compare_at_price" | "image_url" | "size_qty" | "size_unit" | "stock" | "is_frozen" | "age_restricted" | "weight_g" | "category_id" | "country" | "featured" | "sale_ends_at" | "qty_discount"
 >;
 
 export async function getProductsInCategories(ids: number[], opts: { sort?: string; limit?: number; offset?: number } = {}) {

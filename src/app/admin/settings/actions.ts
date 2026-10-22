@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sanitizeTiers } from "@/lib/tiers";
 import { decryptJson, DEFAULT_PAYMENTS, DEFAULT_PICKUP, encryptJson, type PaymentPublic, type PaymentSecrets, type PickupSettings, type Window } from "@/lib/commerce";
 
 const txt = (v: FormDataEntryValue | null) => String(v ?? "").trim();
@@ -288,4 +289,18 @@ export async function saveGift(fd: FormData) {
   await upsert("public.gift", { enabled, product_id: productId, threshold });
   revalidatePath("/", "layout");
   back(path, enabled ? "Free gift saved and switched on." : "Free gift saved (switched off).");
+}
+
+// ---------------- quantity discount ----------------
+
+export async function saveQtyTiers(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const tiers = [0, 1, 2, 3]
+    .map((i) => ({ min: Math.round(Number(txt(fd.get(`min${i}`)))), pct: dec(fd.get(`pct${i}`)) ?? 0 }))
+    .filter((t) => t.min >= 2 && t.pct > 0);
+  if (tiers.some((t) => t.pct >= 50)) back("/admin/settings/shipping", "A quantity discount of 50 % or more looks like a typo – please check.");
+  const enabled = on(fd, "enabled");
+  await upsert("public.qty_tiers", sanitizeTiers({ enabled, tiers }));
+  revalidatePath("/", "layout");
+  back("/admin/settings/shipping", enabled ? "Quantity discounts saved." : "Quantity discounts switched off.");
 }

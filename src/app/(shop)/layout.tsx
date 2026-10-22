@@ -2,6 +2,7 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Icon } from "@/components/icons";
 import { CartDrawer } from "@/components/cart-drawer";
+import { CartTiers } from "@/components/cart";
 import { HeaderScroll, RevealOnScroll } from "@/components/reveal";
 import { getSite } from "@/lib/content";
 import { getLang, ui } from "@/lib/i18n";
@@ -17,6 +18,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <Header />
       <main id="main">{children}</main>
       <Footer />
+      <CartTiers tiers={perks.tiers} />
       <CartDrawer lang={lang} frozen={frozen} perks={perks} />
       <RevealOnScroll />
       {site.welcomePopup !== false && <WelcomePopup lang={lang} signedIn={!!me} photo={site.welcomePhoto || "https://images.unsplash.com/photo-1763048443535-1243379234e2?w=900&q=70&auto=format&fit=crop"} />}

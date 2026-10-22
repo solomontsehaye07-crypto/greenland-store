@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { lineUnit } from "@/lib/tiers";
 import { useCart } from "@/components/cart";
 import { quoteShipping } from "@/lib/shipping";
 import type { FrozenPack } from "@/lib/frozen";
@@ -69,7 +70,7 @@ export function CheckoutForm({
   prefill?: Saved; // from the customer's account when signed in
   gift?: import("@/lib/perks").CartPerks["gift"];
 }) {
-  const { lines, subtotal, ready, clear } = useCart();
+  const { lines, listSubtotal, tiers, ready, clear } = useCart();
   // details from the last order on this device (only if the customer agreed to remember them)
   const [saved] = useState<Saved>(() => ({ ...readSaved(), ...Object.fromEntries(Object.entries(prefill ?? {}).filter(([, v]) => v)) }));
   const [rememberMe, setRememberMe] = useState(true);
@@ -84,10 +85,17 @@ export function CheckoutForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const discount = couponState?.ok && couponState.percent_off ? Math.round(subtotal * couponState.percent_off) / 100 : 0;
+  // same rule as the server: per line the bigger of quantity discount and discount code
+  const couponPct = couponState?.ok && couponState.percent_off ? couponState.percent_off : 0;
+  const priced = lines.map((l) => ({ l, ...lineUnit(l.price, l.qty, tiers, l.qd !== false, couponPct) }));
+  const subtotal = listSubtotal;
+  const cut = (src: "tier" | "coupon") => Math.round(priced.filter((x) => x.source === src).reduce((s, x) => s + (x.l.price - x.unit) * x.l.qty, 0) * 100) / 100;
+  const tierCut = cut("tier");
+  const couponCut = cut("coupon");
+  const discount = Math.round((tierCut + couponCut) * 100) / 100;
   // the server judges "free delivery from" on the value after the discount code, so the page does too
   const quotes = useMemo(() => quoteShipping(methods, lines, subtotal - discount, country, postal, pack), [methods, lines, subtotal, discount, country, postal, pack]);
-  const giftOn = !!gift && subtotal >= gift.threshold;
+  const giftOn = !!gift && subtotal - discount >= gift.threshold;
   const chosen = quotes.find((q) => q.method.code === code && q.available) ?? null;
   const isPickup = chosen?.method.type === "pickup";
   const cashAllowed = chosen ? (chosen.method.type === "pickup" && cashPickup) || (chosen.method.type === "local" && cashLocal) : false;
@@ -311,10 +319,10 @@ export function CheckoutForm({
       <aside className="h-fit space-y-4 rounded-3xl bg-white p-6 lg:sticky lg:top-40">
         <h2 className="text-xl font-bold">Your order</h2>
         <ul className="max-h-64 space-y-2 overflow-auto text-sm">
-          {lines.map((l) => (
+          {priced.map(({ l, unit }) => (
             <li key={l.id} className="flex justify-between gap-3">
               <span className="line-clamp-1">{l.qty} × {l.title}</span>
-              <span className="shrink-0">{money(l.price * l.qty)}</span>
+              <span className="shrink-0">{unit < l.price && <s className="mr-1.5 text-xs text-muted">{money(l.price * l.qty)}</s>}{money(unit * l.qty)}</span>
             </li>
           ))}
           {giftOn && (
@@ -352,7 +360,9 @@ export function CheckoutForm({
         </div>
         <div className="space-y-1 border-t border-line pt-4 text-sm">
           <div className="flex justify-between"><span>Subtotal</span><span>{money(subtotal)}</span></div>
-          {discount > 0 && <div className="flex justify-between text-forest"><span>Discount {couponState?.percent_off} %</span><span>− {money(discount)}</span></div>}
+          {tierCut > 0 && <div className="flex justify-between text-forest"><span>Quantity discount</span><span>− {money(tierCut)}</span></div>}
+          {couponCut > 0 && <div className="flex justify-between text-forest"><span>Discount code {couponPct} %</span><span>− {money(couponCut)}</span></div>}
+          {couponPct > 0 && couponCut === 0 && <p className="text-xs text-muted">Your quantity discounts are bigger than the code, so the code is kept for another order.</p>}
           <div className="flex justify-between"><span>Delivery</span><span>{chosen ? (chosen.delivery ? money(chosen.delivery) : "Free") : "—"}</span></div>
           {chosen && chosen.packaging.boxes > 0 && (
             <div className="flex justify-between"><span>Frozen packaging ({chosen.packaging.boxes} {chosen.packaging.boxes === 1 ? "box" : "boxes"})</span><span>{money(chosen.packaging.fee)}</span></div>

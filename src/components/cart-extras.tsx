@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { CardProduct } from "@/lib/catalog";
 import { money } from "@/lib/format";
 import { AddToCart } from "./add-to-cart";
+import { useCart } from "./cart";
 
 const T = {
   de: { title: "Passt gut dazu", sub: "Kleinigkeiten, die oft mitgenommen werden" },
@@ -142,5 +143,26 @@ export function GiftLine({ subtotal, perks, lang, size = "sm" }: { subtotal: num
         {g.value > 0 && <s className="text-[0.6875rem] text-muted">{money(g.value)}</s>}
       </span>
     </li>
+  );
+}
+
+/** Line total after the quantity discount, with the old total struck through and a nudge to the next tier. */
+export function LinePrice({ line, lang, className = "text-sm font-medium" }: { line: import("@/lib/types").CartLine; lang: "de" | "en"; className?: string }) {
+  const { unitOf, tiers } = useCart();
+  const { unit, pct } = unitOf(line);
+  const next = line.qd !== false && tiers?.enabled ? tiers.tiers.find((t) => t.min > line.qty && t.pct > pct) : undefined;
+  return (
+    <span className="text-right">
+      <span className={`block ${className}`}>
+        {pct > 0 && <s className="mr-1.5 text-[0.6875rem] font-normal text-muted">{money(line.price * line.qty)}</s>}
+        {money(unit * line.qty)}
+      </span>
+      {pct > 0 && <span className="block text-[0.6875rem] font-semibold text-forest">−{pct} % {lang === "de" ? "Mengenrabatt" : "quantity discount"}</span>}
+      {next && (
+        <span className="block text-[0.6875rem] text-terra">
+          {lang === "de" ? `Noch ${next.min - line.qty} für −${next.pct} %` : `${next.min - line.qty} more for −${next.pct}%`}
+        </span>
+      )}
+    </span>
   );
 }

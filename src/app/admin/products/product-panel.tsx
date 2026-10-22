@@ -162,6 +162,31 @@ export function ProductPanel({ p, cats, sections, suppliers = [], returnHref }: 
           )}
         </Group>
 
+        <Group title="Product page" text="Short selling points shown with ticks under the name, other pack sizes, and what is on the label.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="bullets_de">Selling points (German) – one per line</label>
+              <textarea id="bullets_de" name="bullets_de" rows={4} defaultValue={(p.bullets_de ?? []).join("\n")} placeholder={"Original aus Ghana\nIdeal für Jollof und Eintöpfe\nOhne Zusatzstoffe"} className="input leading-relaxed" />
+            </div>
+            <div>
+              <label className="label" htmlFor="bullets_en">Selling points (English) – one per line</label>
+              <textarea id="bullets_en" name="bullets_en" rows={4} defaultValue={(p.bullets_en ?? []).join("\n")} className="input leading-relaxed" />
+            </div>
+            <div>
+              <label className="label" htmlFor="size_group">Pack-size group</label>
+              <input id="size_group" name="size_group" defaultValue={p.size_group ?? ""} placeholder="e.g. teff-flour-brown" className="input" />
+              <p className="mt-1 text-xs text-muted">Give all sizes of the same product the same word; the page then offers them as “500 g / 1 kg / 5 kg”.</p>
+            </div>
+            <div>
+              <label className="label" htmlFor="ingredients">Ingredients & allergens (from the label)</label>
+              <textarea id="ingredients" name="ingredients" rows={3} defaultValue={p.ingredients ?? ""} className="input leading-relaxed" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <Toggle name="qty_discount" defaultChecked={p.qty_discount !== false} label="Quantity discount" hint="Off for products where the margin is too small for “3 pieces −5 %”." />
+          </div>
+        </Group>
+
         <Group title="Description">
           <div className="space-y-4">
             <div><label className="label" htmlFor="description_de">German</label><textarea id="description_de" name="description_de" rows={5} defaultValue={p.description_de ?? ""} className="input leading-relaxed" /></div>

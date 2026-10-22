@@ -21,6 +21,7 @@ export function toLine(p: CardProduct): Omit<CartLine, "qty"> {
     weight_g: p.weight_g,
     is_frozen: p.is_frozen,
     age_restricted: p.age_restricted,
+    qd: p.qty_discount !== false,
   };
 }
 

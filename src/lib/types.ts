@@ -24,6 +24,11 @@ export interface Product {
   price: number;
   compare_at_price: number | null;
   sale_ends_at?: string | null;
+  qty_discount?: boolean;
+  bullets_de?: string[];
+  bullets_en?: string[];
+  size_group?: string | null;
+  ingredients?: string | null;
   cost_price?: number | null;
   tax_rate: number;
   weight_g: number;
@@ -89,7 +94,9 @@ export interface CartLine {
   weight_g: number;
   is_frozen: boolean;
   age_restricted: boolean;
+  /** false = no quantity discount for this product (missing = allowed; the server decides anyway) */
+  qd?: boolean;
 }
 
 export const PRODUCT_CARD_FIELDS =
-  "id, sku, slug, title, title_de, brand, price, compare_at_price, image_url, size_qty, size_unit, stock, is_frozen, age_restricted, weight_g, category_id, country, featured, sale_ends_at";
+  "id, sku, slug, title, title_de, brand, price, compare_at_price, image_url, size_qty, size_unit, stock, is_frozen, age_restricted, weight_g, category_id, country, featured, sale_ends_at, qty_discount";

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { img } from "@/lib/img";
 import { useCart } from "@/components/cart";
 import { money } from "@/lib/format";
-import { GiftLine, PerksBar, Upsell } from "@/components/cart-extras";
+import { GiftLine, LinePrice, PerksBar, Upsell } from "@/components/cart-extras";
 import type { CartPerks } from "@/lib/perks";
 import { RecipeSuggestions } from "@/components/recipe-suggestions";
 import { FrozenBoxes } from "@/components/frozen-boxes";
@@ -49,7 +49,7 @@ export function CartView({ lang, frozen, perks }: { lang: "de" | "en"; frozen: {
                 <span className="w-6 text-center">{l.qty}</span>
                 <button className="h-8 w-8" onClick={() => setQty(l.id, Math.min(99, l.qty + 1))} aria-label={`+ ${l.title}`}>+</button>
               </div>
-              <div className="hidden w-20 text-right text-sm font-medium sm:block">{money(l.price * l.qty)}</div>
+              <div className="w-28 shrink-0"><LinePrice line={l} lang={lang} /></div>
             </li>
           ))}
           <GiftLine subtotal={subtotal} perks={perks} lang={lang} size="lg" />

@@ -4,9 +4,9 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { getFrozenPack, getPickupSettings, getShippingArea, pickupSlots } from "@/lib/commerce";
 import { getDhl } from "@/lib/dhl";
-import { getGiftSetting } from "@/lib/perks";
+import { getGiftSetting, getQtyTiers } from "@/lib/perks";
 import { Card, Notice, PageHead, SidePanel, Toggle } from "@/components/admin/ui";
-import { saveDhlSettings, saveFrozenPack, saveGift, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
+import { saveDhlSettings, saveFrozenPack, saveGift, saveQtyTiers, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
   const [stStreet, stHouse] = (st.street ?? "").match(/^(.*?)\s+(\d+\s?[a-zA-Z]?)$/)?.slice(1) ?? [st.street ?? "", ""];
   const snd = { name1: dhl.sender.name1 || st.name || "", name2: dhl.sender.name2, street: dhl.sender.street || stStreet, house: dhl.sender.house || stHouse, postal: dhl.sender.postal || st.postal || "", city: dhl.sender.city || st.city || "", email: dhl.sender.email || st.email || "" };
   const preview = (await pickupSlots(p)).slice(0, 4);
-  const gift = await getGiftSetting();
+  const [gift, qt] = await Promise.all([getGiftSetting(), getQtyTiers()]);
   const { data: giftProduct } = gift.product_id
     ? await supabaseAdmin().from("products").select("sku, title, title_de, slug, price, stock, status, is_dropship").eq("id", gift.product_id).maybeSingle()
     : { data: null };
@@ -170,7 +170,7 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
       <Card
         className="mt-5"
         title="Free gift in the cart"
-        text={`Customers see a progress bar in the cart with a stop for free delivery${Number.isFinite(freeFrom) ? ` (${money(freeFrom)}, from your delivery options)` : ""} and one for the gift. Once the cart reaches the value below, the gift is added to the order automatically at 0 €. It is counted before discount codes and only offered while the product is in stock.`}
+        text={`Customers see a progress bar in the cart with a stop for free delivery${Number.isFinite(freeFrom) ? ` (${money(freeFrom)}, from your delivery options)` : ""} and one for the gift. Once the cart reaches the value below, the gift is added to the order automatically at 0 €. It is counted on the value of the goods after discounts and only offered while the product is in stock.`}
       >
         <form action={saveGift} className="space-y-4">
           <Toggle name="enabled" defaultChecked={gift.enabled} label="Give a free gift" />
@@ -191,6 +191,28 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
             </p>
           )}
           <button className="btn btn-primary">Save free gift</button>
+        </form>
+      </Card>
+
+      <Card
+        className="mt-5"
+        title="Quantity discount"
+        text="Customers who take more of the same product pay less per piece. Shown on the product page as price steps and in the cart (“2 more for −10 %”). A discount code and the quantity discount do not add up – per product the bigger one counts. Switch it off per product in the product editor."
+      >
+        <form action={saveQtyTiers} className="space-y-4">
+          <Toggle name="enabled" defaultChecked={qt.enabled} label="Give quantity discounts" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border border-line p-3">
+                <label className="label" htmlFor={`min${i}`}>From pieces</label>
+                <input id={`min${i}`} name={`min${i}`} inputMode="numeric" defaultValue={qt.tiers[i]?.min ?? ""} placeholder="–" className="input" />
+                <label className="label mt-2" htmlFor={`pct${i}`}>Discount %</label>
+                <input id={`pct${i}`} name={`pct${i}`} inputMode="decimal" defaultValue={qt.tiers[i] ? String(qt.tiers[i].pct).replace(".", ",") : ""} placeholder="–" className="input" />
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted">Leave a box empty to use fewer steps.</p>
+          <button className="btn btn-primary">Save quantity discount</button>
         </form>
       </Card>
 

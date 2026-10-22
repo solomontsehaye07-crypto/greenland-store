@@ -10,7 +10,8 @@ import { depositFor, getFrozenPack, getPaymentConfig, getShippingArea, pickupSlo
 import { buildReceiptPdf } from "./pdf";
 import { esc, siteUrl } from "./site";
 import { checkCoupon, consumeCoupon } from "./coupons";
-import { activeGift } from "./perks";
+import { activeGift, getQtyTiers } from "./perks";
+import { lineUnit } from "./tiers";
 
 export const CheckoutSchema = z.object({
   email: z.string().email(),
@@ -46,7 +47,7 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
   const ids = input.items.map((i) => i.id);
   const { data: products } = await sb
     .from("products")
-    .select("id, sku, title, slug, price, tax_rate, weight_g, stock, is_frozen, age_restricted, is_dropship, image_url, status")
+    .select("id, sku, title, slug, price, tax_rate, weight_g, stock, is_frozen, age_restricted, is_dropship, image_url, status, qty_discount")
     .in("id", ids);
   const byId = new Map((products ?? []).map((p) => [p.id, p]));
 
@@ -60,20 +61,31 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
   if (lines.some((l) => l.age_restricted) && !input.age_confirmed)
     throw new Error("Please confirm you are 18 or older to buy alcohol.");
 
-  // discount code: the percentage is taken off every unit price (rounded down to the cent), so VAT,
-  // receipts and the payment provider all see the same, already reduced prices
+  // discounts: quantity discount per line and/or a discount code. They do not stack – per line the bigger
+  // percentage wins. The percentage is taken off the unit price (rounded down to the cent), so VAT,
+  // receipts and the payment provider all see the same, already reduced prices.
   const listSubtotal = round2(lines.reduce((s, l) => s + l.price * l.qty, 0));
   let couponCode: string | null = null;
+  let couponPct = 0;
   if (input.coupon?.trim()) {
     const chk = await checkCoupon(input.coupon, input.email, listSubtotal);
     if (!chk.ok) throw new Error(chk.reason);
     couponCode = chk.code;
-    for (const l of lines) l.price = Math.floor(l.price * (1 - chk.percent_off / 100) * 100) / 100;
+    couponPct = chk.percent_off;
   }
-  // free gift: judged on the cart value before any discount code, exactly like the bar in the cart
+  const tiers = await getQtyTiers();
+  let couponUsed = false;
+  for (const l of lines) {
+    const r = lineUnit(l.price, l.qty, tiers, (l as { qty_discount?: boolean }).qty_discount !== false, couponPct);
+    if (r.source === "coupon") couponUsed = true;
+    l.price = r.unit;
+  }
+  // a code that lost to the quantity discount on every line is not used up
+  if (!couponUsed) couponCode = null;
+  // free gift: judged on the value of the goods after discounts, exactly like the bar in the cart
   const gift = await activeGift();
-  const giftLine = gift && listSubtotal >= gift.threshold ? gift : null;
   const subtotal = round2(lines.reduce((s, l) => s + l.price * l.qty, 0));
+  const giftLine = gift && subtotal >= gift.threshold ? gift : null;
   const discountTotal = round2(listSubtotal - subtotal);
   const [{ data: methods }, pack, area] = await Promise.all([sb.from("shipping_methods").select("*").eq("active", true), getFrozenPack(), getShippingArea()]);
   if (!area.abroad && input.country !== "DE") throw new Error("We currently deliver within Germany only. Pickup in store is always possible.");

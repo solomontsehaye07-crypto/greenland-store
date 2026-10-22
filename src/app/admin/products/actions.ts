@@ -66,7 +66,14 @@ export async function saveProduct(fd: FormData) {
     images,
     image_url: images[0] ?? null,
   };
-  for (const k of ["featured", "is_frozen", "age_restricted", "is_dropship"]) if (fd.has(`${k}__present`)) patch[k] = fd.get(k) === "on";
+  const lines = (k: string) => String(fd.get(k) ?? "").split("\n").map((x) => x.replace(/^[-•*✓\s]+/, "").trim()).filter(Boolean).slice(0, 6);
+  if (fd.has("bullets_de")) {
+    patch.bullets_de = lines("bullets_de");
+    patch.bullets_en = lines("bullets_en");
+    patch.size_group = (txt(fd.get("size_group")) ?? "").toLowerCase().replace(/\s+/g, "-") || null;
+    patch.ingredients = txt(fd.get("ingredients"));
+  }
+  for (const k of ["featured", "is_frozen", "age_restricted", "is_dropship", "qty_discount"]) if (fd.has(`${k}__present`)) patch[k] = fd.get(k) === "on";
   if (!patch.title) back(fd, "Please enter a title.");
 
   const { data: before } = await sb.from("products").select("price").eq("id", id).single();
