@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { searchStock } from "@/lib/stock-photos";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
  * Everything the admin can pick an image from:
  *  - uploads: files in the site-media and product-images storage buckets
  *  - products: the photo of every product in the catalogue (searchable)
+ *  - stock: free photos from Unsplash and Pexels (keys on Admin → Media)
  */
 export async function GET(req: Request) {
   try {
@@ -20,6 +22,14 @@ export async function GET(req: Request) {
   const q = (u.searchParams.get("q") ?? "").trim().toLowerCase();
   const page = Math.max(0, Number(u.searchParams.get("page") ?? 0));
   const sb = supabaseAdmin();
+
+  if (source === "stock") {
+    if (!q) return NextResponse.json({ files: [], more: false, configured: true });
+    const r = await searchStock(q, page);
+    if (!r.configured) return NextResponse.json({ error: "Add an Unsplash or Pexels key on Admin → Media first." }, { status: 400 });
+    if (!r.files.length && r.errors.length) return NextResponse.json({ error: r.errors.join(" ") }, { status: 502 });
+    return NextResponse.json({ files: r.files, more: r.more, warning: r.errors.join(" ") || undefined });
+  }
 
   if (source === "products") {
     const per = 60;

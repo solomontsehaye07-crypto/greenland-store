@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type MediaFile = { name: string; url: string; label?: string; size?: number };
+export type MediaFile = { name: string; url: string; label?: string; size?: number; thumb?: string; provider?: "unsplash" | "pexels"; credit?: string; creditUrl?: string; dl?: string };
 
 /** Uploads images to the media library. Used by every image field and the Media page. */
 export async function uploadImages(files: FileList | File[]): Promise<{ files: MediaFile[]; errors: string[] }> {
@@ -17,7 +17,9 @@ export async function uploadImages(files: FileList | File[]): Promise<{ files: M
   }
 }
 
-type Tab = "uploads" | "products";
+type Tab = "uploads" | "products" | "stock";
+const TAB_LABEL: Record<Tab, string> = { uploads: "Your uploads", products: "Product photos", stock: "Free photos" };
+const IDEAS = ["african food", "jollof rice", "spices market", "plantain", "injera", "asian groceries", "hair care", "coffee ceremony"];
 
 /**
  * The media library as a dialog: your uploads and every product photo, searchable.
@@ -32,6 +34,7 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
   const [err, setErr] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [warn, setWarn] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(
@@ -43,6 +46,7 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
         if (!r.ok) throw new Error(j.error ?? "Could not load images.");
         setFiles((prev) => (p > 0 && prev ? [...prev, ...j.files] : j.files));
         setMore(!!j.more);
+        setWarn(j.warning ?? "");
       } catch (e) {
         setErr((e as Error).message);
         setFiles([]);
@@ -56,7 +60,7 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
       setPage(0);
       setFiles(null);
       load(tab, q, 0);
-    }, q ? 250 : 0);
+    }, q ? (tab === "stock" ? 500 : 250) : 0);
     return () => clearTimeout(t);
   }, [tab, q, load]);
 
@@ -67,6 +71,9 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
   }, [onClose]);
 
   const choose = (url: string) => {
+    const f = files?.find((x) => x.url === url);
+    // Unsplash wants to know when one of their photos is used
+    if (f?.dl) fetch("/admin/api/media/stock", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dl: f.dl }) }).catch(() => {});
     if (!multiple) return onPick([url]);
     setPicked((p) => (p.includes(url) ? p.filter((x) => x !== url) : [...p, url]));
   };
@@ -78,9 +85,9 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
         <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
           <h2 className="mr-auto text-base font-semibold">Media library</h2>
           <div className="flex rounded-full bg-surface p-1 text-sm">
-            {(["uploads", "products"] as Tab[]).map((t) => (
+            {(["uploads", "products", "stock"] as Tab[]).map((t) => (
               <button key={t} type="button" onClick={() => setTab(t)} className={`rounded-full px-3.5 py-1.5 font-medium ${tab === t ? "bg-white shadow-sm" : "text-muted"}`}>
-                {t === "uploads" ? "Your uploads" : "Product photos"}
+                {TAB_LABEL[t]}
               </button>
             ))}
           </div>
@@ -89,7 +96,7 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2 px-5 py-3">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "products" ? "Search product, SKU…" : "Search file name…"} className="input h-10 max-w-xs py-2 text-sm" autoFocus />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "products" ? "Search product, SKU…" : tab === "stock" ? "Search free photos (English works best)…" : "Search file name…"} className="input h-10 max-w-xs py-2 text-sm" autoFocus />
           <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="btn btn-ghost h-10 py-2 text-sm">{busy ? "Uploading…" : "Upload new"}</button>
           <input
             ref={fileRef}
@@ -113,10 +120,19 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
             }}
           />
           {err && <p className="text-sm text-danger" role="alert">{err}</p>}
+          {warn && <p className="text-xs text-muted">{warn}</p>}
         </div>
         <div className="flex-1 overflow-y-auto px-5 pb-5">
           {!files && <p className="py-10 text-center text-sm text-muted">Loading…</p>}
-          {files && !files.length && <p className="py-10 text-center text-sm text-muted">{q ? "Nothing matches that search." : "No images yet. Upload the first one."}</p>}
+          {files && !files.length && tab === "stock" && !q && (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted">Free photos from Unsplash and Pexels – free to use in your shop. Try:</p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {IDEAS.map((i) => <button key={i} type="button" onClick={() => setQ(i)} className="rounded-full border border-line px-3 py-1 text-sm hover:border-ink">{i}</button>)}
+              </div>
+            </div>
+          )}
+          {files && !files.length && (tab !== "stock" || q) && <p className="py-10 text-center text-sm text-muted">{q ? "Nothing matches that search." : "No images yet. Upload the first one."}</p>}
           {files && files.length > 0 && (
             <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-6">
               {files.map((f) => {
@@ -125,15 +141,17 @@ export function MediaDialog({ onPick, onClose, multiple = false, initialTab = "u
                   <li key={f.name + f.url}>
                     <button type="button" onClick={() => choose(f.url)} title={f.label} className={`group relative block w-full overflow-hidden rounded-xl bg-surface ring-1 transition ${sel ? "ring-2 ring-forest" : "ring-line hover:ring-ink"}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={f.url} alt="" loading="lazy" className="aspect-square w-full bg-white object-contain p-1" />
+                      <img src={f.thumb ?? f.url} alt="" loading="lazy" className={`aspect-square w-full bg-white ${f.provider ? "object-cover" : "object-contain p-1"}`} />
                       {sel && <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-forest text-xs font-bold text-white">{picked.indexOf(f.url) + 1}</span>}
-                      <span className="block truncate px-2 py-1.5 text-left text-[0.6875rem] text-muted">{f.label}</span>
+                      <span className="block truncate px-2 py-1.5 text-left text-[0.6875rem] text-muted">{f.provider ? `${f.credit} · ${f.provider === "unsplash" ? "Unsplash" : "Pexels"}` : f.label}</span>
                     </button>
+                    {f.creditUrl && <a href={f.creditUrl} target="_blank" rel="noopener" className="mt-0.5 block truncate text-[0.625rem] text-muted underline">Photographer’s page</a>}
                   </li>
                 );
               })}
             </ul>
           )}
+          {files && files.length > 0 && tab === "stock" && <p className="mt-4 text-xs text-muted">Photos by the named photographers on Unsplash and Pexels. Free to use; the shop shows them straight from their servers.</p>}
           {more && (
             <div className="mt-4 text-center">
               <button type="button" className="btn btn-ghost text-sm" onClick={() => { const n = page + 1; setPage(n); load(tab, q, n); }}>Show more</button>

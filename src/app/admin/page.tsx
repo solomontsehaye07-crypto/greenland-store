@@ -1,3 +1,4 @@
+import { LaunchSwitch } from "@/components/admin/launch-switch";
 import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -119,6 +120,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-6">
+      <LaunchSwitch />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="display text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Overview</h1>
         <nav className="flex rounded-full bg-white p-1 text-sm" aria-label="Period">
