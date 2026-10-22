@@ -35,7 +35,7 @@ export function CartDrawer({ lang, frozen, perks }: { lang: "de" | "en"; frozen:
   }, [drawerOpen, setDrawerOpen]);
 
   return (
-    <div className={`fixed inset-0 z-50 ${drawerOpen ? "" : "pointer-events-none"}`} aria-hidden={!drawerOpen}>
+    <div className={`fixed inset-0 z-50 overflow-hidden ${drawerOpen ? "" : "pointer-events-none"}`} aria-hidden={!drawerOpen}>
       <div className={`absolute inset-0 bg-ink/25 transition-opacity duration-300 ${drawerOpen ? "opacity-100" : "opacity-0"}`} onClick={() => setDrawerOpen(false)} />
       <div
         ref={panel}

@@ -481,11 +481,14 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
   .hero-photo-layout.has-slides .hero-photo { animation: none; }
 
   /* hero numbers: one calm glass panel, same spacing for all three, readable on any photo */
-  .hero-stats-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 34rem; border-radius: 1.25rem; background: rgb(12 30 21 / .55); border: 1px solid rgb(255 255 255 / .16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-  .hero-stats-panel > div { display: flex; flex-direction: column-reverse; justify-content: flex-end; padding: .9rem 1rem; }
-  .hero-stats-panel > div + div { border-left: 1px solid rgb(255 255 255 / .16); }
-  .hero-stats-panel dd { color: var(--hero-accent); text-shadow: 0 1px 12px rgb(0 0 0 / .35); }
-  @media (min-width: 640px) { .hero-stats-panel > div { padding: 1.1rem 1.4rem; } }
+  /* hero numbers: light mint card over the photo, dark green numbers; tight but readable on phones */
+  .hero-stats-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 32rem; border-radius: 1.25rem; background: rgb(236 247 239 / .94); box-shadow: 0 18px 40px -22px rgb(0 0 0 / .55); color: #173f2a; overflow: hidden; }
+  .hero-stats-panel > div { display: flex; flex-direction: column; justify-content: space-between; gap: .35rem; padding: .8rem .75rem; min-width: 0; }
+  .hero-stats-panel > div + div { border-left: 1px solid rgb(30 107 69 / .16); }
+  .hero-stats-panel dt { font-size: .6875rem; line-height: 1.2; font-weight: 600; color: #3d6b52; hyphens: auto; -webkit-hyphens: auto; overflow-wrap: anywhere; }
+  .hero-stats-panel dd { font-size: 1.4rem; line-height: 1; font-weight: 700; color: #1e7a4c; white-space: nowrap; letter-spacing: -.01em; }
+  @media (min-width: 400px) { .hero-stats-panel dd { font-size: 1.6rem; } .hero-stats-panel > div { padding: .9rem 1rem; } }
+  @media (min-width: 640px) { .hero-stats-panel > div { padding: 1.1rem 1.4rem; } .hero-stats-panel dt { font-size: .8125rem; } .hero-stats-panel dd { font-size: 2rem; } }
 
   /* cards glide in one after another (--i is set per card by components/reveal.tsx) */
   /* an animation with "backwards" fill, so once it is done the card is free again for the tap feedback below */

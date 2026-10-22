@@ -155,8 +155,9 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
   const freeFrom = nationwideFreeFrom(ship ?? []) ?? NaN;
   const stats = [
     { n: products > 50 ? `${Math.floor(products / 50) * 50}+` : String(products), l: lang === "de" ? "Produkte" : "products" },
-    { n: String(countries.length), l: lang === "de" ? "Herkunftsländer" : "countries of origin" },
-    ...(Number.isFinite(freeFrom) ? [{ n: `${lang === "de" ? "ab" : "from"} ${freeFrom.toLocaleString("de-DE")} €`, l: lang === "de" ? "versandkostenfrei" : "free delivery" }] : []),
+    { n: String(countries.length), l: lang === "de" ? "Herkunfts\u00adländer" : "countries of origin" },
+    // the € stays glued to the number (no-break space), "ab/from" moves into the label
+    ...(Number.isFinite(freeFrom) ? [{ n: `${freeFrom.toLocaleString("de-DE")}\u00a0€`, l: lang === "de" ? "Gratis-Versand ab" : "Free delivery from" }] : []),
   ];
 
   const tile = (im: { image: string; href?: string; label?: string }, key: string, hidden: boolean, cls: string) => (
@@ -187,8 +188,8 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
             <dl className="hero-stats-panel mt-9">
               {stats.map((st) => (
                 <div key={st.l}>
-                  <dt className="mt-1.5 text-[0.75rem] leading-snug text-white/85 sm:text-sm">{st.l}</dt>
-                  <dd className="display text-[1.5rem] font-semibold leading-none sm:text-[2rem]">{st.n}</dd>
+                  <dt>{st.l}</dt>
+                  <dd className="display">{st.n}</dd>
                 </div>
               ))}
             </dl>
