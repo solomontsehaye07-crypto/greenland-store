@@ -385,7 +385,8 @@ export function sectionDef(type: string) {
 // ---------- site settings & theme ----------
 
 export const SITE_FIELDS: Field[] = [
-  { key: "icon", label: "Header logo (the short icon)", kind: "image" },
+  { key: "headerLogo", label: "Header logo (full logo with name, wide format; empty = the footer logo, trimmed)", kind: "image" },
+  { key: "icon", label: "Short icon (used where there is no room for the full logo)", kind: "image" },
   { key: "logo", label: "Footer logo (with the full name; leave empty to use the name as text)", kind: "image" },
   { key: "name", label: "Shop name", kind: "plain" },
   { key: "tagline", label: "Short line under the name", kind: "text" },
@@ -433,6 +434,7 @@ export type Theme = typeof DEFAULT_THEME;
 export interface SiteSettings {
   icon?: string;
   logo?: string;
+  headerLogo?: string;
   name?: string;
   tagline?: L10n;
   announcements?: { text: L10n }[];
