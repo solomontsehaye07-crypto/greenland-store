@@ -193,10 +193,12 @@ async function autoDhlLabel(orderId: string) {
 }
 
 /** Idempotent: called from webhooks / return URLs once payment is confirmed. */
-export async function onOrderPaid(orderId: string, provider: string, ref: string) {
+export async function onOrderPaid(orderId: string, provider: string, ref: string, fee?: number | null) {
   const sb = supabaseAdmin();
   const { data: changed } = await sb.rpc("mark_order_paid", { p_order_id: orderId, p_provider: provider, p_ref: ref });
   if (!changed) return false;
+  // the payment provider's fee goes into the online book (bookkeeping)
+  if (fee != null && fee > 0) await sb.from("orders").update({ payment_fee: Math.round(fee * 100) / 100 }).eq("id", orderId);
   await forwardDropshipItems(orderId).catch(() => null);
   await autoDhlLabel(orderId).catch(() => null);
   await sendConfirmation(orderId).catch(() => null);

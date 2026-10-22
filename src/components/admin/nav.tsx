@@ -53,6 +53,7 @@ export const NAV_GROUPS: { label: string; items: Item[] }[] = [
       { roles: M, href: "/admin/pricing", label: "Pricing", icon: "tag" },
       { roles: M, href: "/admin/finance", label: "Profit & loss", icon: "chart" },
       { roles: M, href: "/admin/reports", label: "Reports", icon: "page" },
+      { roles: ["admin"], href: "/admin/buchhaltung", label: "Bookkeeping", icon: "page" },
     ],
   },
   {

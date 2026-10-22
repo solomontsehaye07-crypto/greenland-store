@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   if (!order || !token) return NextResponse.redirect(new URL("/checkout?cancelled=1", url));
   const cap = await paypalCapture(token, await getPaymentConfig()).catch(() => null);
   if (cap && cap.orderId === order) {
-    await onOrderPaid(order, "paypal", cap.captureId);
+    await onOrderPaid(order, "paypal", cap.captureId, cap.fee);
     return NextResponse.redirect(new URL(`/order/${order}?paid=1`, url));
   }
   return NextResponse.redirect(new URL(`/checkout?failed=1`, url));

@@ -91,6 +91,8 @@ export async function paypalCapture(paypalOrderId: string, cfg: PaymentConfig) {
   if (data.status !== "COMPLETED") return null;
   return {
     captureId: data.purchase_units?.[0]?.payments?.captures?.[0]?.id as string,
+    // PayPal's fee for this payment (for the online book)
+    fee: Number(data.purchase_units?.[0]?.payments?.captures?.[0]?.seller_receivable_breakdown?.paypal_fee?.value) || null,
     orderId: data.purchase_units?.[0]?.reference_id as string,
   };
 }
