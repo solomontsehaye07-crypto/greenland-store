@@ -456,7 +456,7 @@ function Story({ d, lang }: { d: D; lang: Lang }) {
     <section className={`${tone} py-16 sm:py-24`}>
       <div className={`${WRAP} grid items-center gap-10 md:grid-cols-2 md:gap-16`}>
         {d.image && (
-          <div className={`overflow-hidden rounded-3xl ${photo ? "aspect-[4/5] bg-black/10" : "aspect-square bg-white"} ${right ? "md:order-2" : ""}`}>
+          <div className={`overflow-hidden rounded-3xl ${photo ? "aspect-[4/3] bg-black/10" : "aspect-square bg-white"} ${right ? "md:order-2" : ""}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={d.image} alt="" loading="lazy" className={photo ? "h-full w-full object-cover" : "h-full w-full object-contain p-8"} />
           </div>

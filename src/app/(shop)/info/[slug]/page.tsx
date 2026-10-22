@@ -23,7 +23,7 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
         <div className="grid items-start gap-10 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-14">
           <div className="md:sticky md:top-32">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={page.image} alt="" className="aspect-[4/5] w-full rounded-3xl bg-surface object-cover" />
+            <img src={page.image} alt="" className="w-full rounded-3xl bg-surface object-cover" />
           </div>
           <div className="max-w-xl">
             <h1 className="h-section text-[2.25rem] sm:text-[2.75rem]" style={{ textWrap: "balance" }}>{tx(page.title, lang)}</h1>
