@@ -10,7 +10,7 @@ import { getCartPerks } from "@/lib/perks";
 import { getReviews, myReview } from "@/lib/reviews";
 import { currentCustomer } from "@/lib/customer";
 import { getFrozenInfo, getPaymentConfig } from "@/lib/commerce";
-import { img } from "@/lib/img";
+import { img, openFactsCredit } from "@/lib/img";
 import type { CardProduct } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
 import { Rail } from "@/components/sections/rail";
@@ -69,6 +69,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const size = sizeLabel(p.size_qty, p.size_unit);
   const base = unitPrice(p.price, p.size_qty, p.size_unit);
   const images = p.images?.length ? p.images : p.image_url ? [p.image_url] : [];
+  const photoCredit = openFactsCredit(images[0]);
   const bullets = ((de ? p.bullets_de : p.bullets_en)?.length ? (de ? p.bullets_de : p.bullets_en) : de ? p.bullets_en : p.bullets_de) ?? [];
   const payLabels: Record<string, { de: string; en: string }> = {
     stripe: { de: "Kreditkarte", en: "Card" },
@@ -131,6 +132,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             ))
           ) : (
             <div className="grid aspect-square place-items-center rounded-xl bg-surface text-sm text-muted sm:col-span-2">{ui("noPhoto", lang)}</div>
+          )}
+          {photoCredit && (
+            <p className="text-[11px] text-muted sm:col-span-2">
+              {de ? "Foto" : "Photo"}: <a href={photoCredit.href} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">{photoCredit.name}</a>, <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.de" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">CC BY-SA</a>
+            </p>
           )}
         </div>
 
