@@ -308,6 +308,18 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "ctaLabel", label: "Button text", kind: "text" },
       { key: "ctaHref", label: "Button link", kind: "plain" },
       { key: "imageSide", label: "Photo side", kind: "select", options: [{ value: "left", label: "Left" }, { value: "right", label: "Right" }] },
+      { key: "photo", label: "It is a photo of people or a place (fill the frame instead of showing a product on white)", kind: "toggle" },
+      {
+        key: "milestones",
+        label: "Milestones (optional, e.g. 2003 – arrived in Germany)",
+        kind: "list",
+        itemLabel: "Milestone",
+        max: 5,
+        item: [
+          { key: "year", label: "Year", kind: "plain" },
+          { key: "text", label: "What happened", kind: "text" },
+        ],
+      },
       BAND,
     ],
     defaults: { imageSide: "left", color: "forest" },

@@ -18,6 +18,7 @@ export interface CmsPage {
   published: boolean;
   show_in_footer: boolean;
   sort: number;
+  image?: string | null;
 }
 
 export async function getSite(): Promise<{ site: SiteSettings; theme: Theme; store: Record<string, string>; design: Design }> {

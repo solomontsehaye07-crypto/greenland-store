@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { ImageField } from "@/components/admin/media-picker";
 import { savePage } from "../../actions";
 import { pageHref } from "../slugs";
 
-export type PageRow = { slug: string; title: { de?: string; en?: string }; body: { de?: string; en?: string }; published: boolean; show_in_footer: boolean; sort: number };
+export type PageRow = { slug: string; title: { de?: string; en?: string }; body: { de?: string; en?: string }; published: boolean; show_in_footer: boolean; sort: number; image?: string | null };
 
 export function PageForm({ page }: { page: PageRow }) {
   const [state, action, pending] = useActionState(savePage.bind(null, page.slug), null);
+  const [image, setImage] = useState(page.image ?? "");
   return (
     <form action={action} className="space-y-5">
       <div className="space-y-6 rounded-2xl border border-line bg-white p-5 sm:p-6">
@@ -19,6 +21,12 @@ export function PageForm({ page }: { page: PageRow }) {
             <div><label htmlFor="t-en" className="mb-1 block text-xs font-medium text-muted">English</label><input id="t-en" name="title_en" defaultValue={page.title?.en ?? ""} className="input" /></div>
           </div>
         </fieldset>
+        <div>
+          <label htmlFor="p-img" className="label">Photo (optional)</label>
+          <input type="hidden" name="image" value={image} />
+          <ImageField id="p-img" value={image} onChange={setImage} />
+          <p className="mt-1 text-xs text-muted">Shown large next to the title, e.g. a portrait on the About page.</p>
+        </div>
         <fieldset>
           <legend className="label">Text</legend>
           <div className="grid gap-3 md:grid-cols-2">

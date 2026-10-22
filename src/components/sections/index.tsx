@@ -450,18 +450,30 @@ function Story({ d, lang }: { d: D; lang: Lang }) {
   const right = d.imageSide === "right";
   const tone = band(d.color, "forest", true);
   const dark = isDark(tone);
+  const photo = d.photo === true;
+  const milestones: D[] = (d.milestones ?? []).filter((m: D) => m?.year);
   return (
     <section className={`${tone} py-16 sm:py-24`}>
       <div className={`${WRAP} grid items-center gap-10 md:grid-cols-2 md:gap-16`}>
         {d.image && (
-          <div className={`aspect-square overflow-hidden rounded-3xl bg-white ${right ? "md:order-2" : ""}`}>
+          <div className={`overflow-hidden rounded-3xl ${photo ? "aspect-[4/5] bg-black/10" : "aspect-square bg-white"} ${right ? "md:order-2" : ""}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={d.image} alt="" loading="lazy" className="h-full w-full object-contain p-8" />
+            <img src={d.image} alt="" loading="lazy" className={photo ? "h-full w-full object-cover" : "h-full w-full object-contain p-8"} />
           </div>
         )}
         <div className="max-w-lg">
           <h2 className="h-section text-[2rem] sm:text-[2.5rem]" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h2>
           <Markdown text={L(d.text, lang)} className={`mt-5 text-base ${dark ? "text-white/80" : "text-muted"}`} />
+          {milestones.length > 0 && (
+            <ol className={`mt-8 grid gap-4 border-t pt-6 ${milestones.length >= 3 ? "sm:grid-cols-3" : milestones.length === 2 ? "sm:grid-cols-2" : ""} ${dark ? "border-white/20" : "border-line"}`}>
+              {milestones.map((m, i) => (
+                <li key={i}>
+                  <span className={`display block text-2xl font-semibold tabular-nums ${dark ? "text-saffron" : "text-forest"}`}>{String(m.year)}</span>
+                  <span className={`mt-1 block text-sm leading-snug ${dark ? "text-white/80" : "text-muted"}`}>{L(m.text, lang)}</span>
+                </li>
+              ))}
+            </ol>
+          )}
           {L(d.ctaLabel, lang) && <SmartLink href={d.ctaHref} className={`btn mt-8 h-11 px-6 ${dark ? "btn-saffron" : "btn-primary"}`}>{L(d.ctaLabel, lang)}</SmartLink>}
         </div>
       </div>

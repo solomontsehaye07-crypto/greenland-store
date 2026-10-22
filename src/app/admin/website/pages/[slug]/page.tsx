@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function EditPage({ params }: { params: Promise<{ slug: string }> }) {
   await requireStaff();
   const { slug } = await params;
-  const { data } = await supabaseAdmin().from("pages").select("slug, title, body, published, show_in_footer, sort").eq("slug", slug).maybeSingle();
+  const { data } = await supabaseAdmin().from("pages").select("slug, title, body, published, show_in_footer, sort, image").eq("slug", slug).maybeSingle();
   if (!data) notFound();
   const p = data as PageRow;
   return (

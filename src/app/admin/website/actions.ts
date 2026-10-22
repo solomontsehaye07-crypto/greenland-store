@@ -171,6 +171,7 @@ export async function savePage(slug: string, _: FormState, fd: FormData): Promis
       published: fd.get("published") === "on",
       show_in_footer: fd.get("show_in_footer") === "on",
       sort: Number.isFinite(Number(s("sort"))) ? Math.round(Number(s("sort"))) : 0,
+      image: /^(https:\/\/|\/)/.test(s("image").trim()) ? s("image").trim() : null,
     };
     if (!row.title.de && !row.title.en) throw new Error("Give the page a title in at least one language.");
     const { error } = await supabaseAdmin().from("pages").update(row).eq("slug", slug);
