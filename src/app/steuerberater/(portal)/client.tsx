@@ -13,3 +13,24 @@ export function GridScroll({ children, className }: { children: React.ReactNode;
   }, []);
   return <div ref={ref} className={className}>{children}</div>;
 }
+
+/** Keeps the chosen month visible in the month strip on narrow screens. */
+export function StripScroll({ children, className, label }: { children: React.ReactNode; className?: string; label: string }) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const box = ref.current;
+    const cur = box?.querySelector<HTMLElement>('[aria-current="true"]');
+    if (box && cur) box.scrollLeft = cur.offsetLeft - box.clientWidth / 2 + cur.clientWidth / 2;
+  }, []);
+  return <nav ref={ref} aria-label={label} className={className}>{children}</nav>;
+}
+
+/** Escape closes the edit sheet on tablets/phones. */
+export function EscClose({ href }: { href: string }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") window.location.assign(href); };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [href]);
+  return null;
+}

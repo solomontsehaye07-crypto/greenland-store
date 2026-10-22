@@ -544,11 +544,11 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
 .stb-months a:hover { background: var(--sand); }
 .stb-months a[aria-current="true"] { background: var(--forest); color: #fff; font-weight: 600; }
 .stb-months a.future { color: color-mix(in oklab, var(--ink) 30%, var(--paper)); pointer-events: none; }
-.stb-sheet { border: 1px solid color-mix(in oklab, var(--ink) 16%, var(--paper)); border-radius: 10px; background: #fff; overflow: hidden; }
+.stb-sheet { border: 1px solid color-mix(in oklab, var(--ink) 16%, var(--paper)); border-radius: 10px; background: #fff; }
 .stb-grid { border-collapse: separate; border-spacing: 0; width: 100%; }
-.stb-grid th { background: var(--sand); font-weight: 600; font-size: 12px; text-align: left; white-space: nowrap; padding: 7px 10px; border-bottom: 1px solid color-mix(in oklab, var(--ink) 18%, var(--sand)); border-right: 1px solid color-mix(in oklab, var(--ink) 8%, var(--sand)); position: sticky; top: 0; z-index: 1; }
-.stb-grid thead tr.group th { top: 0; font-size: 11px; font-weight: 600; color: var(--muted); background: color-mix(in oklab, var(--sand) 55%, white); padding: 4px 10px; }
-.stb-grid thead tr.group + tr th { top: 23px; }
+.stb-grid th { background: var(--sand); font-weight: 600; font-size: 12px; text-align: left; white-space: nowrap; padding: 7px 10px; border-bottom: 1px solid color-mix(in oklab, var(--ink) 18%, var(--sand)); border-right: 1px solid color-mix(in oklab, var(--ink) 8%, var(--sand)); position: sticky; top: 0; z-index: 4; }
+.stb-grid thead tr.group th { top: 0; font-size: 11px; font-weight: 600; color: var(--muted); background: color-mix(in oklab, var(--sand) 55%, white); padding: 4px 10px; height: 24px; line-height: 15px; box-sizing: border-box; }
+.stb-grid thead tr.group + tr th { top: 24px; }
 .stb-grid td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0; height: 30px; white-space: nowrap; }
 .stb-grid td > a, .stb-grid td > span { display: block; padding: 5px 10px; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; }
 .stb-grid td.k { background: color-mix(in oklab, var(--sand) 18%, white); }
@@ -567,3 +567,18 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
 .stb-btn.go { background: var(--forest); border-color: var(--forest); color: #fff; }
 .stb-btn.go:hover { background: var(--green-deep); }
 .stb a:focus-visible, .stb button:focus-visible { outline: 2px solid var(--saffron); outline-offset: 2px; }
+.stb-grid td.stick, .stb-grid th.stick { position: sticky; left: 0; z-index: 2; background: #fff; box-shadow: 1px 0 0 var(--line); }
+.stb-grid th.stick { z-index: 5; background: var(--sand); }
+.stb-grid tbody tr:hover td.stick { background: color-mix(in oklab, var(--forest) 5%, white); }
+.stb-grid tbody tr.sel td.stick { background: color-mix(in oklab, var(--forest) 12%, white); }
+@media (max-width: 1439px) { .stb-grid td > a, .stb-grid td > span, .stb-grid th { padding-left: 8px; padding-right: 8px; } }
+/* touch screens (tablets, phones): bigger rows and fields, 16px inputs so iOS doesn't zoom */
+@media (pointer: coarse) {
+  .stb-grid td { height: 40px; }
+  .stb-grid td > a, .stb-grid td > span { padding-top: 10px; padding-bottom: 10px; }
+  .stb-field { height: 42px; font-size: 16px; }
+  .stb-btn { height: 42px; }
+  .stb-months a { height: 36px; }
+}
+@media (max-width: 639px) { .stb-field { font-size: 16px; } }
+.stb-sheet-pop { overscroll-behavior: contain; }
