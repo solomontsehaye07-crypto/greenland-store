@@ -6,7 +6,7 @@ import { round2, vatOf, money } from "./format";
 import type { CartLine, ShippingMethod } from "./types";
 import { forwardDropshipItems } from "./purchasing";
 import { emailConfig, sendEmail } from "./notify";
-import { depositFor, getFrozenPack, getPaymentConfig, getShippingArea, pickupSlots, type PaymentConfig } from "./commerce";
+import { depositFor, getFrozenPack, getPaymentConfig, getShippingArea, localDeliveryWindows, pickupSlots, type PaymentConfig } from "./commerce";
 import { buildReceiptPdf } from "./pdf";
 import { esc, siteUrl } from "./site";
 import { checkCoupon, consumeCoupon } from "./coupons";
@@ -25,6 +25,7 @@ export const CheckoutSchema = z.object({
   shipping_code: z.string(),
   pickup_slot: z.string().max(60).optional(),
   pickup_at: z.string().max(40).optional(),
+  delivery_at: z.string().max(40).optional(),
   payment: z.enum(["stripe", "paypal", "viva", "bank", "cash"]),
   deposit_provider: z.enum(["stripe", "paypal", "viva"]).optional(),
   notes: z.string().max(500).optional(),
@@ -109,6 +110,14 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
     if (!slot || slot.full) throw new Error("That pickup time is no longer available. Please choose another one.");
     pickupAt = slot.value;
     pickupLabel = slot.label.de ?? pickupLabel;
+  }
+  // own local delivery runs in fixed daily windows; the order goes into the chosen one if it is still open
+  if (q.method.type === "local") {
+    const windows = await localDeliveryWindows(5);
+    if (!windows.length) throw new Error("No local delivery times are available right now. Please choose pickup.");
+    const w = windows.find((x) => x.value === input.delivery_at) ?? windows[0];
+    pickupAt = w.value;
+    pickupLabel = `Lieferung ${w.label.de}`.slice(0, 60);
   }
 
   // shipping VAT follows the main rate of the goods (simplified: highest share)
@@ -256,7 +265,7 @@ async function sendConfirmation(orderId: string) {
       : Number(o.balance_due) > 0
         ? `<p style="font-family:sans-serif;font-size:14px;background:#f6f3ec;padding:12px;border-radius:8px">${o.deposit_amount ? `Deposit paid: <b>${money(o.deposit_amount)}</b><br>` : ""}To pay on collection: <b>${money(o.balance_due)}</b></p>`
         : "";
-  const pickup = o.pickup_slot ? `<p style="font-family:sans-serif;font-size:14px">Pickup: <b>${esc(o.pickup_slot)}</b></p>` : "";
+  const pickup = o.pickup_slot ? `<p style="font-family:sans-serif;font-size:14px">${String(o.pickup_slot).startsWith("Lieferung") ? "" : "Pickup: "}<b>${esc(o.pickup_slot)}</b></p>` : "";
   const html = `
     <h2 style="font-family:sans-serif;color:#1D5C3F">Thank you for your order #${o.number}</h2>
     <table style="font-family:sans-serif;font-size:14px" width="100%">${rows}

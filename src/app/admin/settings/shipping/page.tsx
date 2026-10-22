@@ -2,11 +2,11 @@ import Link from "next/link";
 import { requireStaff, MANAGER_ROLES } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
-import { getFrozenPack, getPickupSettings, getShippingArea, pickupSlots } from "@/lib/commerce";
+import { describeLocalTimes, getFrozenPack, getLocalTimes, getPickupSettings, getShippingArea, localDeliveryWindows, pickupSlots } from "@/lib/commerce";
 import { getDhl } from "@/lib/dhl";
 import { getGiftSetting, getQtyTiers, nationwideFreeFrom } from "@/lib/perks";
 import { Card, Notice, PageHead, SidePanel, Toggle } from "@/components/admin/ui";
-import { saveDhlSettings, saveFrozenPack, saveGift, saveQtyTiers, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
+import { saveDhlSettings, saveFrozenPack, saveGift, saveLocalTimes, saveQtyTiers, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,8 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
   const [stStreet, stHouse] = (st.street ?? "").match(/^(.*?)\s+(\d+\s?[a-zA-Z]?)$/)?.slice(1) ?? [st.street ?? "", ""];
   const snd = { name1: dhl.sender.name1 || st.name || "", name2: dhl.sender.name2, street: dhl.sender.street || stStreet, house: dhl.sender.house || stHouse, postal: dhl.sender.postal || st.postal || "", city: dhl.sender.city || st.city || "", email: dhl.sender.email || st.email || "" };
   const preview = (await pickupSlots(p)).slice(0, 4);
-  const [gift, qt] = await Promise.all([getGiftSetting(), getQtyTiers()]);
+  const [gift, qt, lt] = await Promise.all([getGiftSetting(), getQtyTiers(), getLocalTimes()]);
+  const nextWindows = await localDeliveryWindows(3, new Date(), lt, p.closed);
   const { data: giftProduct } = gift.product_id
     ? await supabaseAdmin().from("products").select("sku, title, title_de, slug, price, stock, status, is_dropship").eq("id", gift.product_id).maybeSingle()
     : { data: null };
@@ -164,6 +165,36 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
         <form action={saveShippingArea} className="flex flex-wrap items-center justify-between gap-4">
           <Toggle name="abroad" defaultChecked={area.abroad} label="Deliver outside Germany" hint={area.abroad ? "On: customers can choose other countries at checkout." : "Off: checkout only accepts addresses in Germany."} />
           <button className="btn btn-primary">Save</button>
+        </form>
+      </Card>
+
+      <Card
+        className="mt-5"
+        title="Local delivery times"
+        text="Your own delivery runs once a day in these windows. Orders that come in at least the set minutes before a window starts go out that day; later ones on the next delivery day. Closed days from the pickup settings count too. Leave a day empty for no delivery."
+      >
+        <form action={saveLocalTimes} className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {DAYS.map(([k, label]) => {
+              const w = lt.days[k as keyof typeof lt.days];
+              return (
+                <div key={k} className="flex items-center gap-2">
+                  <span className="w-24 text-sm">{label}</span>
+                  <input name={`${k}_from`} defaultValue={w?.from ?? ""} placeholder="–" aria-label={`${label} from`} className="input w-24 py-2 text-sm" />
+                  <span className="text-muted">–</span>
+                  <input name={`${k}_to`} defaultValue={w?.to ?? ""} placeholder="–" aria-label={`${label} to`} className="input w-24 py-2 text-sm" />
+                </div>
+              );
+            })}
+          </div>
+          <div className="max-w-xs">
+            <label className="label" htmlFor="cutoffMin">Last order, minutes before the window starts</label>
+            <input id="cutoffMin" name="cutoffMin" inputMode="numeric" defaultValue={lt.cutoffMin} className="input" />
+          </div>
+          <p className="text-xs text-muted">
+            Now: {describeLocalTimes(lt, "de")}. Next windows: {nextWindows.map((w) => w.label.de).join(" · ") || "none"}.
+          </p>
+          <button className="btn btn-primary">Save delivery times</button>
         </form>
       </Card>
 

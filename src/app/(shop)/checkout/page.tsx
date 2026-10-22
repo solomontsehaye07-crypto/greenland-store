@@ -1,5 +1,5 @@
 import { supabasePublic } from "@/lib/supabase";
-import { getFrozenPack, getPaymentConfig, getPickupSettings, getShippingArea, pickupSlots } from "@/lib/commerce";
+import { getFrozenPack, getPaymentConfig, getPickupSettings, getShippingArea, describeLocalTimes, getLocalTimes, localDeliveryWindows, pickupSlots } from "@/lib/commerce";
 import { getLang, tx } from "@/lib/i18n";
 import type { ShippingMethod } from "@/lib/types";
 import { CheckoutForm, type PayOption } from "./form";
@@ -19,7 +19,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     getFrozenPack(),
     getShippingArea(),
   ]);
-  const [slots, me, perks] = await Promise.all([pickupSlots(pickup), currentCustomer(), getCartPerks()]);
+  const localTimes = await getLocalTimes();
+  const [slots, me, perks, windows] = await Promise.all([pickupSlots(pickup), currentCustomer(), getCartPerks(), localDeliveryWindows(5, new Date(), localTimes, pickup.closed)]);
   const prefill = me ? { name: me.full_name ?? "", email: me.email, phone: me.phone ?? "", street: me.address?.street ?? "", postal: me.address?.postal ?? "", city: me.address?.city ?? "" } : undefined;
   const notice = sp.cancelled ? "Payment was cancelled. Your cart is still here." : sp.failed ? "Payment did not go through. Please try again or choose another method." : null;
   const NOTE: Record<string, string> = {
@@ -57,6 +58,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         pickupAddress={tx(pickup.address, lang)}
         prefill={prefill}
         gift={perks.gift}
+        deliveryHours={describeLocalTimes(localTimes, lang)}
+        deliveryCutoff={localTimes.cutoffMin}
+        deliveryWindows={windows.map((w) => ({ value: w.value, label: tx(w.label, lang), orderBy: w.orderBy }))}
       />
     </div>
   );

@@ -181,6 +181,81 @@ export async function pickupSlots(s?: PickupSettings, now = new Date()): Promise
   return slots;
 }
 
+// ---------------- local delivery times ----------------
+// Own delivery runs once a day in a fixed window (Mon–Fri 17:30–18:30, Sat 14:00–16:00 by default).
+// An order makes it into a window when it comes in at least `cutoffMin` minutes before the window starts;
+// otherwise it goes on the next delivery day. Closed days from the pickup settings apply too.
+
+export interface LocalTimes {
+  days: Record<"mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun", Window | null>;
+  cutoffMin: number;
+}
+
+export const DEFAULT_LOCAL_TIMES: LocalTimes = {
+  days: {
+    mon: { from: "17:30", to: "18:30" },
+    tue: { from: "17:30", to: "18:30" },
+    wed: { from: "17:30", to: "18:30" },
+    thu: { from: "17:30", to: "18:30" },
+    fri: { from: "17:30", to: "18:30" },
+    sat: { from: "14:00", to: "16:00" },
+    sun: null,
+  },
+  cutoffMin: 30,
+};
+
+export async function getLocalTimes(): Promise<LocalTimes> {
+  const { data } = await supabaseAdmin().from("settings").select("value").eq("key", "public.local_delivery_times").maybeSingle();
+  const v = (data?.value ?? {}) as Partial<LocalTimes>;
+  return { days: { ...DEFAULT_LOCAL_TIMES.days, ...(v.days ?? {}) }, cutoffMin: Number.isFinite(Number(v.cutoffMin)) ? Number(v.cutoffMin) : DEFAULT_LOCAL_TIMES.cutoffMin };
+}
+
+/** "Mo–Fr 17:30–18:30, Sa 14:00–16:00" – days with the same window are grouped. */
+export function describeLocalTimes(t: LocalTimes, lang: "de" | "en") {
+  const order = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+  const names = lang === "de" ? ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const parts: string[] = [];
+  let i = 0;
+  while (i < 7) {
+    const w = t.days[order[i]];
+    if (!w?.from) { i++; continue; }
+    let j = i;
+    while (j + 1 < 7 && t.days[order[j + 1]]?.from === w.from && t.days[order[j + 1]]?.to === w.to) j++;
+    parts.push(`${names[i]}${j > i ? `–${names[j]}` : ""} ${w.from}–${w.to}`);
+    i = j + 1;
+  }
+  return parts.join(", ");
+}
+
+export interface DeliveryWindow {
+  value: string; // ISO start
+  label: L10n; // "heute · 17:30–18:30 Uhr"
+  orderBy: string; // ISO: last moment to order for this window
+}
+
+/** The next delivery windows an order placed now can still make (first = soonest). */
+export async function localDeliveryWindows(count = 5, now = new Date(), t?: LocalTimes, closed?: string[]): Promise<DeliveryWindow[]> {
+  t = t ?? (await getLocalTimes());
+  closed = closed ?? (await getPickupSettings()).closed;
+  const today = berlinParts(now).date;
+  const tomorrow = berlinParts(new Date(now.getTime() + 86400_000)).date;
+  const out: DeliveryWindow[] = [];
+  for (let i = 0; i < 21 && out.length < count; i++) {
+    const date = berlinParts(new Date(now.getTime() + i * 86400_000)).date;
+    if (closed.includes(date)) continue;
+    const w = t.days[DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]];
+    if (!w?.from || !w?.to) continue;
+    const start = berlinToDate(date, w.from);
+    const orderBy = new Date(start.getTime() - t.cutoffMin * 60_000);
+    if (now.getTime() > orderBy.getTime()) continue;
+    const range = `${w.from}–${w.to}`;
+    const day = (lang: "de" | "en") =>
+      date === today ? (lang === "de" ? "heute" : "today") : date === tomorrow ? (lang === "de" ? "morgen" : "tomorrow") : fmtLabel(lang === "de" ? "de-DE" : "en-GB", start);
+    out.push({ value: start.toISOString(), orderBy: orderBy.toISOString(), label: { de: `${day("de")} · ${range} Uhr`, en: `${day("en")} · ${range}` } });
+  }
+  return out;
+}
+
 // ---------------- payments ----------------
 
 export type Method = "stripe" | "paypal" | "viva" | "bank" | "cash";

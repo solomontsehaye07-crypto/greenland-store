@@ -340,3 +340,20 @@ export async function saveGoogleReviews(fd: FormData) {
   if (r.error) back(path, `Saved, but Google answered: ${r.error}`);
   back(path, `Google reviews connected: ${r.name ?? name ?? id} · ${r.rating ?? "–"} ★ from ${r.count ?? 0} reviews.`);
 }
+
+// ---------------- local delivery times ----------------
+
+export async function saveLocalTimes(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const days = Object.fromEntries(
+    (["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map((d) => {
+      const from = txt(fd.get(`${d}_from`));
+      const to = txt(fd.get(`${d}_to`));
+      return [d, TIME.test(from) && TIME.test(to) && from < to ? { from, to } : null];
+    })
+  );
+  const cutoffMin = Math.max(0, Math.min(600, Math.round(Number(txt(fd.get("cutoffMin"))) || 0)));
+  await upsert("public.local_delivery_times", { days, cutoffMin });
+  revalidatePath("/", "layout");
+  back("/admin/settings/shipping", "Delivery times saved.");
+}

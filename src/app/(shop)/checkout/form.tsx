@@ -54,6 +54,9 @@ export function CheckoutForm({
   pickupAddress,
   prefill,
   gift,
+  deliveryWindows = [],
+  deliveryHours = "",
+  deliveryCutoff = 30,
 }: {
   methods: ShippingMethod[];
   pack: FrozenPack;
@@ -69,6 +72,9 @@ export function CheckoutForm({
   pickupAddress?: string;
   prefill?: Saved; // from the customer's account when signed in
   gift?: import("@/lib/perks").CartPerks["gift"];
+  deliveryWindows?: { value: string; label: string; orderBy: string }[];
+  deliveryHours?: string;
+  deliveryCutoff?: number;
 }) {
   const { lines, listSubtotal, tiers, ready, clear } = useCart();
   // details from the last order on this device (only if the customer agreed to remember them)
@@ -186,6 +192,7 @@ export function CheckoutForm({
           country,
           shipping_code: chosen.method.code,
           pickup_at: f.get("pickup_at") ?? undefined,
+          delivery_at: f.get("delivery_at") ?? undefined,
           pickup_slot: isPickup ? (slots.find((s) => s.value === f.get("pickup_at"))?.label ?? "I will call before coming") : undefined,
           payment,
           deposit_provider: needsDeposit ? depositProvider : undefined,
@@ -290,6 +297,25 @@ export function CheckoutForm({
             ))}
           </div>
 
+          {chosen?.method.type === "local" && (
+            <div className="mt-5 max-w-md space-y-2">
+              <label className="label" htmlFor="delivery_at">Delivery time</label>
+              {deliveryWindows.length ? (
+                <>
+                  <select id="delivery_at" name="delivery_at" required className="input" defaultValue={deliveryWindows[0].value}>
+                    {deliveryWindows.map((w) => (
+                      <option key={w.value} value={w.value}>{w.label}</option>
+                    ))}
+                  </select>
+                  <p className="text-sm text-muted">
+                    We deliver once a day: {deliveryHours}. Orders up to {deliveryCutoff} minutes before the start go out the same day.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-danger">No delivery times are available right now. Please choose pickup.</p>
+              )}
+            </div>
+          )}
           {isPickup && (
             <div className="mt-5 max-w-md space-y-2">
               <label className="label" htmlFor="pickup_at">Pickup time</label>
