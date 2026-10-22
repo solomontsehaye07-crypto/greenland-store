@@ -27,6 +27,9 @@ export default async function CashBookPage({ searchParams }: { searchParams: Pro
   const ended = m < today.slice(0, 7);
   const lastDay = `${m}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, "0")}`;
   const canBook = !book.closedAt && m <= today.slice(0, 7);
+  const ids = book.entries.map((e) => e.id);
+  const { data: ch } = ids.length ? await supabaseAdmin().from("cashbook_changes").select("entry_id").in("entry_id", ids) : { data: [] as { entry_id: number }[] };
+  const edited = new Set((ch ?? []).map((c) => c.entry_id));
   const tpl = (templates ?? []).map((t) => ({ ...t, kind: t.kind as "in" | "out", vat_rate: t.vat_rate == null ? null : Number(t.vat_rate) }));
 
   return (
@@ -104,7 +107,7 @@ export default async function CashBookPage({ searchParams }: { searchParams: Pro
                     <td className="px-3 py-2 text-right">{e.expense ? money(e.expense) : ""}</td>
                     <td className="px-3 py-2 text-right font-semibold">{money(e.balance)}</td>
                     <td className="whitespace-nowrap px-3 py-2">{de(e.entry_date)}</td>
-                    <td className="px-3 py-2">{e.text}{e.stornoed && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-[0.6875rem] font-semibold">reversed</span>}</td>
+                    <td className="px-3 py-2">{e.text}{e.stornoed && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-[0.6875rem] font-semibold">reversed</span>}{edited.has(e.id) && <a href={`/steuerberater?m=${m}&e=${e.id}#bearbeiten`} title="Accounts changed – see the change log" className="ml-2 rounded bg-[#fdf1e7] px-1.5 py-0.5 text-[0.6875rem] font-semibold text-terra">edited</a>}</td>
                     <td className="px-3 py-2">{e.bu ?? ""}</td>
                     <td className="px-3 py-2">{e.contra_account ?? ""}</td>
                     <td className="px-3 py-2">{e.vat_rate == null ? "" : `${String(e.vat_rate).replace(".", ",")} %`}</td>

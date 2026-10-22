@@ -11,7 +11,7 @@ type Ctx = { waitUntil(p: Promise<unknown>): void };
 // Staff areas, APIs, legal pages and files keep working there; the workers.dev address always shows the full
 // shop (and is never indexed by search engines).
 const PUBLIC_HOSTS = new Set(["greenland-afroasia.de", "www.greenland-afroasia.de"]);
-const ALWAYS_OPEN = /^\/(admin|manager|api|_next|offer|coming-soon|legal|pdfjs|icons?|manifest|robots\.txt|sitemap|favicon|apple-icon)(\/|$|\.|-)|\.[a-z0-9]{2,5}$/i;
+const ALWAYS_OPEN = /^\/(admin|manager|steuerberater|api|_next|offer|coming-soon|legal|pdfjs|icons?|manifest|robots\.txt|sitemap|favicon|apple-icon)(\/|$|\.|-)|\.[a-z0-9]{2,5}$/i;
 let launch = { live: true, at: 0 };
 
 async function isLive(env: Env): Promise<boolean> {

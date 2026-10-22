@@ -1,0 +1,77 @@
+import { getOnlineMonth, parseMonth } from "@/lib/cashbook";
+import { MONATE, Toolbar, deDate, eur, monthParam } from "../toolbar";
+
+export const metadata = { title: { absolute: "Online-Shop – Steuerberater-Portal" } };
+
+const KIND = { sale: "Verkauf", refund: "Erstattung", fee: "Gebühr" } as const;
+
+// Read-only: the online book is built from the orders; corrections happen there (refund/cancel).
+export default async function PortalOnline({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  const { year, month } = parseMonth(monthParam(sp));
+  const o = await getOnlineMonth(year, month);
+  const n = (v: number) => (v ? eur(v) : "");
+  return (
+    <div className="space-y-3">
+      <Toolbar action="/steuerberater/online" year={year} month={month} book="online">
+        <div><span className="stb-label">Verkäufe</span><input readOnly value={`${eur(o.sales)} €`} className="stb-field w-32 text-right" aria-label="Verkäufe" /></div>
+        <div><span className="stb-label">Erstattungen</span><input readOnly value={`${eur(o.refunds)} €`} className="stb-field w-28 text-right" aria-label="Erstattungen" /></div>
+        <div><span className="stb-label">Gebühren</span><input readOnly value={`${eur(o.fees)} €`} className="stb-field w-24 text-right" aria-label="Gebühren" /></div>
+        <div><span className="stb-label">Netto-Zufluss</span><input readOnly value={`${eur(o.net)} €`} className="stb-field w-32 text-right font-semibold" aria-label="Netto-Zufluss" /></div>
+      </Toolbar>
+      {o.missingFees > 0 && <p className="border border-[#e8d49a] bg-[#fdf6e0] px-3 py-2 text-[#6b5208]">Bei {o.missingFees} Kartenzahlung(en) fehlt die Gebühr des Zahlungsanbieters – bitte mit der Abrechnung von Stripe/PayPal abgleichen.</p>}
+      <div className="stb-panel">
+        <h2 className="flex flex-wrap justify-between gap-2"><span>Online-Shop {MONATE[month - 1]} {year}</span><span className="font-normal text-[#555]">nur lesen · {o.lines.length} Zeilen</span></h2>
+        <div className="max-h-[65vh] overflow-auto">
+          <table className="stb-grid min-w-[62rem]">
+            <thead>
+              <tr>
+                <th className="rownum" aria-label="Zeile"></th>
+                <th>Datum</th><th>Art</th><th>Bestellung</th><th>Zahlungsart</th>
+                <th className="num">Brutto</th><th className="num">Netto 7 %</th><th className="num">USt 7 %</th><th className="num">Netto 19 %</th><th className="num">USt 19 %</th>
+                <th className="w-full">Buchungstext</th>
+              </tr>
+            </thead>
+            <tbody>
+              {o.lines.map((l, i) => (
+                <tr key={`${l.orderId}-${l.kind}`} className={l.kind === "sale" ? "" : "dim"}>
+                  <td className="rownum"><span>{i + 1}</span></td>
+                  <td><span>{deDate(l.date)}</span></td>
+                  <td><span>{KIND[l.kind]}</span></td>
+                  <td><span>{l.order}</span></td>
+                  <td><span>{l.method}</span></td>
+                  <td className="num"><span>{eur(l.gross)}</span></td>
+                  <td className="num"><span>{n(l.net7)}</span></td>
+                  <td className="num"><span>{n(l.vat7)}</span></td>
+                  <td className="num"><span>{n(l.net19)}</span></td>
+                  <td className="num"><span>{n(l.vat19)}</span></td>
+                  <td><span>{l.text}</span></td>
+                </tr>
+              ))}
+              {!o.lines.length && <tr><td colSpan={11}><span className="!py-4 text-center text-[#666]">Keine Online-Umsätze in diesem Monat.</span></td></tr>}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={5}>Summe</td>
+                <td className="num">{eur(o.net)}</td>
+                <td className="num">{eur(o.vat.net7)}</td>
+                <td className="num">{eur(o.vat.vat7)}</td>
+                <td className="num">{eur(o.vat.net19)}</td>
+                <td className="num">{eur(o.vat.vat19)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+      {o.byMethod.length > 0 && (
+        <div className="stb-panel max-w-md">
+          <h2>Nach Zahlungsart</h2>
+          <table className="stb-grid">
+            <tbody>{o.byMethod.map((b) => <tr key={b.method}><td><span>{b.method}</span></td><td className="num"><span>{eur(b.amount)} €</span></td></tr>)}</tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

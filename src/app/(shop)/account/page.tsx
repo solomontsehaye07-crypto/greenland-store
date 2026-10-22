@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import { afterCustomerSignIn, currentCustomer } from "@/lib/customer";
 import { getLang } from "@/lib/i18n";
@@ -29,6 +30,11 @@ const T = {
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ msg?: string; next?: string; linked?: string }> }) {
   const [{ msg, next, linked }, lang, me] = await Promise.all([searchParams, getLang(), currentCustomer()]);
+  if (me) {
+    // Steuerberater accounts only have the portal
+    const { data: r } = await supabaseAdmin().from("profiles").select("role").eq("id", me.id).maybeSingle();
+    if (r?.role === "tax_advisor") redirect("/steuerberater");
+  }
   if (me && linked) await afterCustomerSignIn(me.id, me.email);
   const t = T[lang];
   if (!me) {

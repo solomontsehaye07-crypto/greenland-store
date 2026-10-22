@@ -165,3 +165,43 @@ export async function saveAccounting(fd: FormData) {
   const m = txt(fd.get("m"), 7);
   redirect(`/admin/buchhaltung?m=${m}&${error ? "err" : "msg"}=${encodeURIComponent(error ? error.message : "Settings saved.")}`);
 }
+
+// ---------- Steuerberater access (separate portal at /steuerberater) ----------
+
+const toBook = (msg: string, err = false): never => redirect(`/admin/buchhaltung?${err ? "err" : "msg"}=${encodeURIComponent(msg)}#steuerberater`);
+
+/** Gives an email address access to the Steuerberater portal only (no shop admin). Sign-in is by email code. */
+export async function addAdvisor(fd: FormData) {
+  const me = await assertStaff(["admin"]);
+  const email = txt(fd.get("email"), 200).toLowerCase();
+  const name = txt(fd.get("name"), 120);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) toBook("Please enter a valid email address.", true);
+  const sb = supabaseAdmin();
+  let id: string | null = null;
+  const { data: made, error } = await sb.auth.admin.createUser({ email, email_confirm: true, user_metadata: { full_name: name } });
+  if (made?.user) id = made.user.id;
+  else {
+    const { data: list } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    id = list?.users.find((u) => u.email?.toLowerCase() === email)?.id ?? null;
+    if (!id) toBook(`Could not add the account: ${error?.message ?? "unknown error"}`, true);
+  }
+  if (id === me.id) toBook("That is your own account – you can already open the portal.", true);
+  const { data: prof } = await sb.from("profiles").select("role").eq("id", id!).maybeSingle();
+  if (prof && ["staff", "manager", "admin"].includes(prof.role)) toBook(`${email} is a team member (${prof.role}). Use a separate email for the Steuerberater, so the shop admin stays closed to them.`, true);
+  const { error: e2 } = await sb.from("profiles").upsert({ id: id!, role: "tax_advisor", email, ...(name ? { full_name: name } : {}) }, { onConflict: "id" });
+  if (e2) toBook(e2.message, true);
+  revalidatePath("/admin/buchhaltung");
+  toBook(`${email} can now sign in at /steuerberater with an email code.`);
+}
+
+export async function removeAdvisor(fd: FormData) {
+  await assertStaff(["admin"]);
+  const id = txt(fd.get("id"), 64);
+  const sb = supabaseAdmin();
+  const { data: prof } = await sb.from("profiles").select("role").eq("id", id).maybeSingle();
+  if (prof?.role !== "tax_advisor") toBook("This account is not a Steuerberater account.", true);
+  await sb.from("profiles").update({ role: "customer" }).eq("id", id);
+  // the portal checks the role on every page, so access ends immediately
+  revalidatePath("/admin/buchhaltung");
+  toBook("Access removed.");
+}

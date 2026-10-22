@@ -4,7 +4,9 @@ import { money } from "@/lib/format";
 import { dailySeries, getAccountingSettings, getOnlineMonth, getShopMonth, monthKey, parseMonth } from "@/lib/cashbook";
 import { Bars } from "@/components/admin/charts";
 import { ExportLinks, Flash, MonthNav } from "./month-nav";
-import { saveAccounting } from "./actions";
+import { addAdvisor, removeAdvisor, saveAccounting } from "./actions";
+import { supabaseAdmin } from "@/lib/supabase";
+import { siteUrl } from "@/lib/site";
 
 export const metadata = { title: "Bookkeeping" };
 export const dynamic = "force-dynamic";
@@ -17,7 +19,14 @@ export default async function BookkeepingPage({ searchParams }: { searchParams: 
   const { year, month } = parseMonth(sp.m);
   const m = monthKey(year, month);
   const view: View = sp.v === "shop" || sp.v === "online" ? sp.v : "both";
-  const [shop, online, acc] = await Promise.all([getShopMonth(year, month), getOnlineMonth(year, month), getAccountingSettings()]);
+  const [shop, online, acc, { data: advisors }, { count: changeCount }] = await Promise.all([
+    getShopMonth(year, month),
+    getOnlineMonth(year, month),
+    getAccountingSettings(),
+    supabaseAdmin().from("profiles").select("id, email, full_name").eq("role", "tax_advisor").order("email"),
+    supabaseAdmin().from("cashbook_changes").select("id", { count: "exact", head: true }),
+  ]);
+  const portal = `${siteUrl()}/steuerberater`;
   const days = dailySeries(shop, online).filter((d) => d.shopIn || d.shopOut || d.online);
   const showShop = view !== "online";
   const showOnline = view !== "shop";
@@ -148,6 +157,35 @@ export default async function BookkeepingPage({ searchParams }: { searchParams: 
         ) : (
           <p className="mt-2 text-sm text-muted">Nothing booked this month yet.</p>
         )}
+      </section>
+
+      <section id="steuerberater" aria-labelledby="stb-h" className="scroll-mt-6 rounded-2xl border border-line bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="stb-h" className="text-lg font-bold">Steuerberater access</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted">A separate login at <a href={portal} className="font-semibold underline">{portal.replace(/^https?:\/\//, "")}</a>. The Steuerberater sees only the cash book, the online book and the change log, and can fill in BU, counter account, VAT and notes – always with a reason. No access to the shop, orders, customers or this admin.</p>
+          </div>
+          <a href="/steuerberater/protokoll" className="btn btn-ghost !py-1.5 text-sm">Change log ({changeCount ?? 0})</a>
+        </div>
+        {(advisors ?? []).length > 0 && (
+          <ul className="mt-4 divide-y divide-line rounded-xl border border-line">
+            {(advisors ?? []).map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                <span><span className="font-semibold">{a.full_name || a.email}</span>{a.full_name ? <span className="text-muted"> · {a.email}</span> : null}</span>
+                <form action={removeAdvisor}>
+                  <input type="hidden" name="id" value={a.id} />
+                  <button className="text-xs font-semibold text-terra underline">Remove access</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form action={addAdvisor} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <div><label htmlFor="stb-email" className="label">Email of the Steuerberater</label><input id="stb-email" name="email" type="email" required className="input" /></div>
+          <div><label htmlFor="stb-name" className="label">Name or office (optional)</label><input id="stb-name" name="name" maxLength={120} className="input" /></div>
+          <button className="btn btn-primary">Give access</button>
+        </form>
+        <p className="mt-2 text-xs text-muted">They sign in with a code sent to that email – no password to share. You can open the portal yourself with your admin account to see exactly what they see.</p>
       </section>
 
       <details className="rounded-2xl border border-line bg-white p-5">
