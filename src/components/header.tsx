@@ -8,6 +8,7 @@ import { Announce } from "./announce";
 import { LangSwitch } from "./lang-switch";
 import { Icon } from "./icons";
 import { img } from "@/lib/img";
+import { SearchBox } from "./search-box";
 
 export async function Header() {
   const [tree, { site }, lang, { count: saleCount }] = await Promise.all([
@@ -46,10 +47,9 @@ export async function Header() {
               <Icon name="menu" size={22} />
             </summary>
             <nav className="fixed inset-x-0 top-[4.25rem] z-40 max-h-[calc(100vh-4.25rem)] overflow-y-auto border-t border-line bg-paper px-4 pb-10 pt-4 shadow-lg" aria-label={ui("menu", lang)}>
-              <form action="/search" role="search" className="mb-3 lg:hidden">
-                <label htmlFor="q-m" className="sr-only">{ui("search", lang)}</label>
-                <input id="q-m" name="q" type="search" placeholder={ui("searchPlaceholder", lang)} className="input rounded-full" />
-              </form>
+              <div className="mb-3 lg:hidden">
+                <SearchBox lang={lang} variant="pill" label={ui("search", lang)} placeholder={ui("searchPlaceholder", lang)} />
+              </div>
               <Link href="/shop" className="block py-2.5 text-sm font-medium">{ui("shopAll", lang)}</Link>
               {tree.map((d) => (
                 <div key={d.id} className="border-t border-line py-2">
@@ -71,11 +71,9 @@ export async function Header() {
 
           <Link href="/" className="flex shrink-0 items-center" aria-label={`${name} – ${ui("home", lang)}`}>{logo}</Link>
 
-          <form action="/search" role="search" className="search-bar hidden flex-1 lg:flex">
-            <label htmlFor="q" className="sr-only">{ui("search", lang)}</label>
-            <input id="q" name="q" type="search" placeholder={ui("searchPlaceholder", lang)} autoComplete="off" />
-            <button type="submit" aria-label={ui("search", lang)}><Icon name="search" size={20} /></button>
-          </form>
+          <div className="hidden flex-1 lg:flex">
+            <SearchBox lang={lang} variant="bar" label={ui("search", lang)} placeholder={ui("searchPlaceholder", lang)} />
+          </div>
 
           <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:gap-2">
             <Link href="/search" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface lg:hidden" aria-label={ui("search", lang)}>

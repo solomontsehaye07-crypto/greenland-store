@@ -5,6 +5,7 @@ import { money } from "@/lib/format";
 import { getPricingSettings, marginOf, measuredLossByCategory, recommendPrice, ruleFor, type Cat } from "@/lib/pricing";
 import { SelectAll } from "@/components/admin/select-all";
 import { applyPrices, importCosts, savePricingRules, saveCosts } from "./actions";
+import { LiveSearchInput } from "@/components/live-search-input";
 
 export const metadata = { title: "Pricing" };
 
@@ -163,7 +164,7 @@ export default async function PricingPage({ searchParams }: { searchParams: Prom
                 </optgroup>
               ))}
             </select>
-            <input name="q" defaultValue={sp.q ?? ""} placeholder="Search name or SKU" className="input !w-48 !py-1.5 text-sm" aria-label="Search" />
+            <LiveSearchInput name="q" defaultValue={sp.q ?? ""} placeholder="Search name or SKU" className="input !w-48 !py-1.5 text-sm" aria-label="Search" />
             <button className="btn btn-ghost !py-1.5">Filter</button>
           </form>
         </div>

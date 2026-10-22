@@ -15,7 +15,7 @@ const csp = [
   `connect-src 'self' ${SUPABASE} wss://${SUPABASE.replace(/^https?:\/\//, "")}`,
   "media-src 'self' https:",
   "worker-src 'self' blob:",
-  "frame-src 'self'",
+  "frame-src 'self' https://www.youtube-nocookie.com https://www.instagram.com",
   "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'self'",

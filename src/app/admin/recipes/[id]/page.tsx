@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { COUNTRY_INFO } from "@/lib/countries";
 import { money } from "@/lib/format";
 import { addIngredient, deleteRecipe, removeIngredient, saveRecipe, updateIngredient } from "../actions";
+import { LiveSearchInput } from "@/components/live-search-input";
 
 type L = { de?: string; en?: string };
 
@@ -94,7 +95,7 @@ export default async function AdminRecipe({ params, searchParams }: { params: Pr
 
         <form className="mt-6 flex gap-2" role="search">
           <label htmlFor="q" className="sr-only">Find a product</label>
-          <input id="q" name="q" defaultValue={q} placeholder="Find a product to add, e.g. palm oil" className="input flex-1" />
+          <LiveSearchInput id="q" name="q" defaultValue={q} placeholder="Find a product to add, e.g. palm oil" className="input flex-1" />
           <button className="btn btn-ghost">Search</button>
         </form>
         {q && (

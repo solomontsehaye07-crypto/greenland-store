@@ -18,6 +18,8 @@ import { NewsletterForm } from "./newsletter-form";
 import { getGoogleReviews } from "@/lib/google-reviews";
 import { nationwideFreeFrom } from "@/lib/perks";
 import { Stars } from "../reviews";
+import { StoreVideo } from "./store-video";
+import { parseVideo } from "@/lib/video";
 
 type D = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const L = (v: unknown, lang: Lang) => tx(v as L10n, lang);
@@ -467,6 +469,29 @@ function Story({ d, lang }: { d: D; lang: Lang }) {
   );
 }
 
+function VideoSection({ d, lang }: { d: D; lang: Lang }) {
+  const source = parseVideo(d.video);
+  if (!source) return null; // hidden until the owner adds a video
+  const tone = band(d.color, "none");
+  const dark = isDark(tone);
+  const title = L(d.title, lang);
+  const text = L(d.text, lang);
+  return (
+    <section className={`${tone} py-16 sm:py-20`}>
+      <div className={WRAP}>
+        {(title || text) && (
+          <div className="mb-8 max-w-2xl">
+            {title && <h2 className="h-section" style={{ textWrap: "balance" }}>{title}</h2>}
+            {text && <p className={`mt-3 text-base leading-relaxed ${dark ? "text-white/80" : "text-muted"}`}>{text}</p>}
+          </div>
+        )}
+        <StoreVideo source={source} poster={typeof d.poster === "string" && d.poster ? d.poster : undefined} title={title || "Greenland Afro Asia Store"} lang={lang} />
+        {L(d.ctaLabel, lang) && <SmartLink href={d.ctaHref} className={`btn mt-8 h-11 px-6 ${dark ? "btn-saffron" : "btn-primary"}`}>{L(d.ctaLabel, lang)}</SmartLink>}
+      </div>
+    </section>
+  );
+}
+
 function Faq({ d, lang }: { d: D; lang: Lang }) {
   const items: D[] = d.items ?? [];
   return (
@@ -713,6 +738,7 @@ export async function Sections({ sections, lang }: { sections: HomeSection[]; la
           case "banners": return <Banners key={s.id} d={d} lang={lang} />;
           case "usp": return <Usp key={s.id} d={d} lang={lang} />;
           case "story": return <Story key={s.id} d={d} lang={lang} />;
+          case "video": return <VideoSection key={s.id} d={d} lang={lang} />;
           case "faq": return <Faq key={s.id} d={d} lang={lang} />;
           case "newsletter": return <Newsletter key={s.id} d={d} lang={lang} />;
           case "text": return <TextBlock key={s.id} d={d} lang={lang} />;

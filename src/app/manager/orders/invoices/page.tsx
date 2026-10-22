@@ -4,6 +4,7 @@ import { money } from "@/lib/format";
 import { formatNumber, getSeries, isOverdue } from "@/lib/invoices";
 import { Msg, OrdersNav } from "../../ui";
 import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
+import { LiveSearchInput } from "@/components/live-search-input";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export default async function Invoices({ searchParams }: { searchParams: Promise
       </nav>
       <form action={BASE} className="mt-2">
         <input type="hidden" name="f" value={f} />
-        <input name="q" defaultValue={q} type="search" placeholder="Find by number or customer" aria-label="Find invoice" className="input" />
+        <LiveSearchInput name="q" defaultValue={q} type="search" placeholder="Find by number or customer" aria-label="Find invoice" className="input" />
       </form>
 
       <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border-2 border-line bg-white">

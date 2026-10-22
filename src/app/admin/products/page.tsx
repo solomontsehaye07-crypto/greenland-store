@@ -6,6 +6,7 @@ import { Notice, PageHead, SidePanel } from "@/components/admin/ui";
 import { createProductAction, quickPrice } from "./actions";
 import { ImageField } from "@/components/admin/media-picker";
 import { ProductPanel } from "./product-panel";
+import { LiveSearchInput } from "@/components/live-search-input";
 
 export const dynamic = "force-dynamic";
 const PAGE = 50;
@@ -76,7 +77,7 @@ export default async function AdminProducts({ searchParams }: { searchParams: Pr
 
       <div className="rounded-2xl border border-line bg-white">
         <form className="flex flex-wrap items-center gap-2 border-b border-line p-3">
-          <input name="q" defaultValue={q} placeholder="Search name, SKU or brand" className="input h-10 max-w-xs py-2 text-sm" />
+          <LiveSearchInput name="q" defaultValue={q} placeholder="Search name, SKU or brand" className="input h-10 max-w-xs py-2 text-sm" />
           <select name="cat" defaultValue={cat} className="input h-10 w-auto py-2 text-sm">
             <option value="">All categories</option>
             {parents.map((pc) => (

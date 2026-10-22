@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useId, useState } from "react";
 import type { Field } from "@/lib/sections";
 import { ImageField } from "../media-picker";
+import { VideoField } from "../video-field";
 import { ProductPicker } from "../product-picker";
 import type { FormState } from "@/app/admin/website/actions";
 
@@ -126,6 +127,7 @@ function FieldInput({ field, value, onChange, categories }: { field: Field; valu
 
   let control: React.ReactNode;
   if (k === "image") control = <ImageField id={id} value={typeof value === "string" ? value : ""} onChange={onChange} />;
+  else if (k === "video") control = <VideoField id={id} value={typeof value === "string" ? value : ""} onChange={onChange} />;
   else if (k === "products") control = <ProductPicker value={(Array.isArray(value) ? value : []).map(Number).filter(Boolean)} onChange={onChange} max={field.max} />;
   else if (k === "number")
     control = (

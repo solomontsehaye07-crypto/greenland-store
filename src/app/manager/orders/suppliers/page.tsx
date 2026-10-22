@@ -8,6 +8,7 @@ import { QtyField } from "@/components/qty-field";
 import { addSupplier, refillAdd, refillFillLow, refillMessage, refillQty, refillRepeatLast } from "../../actions";
 import { supplierInsights, type SupplierInsight } from "@/lib/purchasing";
 import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
+import { LiveSearchInput } from "@/components/live-search-input";
 
 export const dynamic = "force-dynamic";
 
@@ -294,7 +295,7 @@ export default async function SupplierOrders({ searchParams }: { searchParams: P
           <form action={BASE} className="mt-2 flex gap-2">
             <input type="hidden" name="s" value={sup.id} />
             <input type="hidden" name="tab" value="search" />
-            <input name="q" defaultValue={q} type="search" placeholder="Product name or SKU" aria-label="Search products" className="input flex-1 text-base" />
+            <LiveSearchInput name="q" defaultValue={q} type="search" placeholder="Product name or SKU" aria-label="Search products" className="input flex-1 text-base" />
             <button className="btn btn-primary px-5">Find</button>
           </form>
           {!q && <p className="mt-2 text-xs text-muted">Showing products {sup.name} sells. Search to find any product.</p>}

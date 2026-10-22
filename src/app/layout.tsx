@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import "@fontsource-variable/bricolage-grotesque";
 import "@fontsource-variable/public-sans";
@@ -27,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <CartProvider>{children}</CartProvider>
-        <DetailsDismiss />
+        <Suspense fallback={null}><DetailsDismiss /></Suspense>
       </body>
     </html>
   );

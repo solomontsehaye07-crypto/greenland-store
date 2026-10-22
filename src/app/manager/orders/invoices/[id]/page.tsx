@@ -9,6 +9,7 @@ import { BackButton, Msg } from "../../../ui";
 import { DocRow } from "./doc-buttons";
 import { addCustomLine, addProductLine, cancelInvoice, issueInvoice, markPaid, markUnpaid, removeLine, saveInvoiceDetails, updateLine } from "../actions";
 import { MANAGER_ROLES, requireStaff } from "@/lib/auth";
+import { LiveSearchInput } from "@/components/live-search-input";
 
 export const dynamic = "force-dynamic";
 const BASE = "/manager/orders/invoices";
@@ -120,7 +121,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           {/* add products */}
           <section className="rounded-2xl border-2 border-line bg-white p-3" aria-label="Add products">
             <form action={`${BASE}/${id}`} className="flex gap-2">
-              <input name="q" defaultValue={q} type="search" placeholder="Add product: name, SKU or barcode" aria-label="Search products" className="input flex-1 text-base" />
+              <LiveSearchInput name="q" defaultValue={q} type="search" placeholder="Add product: name, SKU or barcode" aria-label="Search products" className="input flex-1 text-base" />
               <button className="btn btn-primary px-4">Find</button>
             </form>
             {q && (

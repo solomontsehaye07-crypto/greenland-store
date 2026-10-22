@@ -40,14 +40,13 @@ export async function getProductsInCategories(ids: number[], opts: { sort?: stri
 }
 
 export async function searchProducts(term: string, limit = 60) {
-  const t = term.trim();
-  if (!t) return [];
-  const { data } = await supabasePublic()
-    .from("products")
-    .select(PRODUCT_CARD_FIELDS)
-    .eq("status", "active")
-    .or(`title.ilike.%${t.replace(/[%,()]/g, " ")}%,brand.ilike.%${t.replace(/[%,()]/g, " ")}%,sku.ilike.%${t.replace(/[%,()]/g, " ")}%`)
-    .limit(limit);
+  // every word has to appear somewhere (name in either language, brand or SKU), so "palm oil ghana" narrows down
+  const words = term.trim().replace(/[%,()*\\]/g, " ").split(/\s+/).filter(Boolean).slice(0, 5);
+  if (!words.length) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q = supabasePublic().from("products").select(PRODUCT_CARD_FIELDS).eq("status", "active") as any;
+  for (const w of words) q = q.or(`title.ilike.%${w}%,title_de.ilike.%${w}%,brand.ilike.%${w}%,sku.ilike.%${w}%`);
+  const { data } = await q.order("stock", { ascending: false }).limit(limit);
   return (data ?? []) as CardProduct[];
 }
 

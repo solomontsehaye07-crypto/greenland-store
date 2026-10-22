@@ -9,6 +9,7 @@ export type FieldKind =
   | "markdown" // long text with simple formatting, both languages
   | "plain" // one line, same in both languages (links, numbers as text)
   | "image"
+  | "video" // YouTube / Instagram link or an uploaded MP4
   | "number"
   | "color"
   | "toggle"
@@ -64,7 +65,7 @@ const ICONS = [
   { value: "gift", label: "Gift" },
 ];
 
-export type SectionType = "hero" | "marquee" | "tiles" | "products" | "offers" | "scene" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text" | "countries" | "recipes" | "reviews";
+export type SectionType = "hero" | "marquee" | "tiles" | "products" | "offers" | "scene" | "banners" | "usp" | "story" | "faq" | "newsletter" | "text" | "countries" | "recipes" | "reviews" | "video";
 
 export interface SectionDef {
   type: SectionType;
@@ -321,6 +322,21 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "items", label: "Questions", kind: "list", itemLabel: "Question", max: 20, item: [{ key: "q", label: "Question", kind: "text" }, { key: "a", label: "Answer", kind: "textarea" }] },
     ],
     defaults: { items: [] },
+  },
+  {
+    type: "video",
+    label: "Store video",
+    description: "A short video of your shop. An uploaded MP4 plays on its own, muted and on a loop (tap for sound). YouTube and Instagram links load only after the visitor taps play, as German privacy rules require. Hidden until a video is set.",
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "text", label: "Text (optional)", kind: "textarea" },
+      { key: "video", label: "Video", kind: "video", help: "Best: an MP4 of 15–60 seconds, landscape, under 50 MB. Or paste a YouTube or Instagram link." },
+      { key: "poster", label: "Cover photo (optional, shown until the video plays)", kind: "image" },
+      { key: "ctaLabel", label: "Button text (optional)", kind: "text" },
+      { key: "ctaHref", label: "Button link", kind: "plain", help: "For example /lieferung or /c/food" },
+      BAND,
+    ],
+    defaults: { color: "none" },
   },
   {
     type: "reviews",
