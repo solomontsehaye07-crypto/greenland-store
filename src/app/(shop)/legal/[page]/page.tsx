@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { getPage } from "@/lib/content";
 import { getLang, tx } from "@/lib/i18n";
 import { Markdown } from "@/components/markdown";
+import { supabaseAdmin } from "@/lib/supabase";
+import { describeLocalTimes, getLocalTimes } from "@/lib/commerce";
+import { esc } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -10,28 +13,27 @@ const PAGES: Record<string, { title: string; body: string }> = {
   impressum: {
     title: "Impressum",
     body: `
-<p><b>Greenland Afro Asia Store</b><br>[Inhaber/in: Vor- und Nachname]<br>[Straße] 58A<br>67657 Kaiserslautern<br>Deutschland</p>
-<p>Telefon / WhatsApp: 0152 13945662<br>E-Mail: [kontakt@ihre-domain.de]</p>
-<p>Umsatzsteuer-ID gemäß § 27a UStG: [DE…]</p>
-<p>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV: [Name, Anschrift wie oben]</p>
+<p><b>{{name}}</b><br>Inhaberin: {{owner}}<br>{{street}}<br>{{postal}} {{city}}<br>Deutschland</p>
+<p>Telefon / WhatsApp: {{phone}}<br>E-Mail: {{email}}</p>
+<p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: {{vat_id}}<br>Steuernummer: {{tax_number}}</p>
+<p>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV: {{owner}}, Anschrift wie oben</p>
 <p>Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>`,
   },
   versand: {
     title: "Delivery & pickup / Versand",
     body: `
-<h3>Standard delivery (Germany)</h3><p>DHL, 2–3 working days, 5.99 €. Free from 69 € order value.</p>
-<h3>EU delivery</h3><p>Austria, Netherlands, Belgium, Luxembourg, France: 4–6 working days, 14.99 €, free from 149 €.</p>
-<h3>Frozen express</h3><p>Frozen products are shipped Monday–Wednesday in an insulated box with cooling packs for next-working-day delivery. 19.99 €, minimum order 50 €. Please make sure someone is home.</p>
-<h3>Local delivery</h3><p>Kaiserslautern and surroundings (postcodes 666xx, 667xx, 676xx), same or next day, 3.99 €, free from 40 €. Pay online or cash/card on delivery.</p>
-<h3>Pickup</h3><p>Order online and collect at our shop in Kaiserslautern – always free. We message you on WhatsApp when your order is ready.</p>
-<h3>Alcohol</h3><p>Beer and palm wine are only handed to persons aged 18 or older. Please have ID ready.</p>`,
+<h3>Versand in Deutschland</h3><p>DHL, 2–3 Werktage, 5,99 €. Ab 69 € Bestellwert kostenlos.</p>
+<h3>Tiefkühlware</h3><p>Damit die Kühlkette sicher bleibt, gibt es Tiefkühlware nur zur Abholung im Laden oder per eigener Lieferung im Umkreis von 5 km um unseren Laden. Kein Paketversand.</p>
+<h3>Lieferung vor Ort</h3><p>Wir liefern selbst im Umkreis von 5 km (Luftlinie, wird aus Ihrer Adresse berechnet): {{local_times}}. Bestellungen bis {{cutoff}} Minuten vor Beginn werden am selben Tag geliefert, spätere am nächsten Liefertag. 3,99 €, ab 69 € kostenlos. Zahlung online oder bar/mit Karte bei Lieferung.</p>
+<h3>Abholung</h3><p>Online bestellen und im Laden abholen ({{street}}, {{postal}} {{city}}) – immer kostenlos. Wir melden uns per WhatsApp, sobald Ihre Bestellung bereitliegt.</p>
+<h3>Alkohol</h3><p>Bier und Palmwein geben wir nur an Personen ab 18 Jahren ab. Bitte halten Sie einen Ausweis bereit.</p>`,
   },
   widerruf: {
     title: "Widerrufsbelehrung",
     body: `
 <p>Verbraucher haben ein vierzehntägiges Widerrufsrecht.</p>
 <h3>Widerrufsrecht</h3><p>Sie haben das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag, an dem Sie oder ein von Ihnen benannter Dritter, der nicht der Beförderer ist, die Waren in Besitz genommen haben bzw. hat.</p>
-<p>Um Ihr Widerrufsrecht auszuüben, müssen Sie uns (Greenland Afro Asia Store, [Straße] 58A, 67657 Kaiserslautern, Telefon 0152 13945662, E-Mail [kontakt@ihre-domain.de]) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren.</p>
+<p>Um Ihr Widerrufsrecht auszuüben, müssen Sie uns ({{name}}, {{owner}}, {{street}}, {{postal}} {{city}}, Telefon {{phone}}, E-Mail {{email}}) mittels einer eindeutigen Erklärung (z. B. ein mit der Post versandter Brief oder E-Mail) über Ihren Entschluss, diesen Vertrag zu widerrufen, informieren.</p>
 <h3>Folgen des Widerrufs</h3><p>Wenn Sie diesen Vertrag widerrufen, haben wir Ihnen alle Zahlungen, die wir von Ihnen erhalten haben, einschließlich der Lieferkosten (mit Ausnahme der zusätzlichen Kosten, die sich daraus ergeben, dass Sie eine andere Art der Lieferung als die von uns angebotene, günstigste Standardlieferung gewählt haben), unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag zurückzuzahlen, an dem die Mitteilung über Ihren Widerruf dieses Vertrags bei uns eingegangen ist.</p>
 <h3>Ausschluss des Widerrufsrechts</h3><p>Das Widerrufsrecht besteht nicht bei Waren, die schnell verderben können oder deren Verfallsdatum schnell überschritten würde (z. B. Frisch- und Tiefkühlware), sowie bei versiegelten Waren, die aus Gründen des Gesundheitsschutzes oder der Hygiene nicht zur Rückgabe geeignet sind, wenn ihre Versiegelung nach der Lieferung entfernt wurde (z. B. geöffnete Kosmetik).</p>`,
   },
@@ -51,8 +53,9 @@ const PAGES: Record<string, { title: string; body: string }> = {
     title: "Datenschutzerklärung",
     body: `
 <p>[Vorlage – bitte mit einem Datenschutz-Generator (z. B. e-recht24) vervollständigen.]</p>
-<h3>Verantwortlicher</h3><p>Greenland Afro Asia Store, [Inhaber/in], [Straße] 58A, 67657 Kaiserslautern, [E-Mail].</p>
-<h3>Bestellungen</h3><p>Zur Abwicklung Ihrer Bestellung verarbeiten wir Name, Anschrift, E-Mail, Telefonnummer und Bestelldaten (Art. 6 Abs. 1 lit. b DSGVO). Daten werden bei Supabase (Frankfurt, EU) gespeichert; das Hosting erfolgt über Vercel.</p>
+<h3>Verantwortlicher</h3><p>{{name}}, Inhaberin {{owner}}, {{street}}, {{postal}} {{city}}, E-Mail {{email}}.</p>
+<h3>Bestellungen</h3><p>Zur Abwicklung Ihrer Bestellung verarbeiten wir Name, Anschrift, E-Mail, Telefonnummer und Bestelldaten (Art. 6 Abs. 1 lit. b DSGVO). Daten werden bei Supabase (Frankfurt, EU) gespeichert; die Website läuft bei Cloudflare.</p>
+<h3>Entfernung für die Lieferung vor Ort</h3><p>Wenn Sie die Lieferung vor Ort wählen möchten, senden wir Straße, Postleitzahl und Ort an den Adressdienst von OpenStreetMap (Nominatim), um die Entfernung zu unserem Laden zu berechnen (Art. 6 Abs. 1 lit. b DSGVO). Name, E-Mail oder Telefonnummer werden dabei nicht übermittelt.</p>
 <h3>Zahlungsdienstleister</h3><p>Bei Zahlung über Stripe, PayPal oder Viva Wallet werden die zur Zahlung nötigen Daten an den jeweiligen Anbieter übermittelt.</p>
 <h3>E-Mail</h3><p>Bestellbestätigungen versenden wir über Resend.</p>
 <h3>Ihre Rechte</h3><p>Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch sowie das Recht auf Beschwerde bei einer Aufsichtsbehörde.</p>
@@ -73,12 +76,33 @@ export default async function LegalPage({ params }: { params: Promise<{ page: st
     );
   const p = PAGES[page];
   if (!p) notFound();
+  // business details from Admin → Account & receipts (missing ones stay visible as [brackets])
+  const [{ data: st }, lt] = await Promise.all([
+    supabaseAdmin().from("settings").select("key, value").in("key", ["public.store", "public.receipt"]),
+    getLocalTimes(),
+  ]);
+  const v = Object.assign({}, ...(st ?? []).map((r) => r.value as Record<string, string>)) as Record<string, string>;
+  const phone = (v.phone ?? "").replace(/^0(\d{3})(\d+)$/, "0$1 $2");
+  const fill: Record<string, string> = {
+    name: v.name || "Greenland Afro Asia Store",
+    owner: v.owner || "[Inhaber/in]",
+    street: v.street || "[Straße]",
+    postal: v.postal || "[PLZ]",
+    city: v.city || "[Ort]",
+    phone: phone || "[Telefon]",
+    email: v.email || "[E-Mail]",
+    vat_id: v.vat_id || "[DE…]",
+    tax_number: v.tax_number || "[Steuernummer]",
+    local_times: describeLocalTimes(lt, "de"),
+    cutoff: String(lt.cutoffMin),
+  };
+  const body = p.body.replace(/\{\{(\w+)\}\}/g, (_, k: string) => esc(fill[k] ?? ""));
   return (
     <article className="mx-auto max-w-3xl px-4 pt-12">
       <h1 className="h-section">{p.title}</h1>
       <div
         className="mt-8 space-y-4 text-[0.98rem] leading-relaxed [&_h3]:mt-8 [&_h3]:text-xl [&_h3]:font-bold"
-        dangerouslySetInnerHTML={{ __html: p.body }}
+        dangerouslySetInnerHTML={{ __html: body }}
       />
     </article>
   );
