@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useCart } from "./cart";
 import { money } from "@/lib/format";
-import { FreeShippingBar, Upsell } from "./cart-extras";
+import { GiftLine, PerksBar, Upsell } from "./cart-extras";
+import type { CartPerks } from "@/lib/perks";
 import { RecipeSuggestions } from "./recipe-suggestions";
 import { FrozenBoxes } from "./frozen-boxes";
 import type { FrozenPack } from "@/lib/frozen";
@@ -16,7 +17,7 @@ const T = {
   en: { cart: "Cart", empty: "Your cart is empty.", close: "Close", subtotal: "Subtotal", checkout: "Checkout", view: "View cart", remove: "Remove", note: "Incl. VAT, plus delivery" },
 };
 
-export function CartDrawer({ lang, frozen }: { lang: "de" | "en"; frozen: { pack: FrozenPack; courier: number | null } }) {
+export function CartDrawer({ lang, frozen, perks }: { lang: "de" | "en"; frozen: { pack: FrozenPack; courier: number | null }; perks: CartPerks }) {
   const { lines, subtotal, setQty, remove, drawerOpen, setDrawerOpen } = useCart();
   const t = T[lang];
   const panel = useRef<HTMLDivElement>(null);
@@ -55,7 +56,7 @@ export function CartDrawer({ lang, frozen }: { lang: "de" | "en"; frozen: { pack
             {lines.length ? (
               <>
                 <div className="space-y-3 py-4">
-                  <FreeShippingBar subtotal={subtotal} lang={lang} />
+                  <PerksBar subtotal={subtotal} perks={perks} lang={lang} />
                   <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} lang={lang} compact />
                 </div>
                 <ul className="divide-y divide-line border-y border-line">
@@ -79,6 +80,7 @@ export function CartDrawer({ lang, frozen }: { lang: "de" | "en"; frozen: { pack
                       </div>
                     </li>
                   ))}
+                  <GiftLine subtotal={subtotal} perks={perks} lang={lang} />
                 </ul>
                 <div className="space-y-8 py-6">
                   <RecipeSuggestions productIds={lines.map((l) => l.id)} lang={lang} compact />

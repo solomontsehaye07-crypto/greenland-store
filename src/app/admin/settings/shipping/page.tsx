@@ -4,8 +4,9 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { getFrozenPack, getPickupSettings, getShippingArea, pickupSlots } from "@/lib/commerce";
 import { getDhl } from "@/lib/dhl";
+import { getGiftSetting } from "@/lib/perks";
 import { Card, Notice, PageHead, SidePanel, Toggle } from "@/components/admin/ui";
-import { saveDhlSettings, saveFrozenPack, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
+import { saveDhlSettings, saveFrozenPack, saveGift, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,11 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
   const [stStreet, stHouse] = (st.street ?? "").match(/^(.*?)\s+(\d+\s?[a-zA-Z]?)$/)?.slice(1) ?? [st.street ?? "", ""];
   const snd = { name1: dhl.sender.name1 || st.name || "", name2: dhl.sender.name2, street: dhl.sender.street || stStreet, house: dhl.sender.house || stHouse, postal: dhl.sender.postal || st.postal || "", city: dhl.sender.city || st.city || "", email: dhl.sender.email || st.email || "" };
   const preview = (await pickupSlots(p)).slice(0, 4);
+  const gift = await getGiftSetting();
+  const { data: giftProduct } = gift.product_id
+    ? await supabaseAdmin().from("products").select("sku, title, title_de, slug, price, stock, status, is_dropship").eq("id", gift.product_id).maybeSingle()
+    : { data: null };
+  const freeFrom = Math.min(...methods.filter((m) => m.active && m.type !== "pickup" && m.free_from != null).map((m) => Number(m.free_from)));
   const editing: M | undefined = edit === "new" ? { type: "parcel", active: true, countries: ["DE"], price: 0, min_order: 0, sort: (methods.at(-1)?.sort ?? 0) + 10 } : methods.find((m) => String(m.id) === edit);
 
   return (
@@ -158,6 +164,33 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
         <form action={saveShippingArea} className="flex flex-wrap items-center justify-between gap-4">
           <Toggle name="abroad" defaultChecked={area.abroad} label="Deliver outside Germany" hint={area.abroad ? "On: customers can choose other countries at checkout." : "Off: checkout only accepts addresses in Germany."} />
           <button className="btn btn-primary">Save</button>
+        </form>
+      </Card>
+
+      <Card
+        className="mt-5"
+        title="Free gift in the cart"
+        text={`Customers see a progress bar in the cart with a stop for free delivery${Number.isFinite(freeFrom) ? ` (${money(freeFrom)}, from your delivery options)` : ""} and one for the gift. Once the cart reaches the value below, the gift is added to the order automatically at 0 €. It is counted before discount codes and only offered while the product is in stock.`}
+      >
+        <form action={saveGift} className="space-y-4">
+          <Toggle name="enabled" defaultChecked={gift.enabled} label="Give a free gift" />
+          <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
+            <div>
+              <label className="label" htmlFor="gift-product">Gift product – SKU or shop link</label>
+              <input id="gift-product" name="product" defaultValue={giftProduct?.sku || (giftProduct ? `/p/${giftProduct.slug}` : "")} placeholder="e.g. GL-0123 or https://greenland-afroasia.de/p/…" className="input" />
+            </div>
+            <div>
+              <label className="label" htmlFor="gift-threshold">From cart value (€)</label>
+              <input id="gift-threshold" name="threshold" inputMode="decimal" defaultValue={String(gift.threshold).replace(".", ",")} className="input" />
+            </div>
+          </div>
+          {giftProduct && (
+            <p className="text-sm">
+              Gift: <b>{giftProduct.title_de || giftProduct.title}</b> · worth {money(Number(giftProduct.price))} ·{" "}
+              {giftProduct.status !== "active" ? <span className="text-danger">product is not active – the gift is hidden</span> : giftProduct.is_dropship ? "dropship" : Number(giftProduct.stock) > 0 ? `${giftProduct.stock} in stock` : <span className="text-danger">out of stock – the gift is hidden until restocked</span>}
+            </p>
+          )}
+          <button className="btn btn-primary">Save free gift</button>
         </form>
       </Card>
 

@@ -4,6 +4,7 @@ import { getLang, tx } from "@/lib/i18n";
 import type { ShippingMethod } from "@/lib/types";
 import { CheckoutForm, type PayOption } from "./form";
 import { currentCustomer } from "@/lib/customer";
+import { getCartPerks } from "@/lib/perks";
 
 export const metadata = { title: "Checkout" };
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
     getFrozenPack(),
     getShippingArea(),
   ]);
-  const [slots, me] = await Promise.all([pickupSlots(pickup), currentCustomer()]);
+  const [slots, me, perks] = await Promise.all([pickupSlots(pickup), currentCustomer(), getCartPerks()]);
   const prefill = me ? { name: me.full_name ?? "", email: me.email, phone: me.phone ?? "", street: me.address?.street ?? "", postal: me.address?.postal ?? "", city: me.address?.city ?? "" } : undefined;
   const notice = sp.cancelled ? "Payment was cancelled. Your cart is still here." : sp.failed ? "Payment did not go through. Please try again or choose another method." : null;
   const NOTE: Record<string, string> = {
@@ -55,6 +56,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         pickupNote={tx(pickup.note, lang)}
         pickupAddress={tx(pickup.address, lang)}
         prefill={prefill}
+        gift={perks.gift}
       />
     </div>
   );

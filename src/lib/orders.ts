@@ -10,6 +10,7 @@ import { depositFor, getFrozenPack, getPaymentConfig, getShippingArea, pickupSlo
 import { buildReceiptPdf } from "./pdf";
 import { esc, siteUrl } from "./site";
 import { checkCoupon, consumeCoupon } from "./coupons";
+import { activeGift } from "./perks";
 
 export const CheckoutSchema = z.object({
   email: z.string().email(),
@@ -69,6 +70,9 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
     couponCode = chk.code;
     for (const l of lines) l.price = Math.floor(l.price * (1 - chk.percent_off / 100) * 100) / 100;
   }
+  // free gift: judged on the cart value before any discount code, exactly like the bar in the cart
+  const gift = await activeGift();
+  const giftLine = gift && listSubtotal >= gift.threshold ? gift : null;
   const subtotal = round2(lines.reduce((s, l) => s + l.price * l.qty, 0));
   const discountTotal = round2(listSubtotal - subtotal);
   const [{ data: methods }, pack, area] = await Promise.all([sb.from("shipping_methods").select("*").eq("active", true), getFrozenPack(), getShippingArea()]);
@@ -144,8 +148,13 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
       unit_price: l.price,
       tax_rate: l.tax_rate,
       is_dropship: l.is_dropship,
-    }))
+    })).concat(
+      giftLine
+        ? [{ order_id: order.id, product_id: giftLine.id, sku: giftLine.sku ?? "", title: `Geschenk / Free gift: ${giftLine.title_de || giftLine.title}`, qty: 1, unit_price: 0, tax_rate: giftLine.tax_rate, is_dropship: giftLine.is_dropship }]
+        : []
+    )
   );
+  // the gift is not part of `lines`: payment providers only get the items the customer pays for
   return { ...order, total, deposit, shipping_total: q.price, lines, method: q.method };
 }
 

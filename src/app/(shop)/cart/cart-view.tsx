@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { img } from "@/lib/img";
 import { useCart } from "@/components/cart";
 import { money } from "@/lib/format";
-import { FreeShippingBar, Upsell } from "@/components/cart-extras";
+import { GiftLine, PerksBar, Upsell } from "@/components/cart-extras";
+import type { CartPerks } from "@/lib/perks";
 import { RecipeSuggestions } from "@/components/recipe-suggestions";
 import { FrozenBoxes } from "@/components/frozen-boxes";
 import type { FrozenPack } from "@/lib/frozen";
@@ -13,7 +15,7 @@ const T = {
   en: { loading: "Loading cart…", empty: "Your cart is empty", emptySub: "Browse the categories or start with customer favourites.", start: "Go to the shop", cart: "Cart", each: "each", remove: "Remove", subtotal: "Subtotal", checkout: "Checkout", note: "Delivery is calculated at checkout. All prices incl. VAT.", frozen: "Frozen" },
 };
 
-export function CartView({ lang, frozen }: { lang: "de" | "en"; frozen: { pack: FrozenPack; courier: number | null } }) {
+export function CartView({ lang, frozen, perks }: { lang: "de" | "en"; frozen: { pack: FrozenPack; courier: number | null }; perks: CartPerks }) {
   const { lines, subtotal, setQty, remove, ready } = useCart();
   const t = T[lang];
   if (!ready) return <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted">{t.loading}</div>;
@@ -35,7 +37,7 @@ export function CartView({ lang, frozen }: { lang: "de" | "en"; frozen: { pack: 
             <li key={l.id} className="flex items-center gap-4 py-5">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-surface">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {l.image_url && <img src={l.image_url} alt="" className="h-full w-full object-cover mix-blend-multiply" />}
+                {l.image_url && <img src={img(l.image_url, 200)} alt="" className="h-full w-full object-cover mix-blend-multiply" />}
               </div>
               <div className="min-w-0 flex-1">
                 <Link href={`/p/${l.slug}`} className="line-clamp-2 text-sm hover:underline">{l.title}</Link>
@@ -50,10 +52,11 @@ export function CartView({ lang, frozen }: { lang: "de" | "en"; frozen: { pack: 
               <div className="hidden w-20 text-right text-sm font-medium sm:block">{money(l.price * l.qty)}</div>
             </li>
           ))}
+          <GiftLine subtotal={subtotal} perks={perks} lang={lang} size="lg" />
         </ul>
         <aside className="h-fit space-y-5 lg:sticky lg:top-24">
           <div className="flex justify-between text-sm"><span>{t.subtotal}</span><span className="font-semibold">{money(subtotal)}</span></div>
-          <FreeShippingBar subtotal={subtotal} lang={lang} />
+          <PerksBar subtotal={subtotal} perks={perks} lang={lang} />
           <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} lang={lang} />
           <Link href="/checkout" className="btn btn-primary w-full py-3">{t.checkout}</Link>
           <p className="text-center text-[0.6875rem] text-muted">{t.note}</p>

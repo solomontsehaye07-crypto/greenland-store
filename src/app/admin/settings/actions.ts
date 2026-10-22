@@ -264,3 +264,28 @@ export async function saveReceiptSettings(fd: FormData) {
   revalidatePath("/admin/settings");
   back("/admin/settings", "Saved.");
 }
+
+// ---------------- free gift ----------------
+
+/** One free gift above a cart value. The product is found by SKU or by its shop link (…/p/slug). */
+export async function saveGift(fd: FormData) {
+  await assertStaff(MANAGER_ROLES);
+  const enabled = on(fd, "enabled");
+  const threshold = dec(fd.get("threshold"));
+  const ref = txt(fd.get("product"));
+  const path = "/admin/settings/shipping";
+  if (threshold == null || threshold <= 0) back(path, "Please enter the cart value from which the gift is added.");
+  let productId: number | null = null;
+  if (ref) {
+    const slug = ref.match(/\/p\/([^/?#\s]+)/)?.[1];
+    const sb = supabaseAdmin();
+    const q = slug ? sb.from("products").select("id").eq("slug", decodeURIComponent(slug)) : sb.from("products").select("id").ilike("sku", ref);
+    const { data } = await q.limit(1).maybeSingle();
+    if (!data) back(path, `No product found for “${ref}”. Use the SKU or paste the product's shop link.`);
+    productId = data!.id;
+  }
+  if (enabled && !productId) back(path, "Please choose the gift product (SKU or shop link) before switching the gift on.");
+  await upsert("public.gift", { enabled, product_id: productId, threshold });
+  revalidatePath("/", "layout");
+  back(path, enabled ? "Free gift saved and switched on." : "Free gift saved (switched off).");
+}

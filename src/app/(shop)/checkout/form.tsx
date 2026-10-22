@@ -52,6 +52,7 @@ export function CheckoutForm({
   pickupNote,
   pickupAddress,
   prefill,
+  gift,
 }: {
   methods: ShippingMethod[];
   pack: FrozenPack;
@@ -66,6 +67,7 @@ export function CheckoutForm({
   pickupNote?: string;
   pickupAddress?: string;
   prefill?: Saved; // from the customer's account when signed in
+  gift?: import("@/lib/perks").CartPerks["gift"];
 }) {
   const { lines, subtotal, ready, clear } = useCart();
   // details from the last order on this device (only if the customer agreed to remember them)
@@ -82,12 +84,14 @@ export function CheckoutForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const quotes = useMemo(() => quoteShipping(methods, lines, subtotal, country, postal, pack), [methods, lines, subtotal, country, postal, pack]);
+  const discount = couponState?.ok && couponState.percent_off ? Math.round(subtotal * couponState.percent_off) / 100 : 0;
+  // the server judges "free delivery from" on the value after the discount code, so the page does too
+  const quotes = useMemo(() => quoteShipping(methods, lines, subtotal - discount, country, postal, pack), [methods, lines, subtotal, discount, country, postal, pack]);
+  const giftOn = !!gift && subtotal >= gift.threshold;
   const chosen = quotes.find((q) => q.method.code === code && q.available) ?? null;
   const isPickup = chosen?.method.type === "pickup";
   const cashAllowed = chosen ? (chosen.method.type === "pickup" && cashPickup) || (chosen.method.type === "local" && cashLocal) : false;
   const hasAlcohol = lines.some((l) => l.age_restricted);
-  const discount = couponState?.ok && couponState.percent_off ? Math.round(subtotal * couponState.percent_off) / 100 : 0;
   const total = subtotal - discount + (chosen?.price ?? 0);
   const checkCode = async (code: string, email: string) => {
     if (!code.trim()) return setCouponState(null);
@@ -313,6 +317,12 @@ export function CheckoutForm({
               <span className="shrink-0">{money(l.price * l.qty)}</span>
             </li>
           ))}
+          {giftOn && (
+            <li className="flex justify-between gap-3 text-forest">
+              <span className="line-clamp-1">1 × {gift!.title_de || gift!.title} <span className="text-xs">(Geschenk / gift)</span></span>
+              <span className="shrink-0 font-semibold">{money(0)}</span>
+            </li>
+          )}
         </ul>
         <div className="border-t border-line pt-4">
           <label className="label" htmlFor="coupon">Discount code</label>
