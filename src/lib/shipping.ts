@@ -28,7 +28,8 @@ export function quoteShipping(
   const hasFrozen = lines.some((l) => l.is_frozen);
 
   return methods
-    .filter((m) => m.active && m.type !== "dropship")
+    // the frozen express only makes sense for carts with frozen food
+    .filter((m) => m.active && m.type !== "dropship" && (m.type !== "frozen" || hasFrozen))
     .sort((a, b) => a.sort - b.sort)
     .map((m) => {
       let available = true;
@@ -48,7 +49,9 @@ export function quoteShipping(
       // Frozen goods travel only by frozen express (when switched on), local delivery or pickup
       if (hasFrozen && m.type === "parcel") {
         available = false;
-        reason = "Frozen food only by pickup or local delivery";
+        reason = methods.some((x) => x.active && x.type === "frozen")
+          ? "Your cart has frozen food – please choose frozen express, local delivery or pickup"
+          : "Frozen food only by pickup or local delivery";
       }
       const radius = Number(m.max_distance_km) || 0;
       if (m.type === "local" && radius > 0) {

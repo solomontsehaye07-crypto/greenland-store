@@ -37,6 +37,7 @@ export function FrozenBoxes({
   lines,
   pack,
   courier,
+  courierMin = 0,
   local,
   lang,
   compact = false,
@@ -44,6 +45,7 @@ export function FrozenBoxes({
   lines: CartLine[];
   pack: FrozenPack;
   courier: number | null; // price of the frozen courier per parcel
+  courierMin?: number; // minimum order value for the frozen courier
   local?: { radius: number; freeFrom: number | null; price: number } | null;
   lang: "de" | "en";
   compact?: boolean;
@@ -52,6 +54,8 @@ export function FrozenBoxes({
   if (w <= 0) return null;
   // no frozen courier: frozen food only by pickup or local delivery – say so plainly instead of showing boxes
   if (courier == null) return <FrozenLocalOnly local={local ?? null} lang={lang} />;
+  // flat-rate frozen express (no per-box packaging charge): explain the box instead of drawing it
+  if (!pack.enabled || (pack.boxPrice === 0 && !pack.perBoxShipping)) return <FrozenExpress courier={courier} min={courierMin} local={local ?? null} lang={lang} />;
   if (!pack.enabled) return null;
   const t = T[lang];
   const fills = boxFill(w, pack);
@@ -80,6 +84,33 @@ export function FrozenBoxes({
 
       <p className="mt-3 text-[0.6875rem] leading-relaxed text-muted">
         {courier != null ? t.price(money(pack.boxPrice), money(perBox)) : null} {t.pickup}
+      </p>
+    </section>
+  );
+}
+
+function FrozenExpress({ courier, min, local, lang }: { courier: number; min: number; local: { radius: number; freeFrom: number | null; price: number } | null; lang: "de" | "en" }) {
+  const de = lang === "de";
+  const r = local?.radius ? `${local.radius.toLocaleString("de-DE")} km` : null;
+  const free = local?.freeFrom != null ? money(local.freeFrom) : null;
+  return (
+    <section className="rounded-2xl border border-[#CFE3F2] bg-[#F3F9FD] p-4 text-[#14466B]">
+      <h3 className="flex items-center gap-2 text-sm font-semibold">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9" /></svg>
+        {de ? "Tiefkühlware im Warenkorb" : "Frozen food in your cart"}
+      </h3>
+      <p className="mt-1.5 text-xs leading-relaxed">
+        {de
+          ? "Wir verschicken sie in einer isolierten Styroporbox mit Trockeneis per DHL Express – in der Regel innerhalb von 24 Stunden bei dir, ohne dass die Kühlkette unterbrochen wird."
+          : "We ship it in an insulated polystyrene box with dry ice by DHL Express – usually with you within 24 hours, without breaking the cold chain."}
+      </p>
+      <p className="mt-2 text-xs leading-relaxed">
+        <b>{de ? `Pauschal ${money(courier)}` : `Flat rate ${money(courier)}`}</b>
+        {min > 0 ? (de ? ` · Mindestbestellwert ${money(min)}` : ` · minimum order ${money(min)}`) : ""}
+      </p>
+      <p className="mt-2 text-[0.6875rem] leading-relaxed text-muted">
+        {de ? "Oder kostenlos im Laden abholen" : "Or pick it up in store for free"}
+        {r ? (de ? `, bzw. Lieferung im Umkreis von ${r}${free ? ` (ab ${free} kostenlos)` : ""}` : `, or local delivery within ${r}${free ? ` (free from ${free})` : ""}`) : ""}.
       </p>
     </section>
   );

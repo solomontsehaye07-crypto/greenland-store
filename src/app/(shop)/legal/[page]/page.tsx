@@ -3,7 +3,7 @@ import { getPage } from "@/lib/content";
 import { getLang, tx } from "@/lib/i18n";
 import { Markdown } from "@/components/markdown";
 import { supabaseAdmin } from "@/lib/supabase";
-import { describeLocalTimes, getLocalTimes } from "@/lib/commerce";
+import { describeLocalTimes, getFrozenInfo, getLocalTimes } from "@/lib/commerce";
 import { esc } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ const PAGES: Record<string, { title: string; body: string }> = {
     title: "Delivery & pickup / Versand",
     body: `
 <h3>Versand in Deutschland</h3><p>DHL, 2–3 Werktage, 5,99 €. Ab 69 € Bestellwert kostenlos.</p>
-<h3>Tiefkühlware</h3><p>Damit die Kühlkette sicher bleibt, gibt es Tiefkühlware nur zur Abholung im Laden oder per eigener Lieferung im Umkreis von 5 km um unseren Laden. Kein Paketversand.</p>
+<h3>Tiefkühlware</h3><p>{{frozen}}</p>
 <h3>Lieferung vor Ort</h3><p>Wir liefern selbst im Umkreis von 5 km (Luftlinie, wird aus Ihrer Adresse berechnet): {{local_times}}. Bestellungen bis {{cutoff}} Minuten vor Beginn werden am selben Tag geliefert, spätere am nächsten Liefertag. 3,99 €, ab 69 € kostenlos. Zahlung online oder bar/mit Karte bei Lieferung.</p>
 <h3>Abholung</h3><p>Online bestellen und im Laden abholen ({{street}}, {{postal}} {{city}}) – immer kostenlos. Wir melden uns per WhatsApp, sobald Ihre Bestellung bereitliegt.</p>
 <h3>Alkohol</h3><p>Bier und Palmwein geben wir nur an Personen ab 18 Jahren ab. Bitte halten Sie einen Ausweis bereit.</p>`,
@@ -77,10 +77,17 @@ export default async function LegalPage({ params }: { params: Promise<{ page: st
   const p = PAGES[page];
   if (!p) notFound();
   // business details from Admin → Account & receipts (missing ones stay visible as [brackets])
-  const [{ data: st }, lt] = await Promise.all([
+  const [{ data: st }, lt, fz] = await Promise.all([
     supabaseAdmin().from("settings").select("key, value").in("key", ["public.store", "public.receipt"]),
     getLocalTimes(),
+    getFrozenInfo(),
   ]);
+  const eur = (n: number) => n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+  const near = fz.local?.radius ? ` oder per eigener Lieferung im Umkreis von ${fz.local.radius} km um unseren Laden` : "";
+  const frozenText =
+    fz.courier != null
+      ? `Tiefkühlware versenden wir deutschlandweit in einer isolierten Styroporbox mit Trockeneis per DHL Express, damit die Kühlkette nicht unterbrochen wird – in der Regel innerhalb von 24 Stunden bei Ihnen. Versandpauschale ${eur(fz.courier)}${fz.courierMin > 0 ? `, Mindestbestellwert ${eur(fz.courierMin)}` : ""}. Enthält Ihre Bestellung Tiefkühlware, wird die gesamte Bestellung so versendet. Alternativ: kostenlose Abholung im Laden${near}.`
+      : `Damit die Kühlkette sicher bleibt, gibt es Tiefkühlware nur zur Abholung im Laden${near}. Kein Paketversand.`;
   const v = Object.assign({}, ...(st ?? []).map((r) => r.value as Record<string, string>)) as Record<string, string>;
   const phone = (v.phone ?? "").replace(/^0(\d{3})(\d+)$/, "0$1 $2");
   const fill: Record<string, string> = {
@@ -95,6 +102,7 @@ export default async function LegalPage({ params }: { params: Promise<{ page: st
     tax_number: v.tax_number || "[Steuernummer]",
     local_times: describeLocalTimes(lt, "de"),
     cutoff: String(lt.cutoffMin),
+    frozen: frozenText,
   };
   const body = p.body.replace(/\{\{(\w+)\}\}/g, (_, k: string) => esc(fill[k] ?? ""));
   return (

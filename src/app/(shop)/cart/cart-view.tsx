@@ -57,7 +57,7 @@ export function CartView({ lang, frozen, perks }: { lang: "de" | "en"; frozen: F
         <aside className="h-fit space-y-5 lg:sticky lg:top-24">
           <div className="flex justify-between text-sm"><span>{t.subtotal}</span><span className="font-semibold">{money(subtotal)}</span></div>
           <PerksBar subtotal={subtotal} perks={perks} lang={lang} />
-          <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} local={frozen.local} lang={lang} />
+          <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} courierMin={frozen.courierMin} local={frozen.local} lang={lang} />
           <Link href="/checkout" className="btn btn-primary w-full py-3">{t.checkout}</Link>
           <p className="text-center text-[0.6875rem] text-muted">{t.note}</p>
         </aside>

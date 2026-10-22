@@ -57,7 +57,7 @@ export function CartDrawer({ lang, frozen, perks }: { lang: "de" | "en"; frozen:
               <>
                 <div className="space-y-3 py-4">
                   <PerksBar subtotal={subtotal} perks={perks} lang={lang} />
-                  <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} local={frozen.local} lang={lang} compact />
+                  <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} courierMin={frozen.courierMin} local={frozen.local} lang={lang} compact />
                 </div>
                 <ul className="divide-y divide-line border-y border-line">
                   {lines.map((l) => (

@@ -94,7 +94,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const facts = [
     p.is_frozen
       ? frozenInfo.courier != null
-        ? de ? "Tiefkühlware – Versand per Tiefkühl-Express, lokale Lieferung oder Abholung." : "Frozen – ships by frozen express, local delivery or pickup."
+        ? de
+          ? `Tiefkühlware – Versand per DHL Express in der Styroporbox mit Trockeneis (pauschal ${money(frozenInfo.courier)}${frozenInfo.courierMin > 0 ? `, ab ${money(frozenInfo.courierMin)} Bestellwert` : ""}), lokale Lieferung oder Abholung.`
+          : `Frozen – ships by DHL Express in an insulated box with dry ice (flat ${money(frozenInfo.courier)}${frozenInfo.courierMin > 0 ? `, minimum order ${money(frozenInfo.courierMin)}` : ""}), local delivery or pickup.`
         : de
           ? `Tiefkühlware – nur Abholung im Laden${frozenInfo.local?.radius ? ` oder Lieferung im Umkreis von ${frozenInfo.local.radius} km${frozenInfo.local.freeFrom != null ? ` (ab ${money(frozenInfo.local.freeFrom)} kostenlos)` : ""}` : ""}, kein Paketversand.`
           : `Frozen – pickup in store${frozenInfo.local?.radius ? ` or delivery within ${frozenInfo.local.radius} km${frozenInfo.local.freeFrom != null ? ` (free from ${money(frozenInfo.local.freeFrom)})` : ""}` : ""} only, no parcel shipping.`
