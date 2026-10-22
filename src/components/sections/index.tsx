@@ -465,7 +465,7 @@ function Story({ d, lang }: { d: D; lang: Lang }) {
           <h2 className="h-section text-[2rem] sm:text-[2.5rem]" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h2>
           <Markdown text={L(d.text, lang)} className={`mt-5 text-base ${dark ? "text-white/80" : "text-muted"}`} />
           {milestones.length > 0 && (
-            <ol className={`mt-8 grid gap-4 border-t pt-6 ${milestones.length >= 3 ? "sm:grid-cols-3" : milestones.length === 2 ? "sm:grid-cols-2" : ""} ${dark ? "border-white/20" : "border-line"}`}>
+            <ol className={`mt-8 grid gap-4 border-t pt-6 ${milestones.length === 3 ? "sm:grid-cols-3" : milestones.length >= 2 ? "sm:grid-cols-2" : ""} ${dark ? "border-white/20" : "border-line"}`}>
               {milestones.map((m, i) => (
                 <li key={i}>
                   <span className={`display block text-2xl font-semibold tabular-nums ${dark ? "text-saffron" : "text-forest"}`}>{String(m.year)}</span>
