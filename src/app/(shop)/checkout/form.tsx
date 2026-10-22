@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { lineUnit } from "@/lib/tiers";
 import { useCart } from "@/components/cart";
@@ -79,6 +79,36 @@ export function CheckoutForm({
   const [couponBusy, setCouponBusy] = useState(false);
   const [country, setCountry] = useState("DE");
   const [postal, setPostal] = useState(saved.postal ?? "");
+  const [street, setStreet] = useState(saved.street ?? "");
+  const [city, setCity] = useState(saved.city ?? "");
+  // km from the shop (local delivery within a radius): undefined = not checked, null = address not found
+  const [distanceKm, setDistanceKm] = useState<number | null | undefined>(undefined);
+  const [measuring, setMeasuring] = useState(false);
+  const needsDistance = methods.some((m) => m.type === "local" && Number(m.max_distance_km) > 0);
+  useEffect(() => {
+    if (!needsDistance) return;
+    if (!/^\d{5}$/.test(postal) || street.trim().length < 3 || city.trim().length < 2) {
+      setDistanceKm(undefined);
+      return;
+    }
+    let alive = true;
+    const t = setTimeout(async () => {
+      setMeasuring(true);
+      try {
+        const r = await fetch("/api/distance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ street, postal, city, country }) });
+        const j = await r.json();
+        if (alive) setDistanceKm(typeof j.km === "number" ? j.km : null);
+      } catch {
+        if (alive) setDistanceKm(null);
+      } finally {
+        if (alive) setMeasuring(false);
+      }
+    }, 700);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [needsDistance, street, postal, city, country]);
   const [code, setCode] = useState<string>("");
   const [payment, setPayment] = useState<Provider>(options[0]?.id ?? "cash");
   const [depositProvider, setDepositProvider] = useState(online[0]?.id);
@@ -94,7 +124,7 @@ export function CheckoutForm({
   const couponCut = cut("coupon");
   const discount = Math.round((tierCut + couponCut) * 100) / 100;
   // the server judges "free delivery from" on the value after the discount code, so the page does too
-  const quotes = useMemo(() => quoteShipping(methods, lines, subtotal - discount, country, postal, pack), [methods, lines, subtotal, discount, country, postal, pack]);
+  const quotes = useMemo(() => quoteShipping(methods, lines, subtotal - discount, country, postal, pack, distanceKm), [methods, lines, subtotal, discount, country, postal, pack, distanceKm]);
   const giftOn = !!gift && subtotal - discount >= gift.threshold;
   const chosen = quotes.find((q) => q.method.code === code && q.available) ?? null;
   const isPickup = chosen?.method.type === "pickup";
@@ -218,11 +248,25 @@ export function CheckoutForm({
                 </>
               )}
             </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="street">Street and house number{isPickup ? " (optional for pickup)" : ""}</label>
+              <input id="street" name="street" required={!isPickup} value={street} onChange={(e) => setStreet(e.target.value)} autoComplete="shipping street-address" className="input" />
+            </div>
             <div>
               <label className="label" htmlFor="postal">Postcode</label>
               <input id="postal" value={postal} onChange={(e) => setPostal(e.target.value.trim())} autoComplete="shipping postal-code" inputMode="numeric" className="input" />
             </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="city">City</label>
+              <input id="city" name="city" required={!isPickup} value={city} onChange={(e) => setCity(e.target.value)} autoComplete="shipping address-level2" className="input" />
+            </div>
           </div>
+          {needsDistance && (measuring || typeof distanceKm === "number") && (
+            <p className="mt-2 flex items-center gap-2 text-sm text-muted" role="status">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><path d="M12 21s-7-6.2-7-11a7 7 0 1114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
+              {measuring ? "Checking the distance to our shop …" : `${distanceKm!.toLocaleString("de-DE")} km from our shop (straight line)`}
+            </p>
+          )}
           <div className="mt-5 space-y-2" role="radiogroup" aria-label="Delivery option">
             {quotes.map((q) => (
               <label
@@ -245,18 +289,7 @@ export function CheckoutForm({
               </label>
             ))}
           </div>
-          {chosen && !isPickup && (
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              <div className="sm:col-span-3">
-                <label className="label" htmlFor="street">Street and house number</label>
-                <input id="street" name="street" required autoComplete="shipping street-address" defaultValue={saved.street} className="input" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="label" htmlFor="city">City</label>
-                <input id="city" name="city" required autoComplete="shipping address-level2" defaultValue={saved.city} className="input" />
-              </div>
-            </div>
-          )}
+
           {isPickup && (
             <div className="mt-5 max-w-md space-y-2">
               <label className="label" htmlFor="pickup_at">Pickup time</label>

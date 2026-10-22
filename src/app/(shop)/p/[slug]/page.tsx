@@ -9,7 +9,7 @@ import { ReviewForm, Stars } from "@/components/reviews";
 import { getCartPerks } from "@/lib/perks";
 import { getReviews, myReview } from "@/lib/reviews";
 import { currentCustomer } from "@/lib/customer";
-import { getPaymentConfig } from "@/lib/commerce";
+import { getFrozenInfo, getPaymentConfig } from "@/lib/commerce";
 import { img } from "@/lib/img";
 import type { CardProduct } from "@/lib/catalog";
 import { ProductCard } from "@/components/product-card";
@@ -53,7 +53,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const cat = cats.find((c) => c.id === p.category_id);
   const parent = cat?.parent_id ? cats.find((c) => c.id === cat.parent_id) : null;
   const catT = (c: { title: string; title_de: string | null }) => (de && c.title_de) || c.title;
-  const [related, favourites, perks, reviews, me, pay, sizes] = await Promise.all([
+  const [related, favourites, perks, reviews, me, pay, sizes, frozenInfo] = await Promise.all([
     cat ? getProductsInCategories([cat.id], { limit: 13 }).then((r) => r.products.filter((x) => x.id !== p.id && x.stock > 0).slice(0, 10)) : Promise.resolve([]),
     getBestsellers(10),
     getCartPerks(),
@@ -63,6 +63,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     p.size_group
       ? supabasePublic().from("products").select("id, slug, title, title_de, price, size_qty, size_unit, stock").eq("status", "active").eq("size_group", p.size_group).order("size_qty", { ascending: true, nullsFirst: false }).limit(8).then((r) => r.data ?? [])
       : Promise.resolve([]),
+    getFrozenInfo(),
   ]);
   const mine = me ? await myReview(me.id, p.id) : null;
   const size = sizeLabel(p.size_qty, p.size_unit);
@@ -90,7 +91,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     aggregateRating: reviews.count ? { "@type": "AggregateRating", ratingValue: reviews.avg, reviewCount: reviews.count } : undefined,
   };
   const facts = [
-    p.is_frozen ? (de ? "Tiefkühlware – Versand per Tiefkühl-Express, lokale Lieferung oder Abholung." : "Frozen – ships by frozen express, local delivery or pickup.") : null,
+    p.is_frozen
+      ? frozenInfo.courier != null
+        ? de ? "Tiefkühlware – Versand per Tiefkühl-Express, lokale Lieferung oder Abholung." : "Frozen – ships by frozen express, local delivery or pickup."
+        : de
+          ? `Tiefkühlware – nur Abholung im Laden${frozenInfo.local?.radius ? ` oder Lieferung im Umkreis von ${frozenInfo.local.radius} km${frozenInfo.local.freeFrom != null ? ` (ab ${money(frozenInfo.local.freeFrom)} kostenlos)` : ""}` : ""}, kein Paketversand.`
+          : `Frozen – pickup in store${frozenInfo.local?.radius ? ` or delivery within ${frozenInfo.local.radius} km${frozenInfo.local.freeFrom != null ? ` (free from ${money(frozenInfo.local.freeFrom)})` : ""}` : ""} only, no parcel shipping.`
+      : null,
     p.age_restricted ? (de ? "Ab 18 – wir prüfen das Alter bei Lieferung und Abholung." : "18+ – we check age on delivery and pickup.") : null,
   ].filter(Boolean) as string[];
   const freeLine = perks.freeFrom ? (de ? ` · ab ${money(perks.freeFrom)} versandkostenfrei` : ` · free from ${money(perks.freeFrom)}`) : "";

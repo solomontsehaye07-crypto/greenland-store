@@ -22,7 +22,7 @@ export async function Footer() {
   const service = [
     { icon: "truck", title: de ? "Lieferung in 2–3 Tagen" : "Delivery in 2–3 days", text: perks.freeFrom ? (de ? `ab ${money(perks.freeFrom)} versandkostenfrei` : `free from ${money(perks.freeFrom)}`) : de ? "deutschlandweit" : "across Germany" },
     { icon: "bag", title: de ? "Kostenlos abholen" : "Free pickup", text: de ? "in Kaiserslautern" : "in Kaiserslautern" },
-    { icon: "snow", title: de ? "Tiefkühl-Express" : "Frozen express", text: de ? "im Isolierkarton" : "in an insulated box" },
+    { icon: "snow", title: de ? "Tiefkühlware" : "Frozen food", text: de ? "Abholung oder Lieferung vor Ort" : "pickup or local delivery" },
     { icon: "whatsapp", title: de ? "Fragen? WhatsApp" : "Questions? WhatsApp", text: de ? "wir antworten schnell" : "we reply fast" },
   ];
   const name = site.name || "Greenland Afro Asia Store";

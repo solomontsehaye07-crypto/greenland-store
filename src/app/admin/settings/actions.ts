@@ -52,6 +52,7 @@ export async function saveShippingMethod(fd: FormData) {
     max_weight_g: Math.round((dec(fd.get("max_weight_kg")) ?? 0) * 1000) || null,
     countries: txt(fd.get("countries")).toUpperCase().split(/[\s,]+/).filter((c) => /^[A-Z]{2}$/.test(c)),
     postal_prefixes: txt(fd.get("postal_prefixes")).split(/[\s,]+/).filter(Boolean),
+    max_distance_km: dec(fd.get("max_distance_km")),
     active: on(fd, "active"),
     sort: Number(fd.get("sort")) || 0,
   };

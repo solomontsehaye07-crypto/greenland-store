@@ -10,14 +10,14 @@ import { GiftLine, LinePrice, PerksBar, Upsell } from "./cart-extras";
 import type { CartPerks } from "@/lib/perks";
 import { RecipeSuggestions } from "./recipe-suggestions";
 import { FrozenBoxes } from "./frozen-boxes";
-import type { FrozenPack } from "@/lib/frozen";
+import type { FrozenInfo } from "@/lib/commerce";
 
 const T = {
   de: { cart: "Warenkorb", empty: "Dein Warenkorb ist leer.", close: "Schließen", subtotal: "Zwischensumme", checkout: "Zur Kasse", view: "Warenkorb ansehen", remove: "Entfernen", note: "Inkl. MwSt., zzgl. Versand" },
   en: { cart: "Cart", empty: "Your cart is empty.", close: "Close", subtotal: "Subtotal", checkout: "Checkout", view: "View cart", remove: "Remove", note: "Incl. VAT, plus delivery" },
 };
 
-export function CartDrawer({ lang, frozen, perks }: { lang: "de" | "en"; frozen: { pack: FrozenPack; courier: number | null }; perks: CartPerks }) {
+export function CartDrawer({ lang, frozen, perks }: { lang: "de" | "en"; frozen: FrozenInfo; perks: CartPerks }) {
   const { lines, subtotal, setQty, remove, drawerOpen, setDrawerOpen } = useCart();
   const t = T[lang];
   const panel = useRef<HTMLDivElement>(null);
@@ -57,7 +57,7 @@ export function CartDrawer({ lang, frozen, perks }: { lang: "de" | "en"; frozen:
               <>
                 <div className="space-y-3 py-4">
                   <PerksBar subtotal={subtotal} perks={perks} lang={lang} />
-                  <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} lang={lang} compact />
+                  <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} local={frozen.local} lang={lang} compact />
                 </div>
                 <ul className="divide-y divide-line border-y border-line">
                   {lines.map((l) => (

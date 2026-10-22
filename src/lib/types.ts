@@ -60,6 +60,8 @@ export interface ShippingMethod {
   max_weight_g: number | null;
   countries: string[];
   postal_prefixes: string[] | null;
+  /** local delivery: only within this straight-line distance of the shop */
+  max_distance_km?: number | null;
   active: boolean;
   sort: number;
 }

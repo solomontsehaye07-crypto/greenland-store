@@ -12,6 +12,7 @@ import { esc, siteUrl } from "./site";
 import { checkCoupon, consumeCoupon } from "./coupons";
 import { activeGift, getQtyTiers } from "./perks";
 import { lineUnit } from "./tiers";
+import { distanceFromShop } from "./geo";
 
 export const CheckoutSchema = z.object({
   email: z.string().email(),
@@ -89,7 +90,10 @@ export async function createOrder(input: CheckoutInput, customerId: string | nul
   const discountTotal = round2(listSubtotal - subtotal);
   const [{ data: methods }, pack, area] = await Promise.all([sb.from("shipping_methods").select("*").eq("active", true), getFrozenPack(), getShippingArea()]);
   if (!area.abroad && input.country !== "DE") throw new Error("We currently deliver within Germany only. Pickup in store is always possible.");
-  const quotes = quoteShipping((methods ?? []) as ShippingMethod[], lines, subtotal, input.country, input.postal, pack);
+  // local delivery within a radius: measure the address on the server too (the page's number is not trusted)
+  const picked = ((methods ?? []) as ShippingMethod[]).find((m) => m.code === input.shipping_code);
+  const km = picked?.type === "local" && Number(picked.max_distance_km) > 0 ? await distanceFromShop({ street: input.street, postal: input.postal, city: input.city, country: input.country }) : undefined;
+  const quotes = quoteShipping((methods ?? []) as ShippingMethod[], lines, subtotal, input.country, input.postal, pack, km);
   const q = quotes.find((x) => x.method.code === input.shipping_code);
   if (!q || !q.available) throw new Error(q?.reason ?? "Please choose a delivery option.");
   if (q.method.type !== "pickup" && (!input.street || !input.postal || !input.city))

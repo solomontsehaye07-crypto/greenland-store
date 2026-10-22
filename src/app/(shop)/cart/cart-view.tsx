@@ -8,14 +8,14 @@ import { GiftLine, LinePrice, PerksBar, Upsell } from "@/components/cart-extras"
 import type { CartPerks } from "@/lib/perks";
 import { RecipeSuggestions } from "@/components/recipe-suggestions";
 import { FrozenBoxes } from "@/components/frozen-boxes";
-import type { FrozenPack } from "@/lib/frozen";
+import type { FrozenInfo } from "@/lib/commerce";
 
 const T = {
   de: { loading: "Warenkorb wird geladen …", empty: "Dein Warenkorb ist leer", emptySub: "Stöbere in unseren Kategorien oder fang mit den Kundenlieblingen an.", start: "Zum Shop", cart: "Warenkorb", each: "pro Stück", remove: "Entfernen", subtotal: "Zwischensumme", checkout: "Zur Kasse", note: "Versand wird an der Kasse berechnet. Alle Preise inkl. MwSt.", frozen: "Tiefkühl" },
   en: { loading: "Loading cart…", empty: "Your cart is empty", emptySub: "Browse the categories or start with customer favourites.", start: "Go to the shop", cart: "Cart", each: "each", remove: "Remove", subtotal: "Subtotal", checkout: "Checkout", note: "Delivery is calculated at checkout. All prices incl. VAT.", frozen: "Frozen" },
 };
 
-export function CartView({ lang, frozen, perks }: { lang: "de" | "en"; frozen: { pack: FrozenPack; courier: number | null }; perks: CartPerks }) {
+export function CartView({ lang, frozen, perks }: { lang: "de" | "en"; frozen: FrozenInfo; perks: CartPerks }) {
   const { lines, subtotal, setQty, remove, ready } = useCart();
   const t = T[lang];
   if (!ready) return <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted">{t.loading}</div>;
@@ -57,7 +57,7 @@ export function CartView({ lang, frozen, perks }: { lang: "de" | "en"; frozen: {
         <aside className="h-fit space-y-5 lg:sticky lg:top-24">
           <div className="flex justify-between text-sm"><span>{t.subtotal}</span><span className="font-semibold">{money(subtotal)}</span></div>
           <PerksBar subtotal={subtotal} perks={perks} lang={lang} />
-          <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} lang={lang} />
+          <FrozenBoxes lines={lines} pack={frozen.pack} courier={frozen.courier} local={frozen.local} lang={lang} />
           <Link href="/checkout" className="btn btn-primary w-full py-3">{t.checkout}</Link>
           <p className="text-center text-[0.6875rem] text-muted">{t.note}</p>
         </aside>

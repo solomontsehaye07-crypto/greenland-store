@@ -20,7 +20,9 @@ export function quoteShipping(
   subtotal: number,
   country = "DE",
   postal = "",
-  pack?: FrozenPack
+  pack?: FrozenPack,
+  /** km from the shop to the delivery address: undefined = not checked yet, null = address not found */
+  distanceKm?: number | null
 ): ShippingQuote[] {
   const weight = lines.reduce((s, l) => s + l.weight_g * l.qty, 0);
   const hasFrozen = lines.some((l) => l.is_frozen);
@@ -43,12 +45,25 @@ export function quoteShipping(
         available = false;
         reason = `Minimum order ${m.min_order.toFixed(2)} €`;
       }
-      // Frozen goods travel only by frozen express, local delivery or pickup
+      // Frozen goods travel only by frozen express (when switched on), local delivery or pickup
       if (hasFrozen && m.type === "parcel") {
         available = false;
-        reason = "Your cart contains frozen food – choose frozen express, local delivery or pickup";
+        reason = "Frozen food only by pickup or local delivery";
       }
-      if (m.type === "local" && m.postal_prefixes?.length && postal) {
+      const radius = Number(m.max_distance_km) || 0;
+      if (m.type === "local" && radius > 0) {
+        if (distanceKm === undefined) {
+          available = false;
+          reason = `Enter your address – we deliver within ${radius} km of our shop`;
+        } else if (distanceKm === null) {
+          available = false;
+          reason = "We could not find this address – please check it or choose pickup";
+        } else if (distanceKm > radius) {
+          available = false;
+          reason = `${distanceKm.toLocaleString("de-DE")} km away – local delivery only within ${radius} km`;
+        }
+      }
+      if (m.type === "local" && !radius && m.postal_prefixes?.length && postal) {
         if (!m.postal_prefixes.some((p) => postal.startsWith(p))) {
           available = false;
           reason = "Outside our local delivery area";

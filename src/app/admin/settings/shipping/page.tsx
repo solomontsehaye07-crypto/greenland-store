@@ -64,7 +64,7 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
                 <Link href={`/admin/settings/shipping?edit=${m.id}`} scroll={false} className="min-w-0 flex-1 rounded-lg px-1 py-0.5 hover:bg-surface">
                   <span className="block truncate text-sm font-medium">{m.name_de || m.name}</span>
                   <span className="block truncate text-xs text-muted">
-                    {TYPE_LABEL[m.type] ?? m.type}{m.carrier ? ` · ${m.carrier}` : ""} · {Number(m.price) ? money(m.price) : "free"}{m.free_from != null ? ` · free from ${money(m.free_from)}` : ""}{Number(m.min_order) ? ` · min. ${money(m.min_order)}` : ""}
+                    {TYPE_LABEL[m.type] ?? m.type}{m.carrier ? ` · ${m.carrier}` : ""} · {Number(m.price) ? money(m.price) : "free"}{m.free_from != null ? ` · free from ${money(m.free_from)}` : ""}{m.max_distance_km ? ` · within ${String(m.max_distance_km).replace(".", ",")} km` : ""}{Number(m.min_order) ? ` · min. ${money(m.min_order)}` : ""}
                   </span>
                 </Link>
                 <form action={toggleShippingMethod}>
@@ -291,7 +291,8 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
               <div><label className="label" htmlFor="eta">Delivery time</label><input id="eta" name="eta" defaultValue={editing.eta ?? ""} placeholder="1–3 days" className="input" /></div>
               <div><label className="label" htmlFor="sort">Order in the list</label><input id="sort" name="sort" type="number" defaultValue={editing.sort ?? 0} className="input" /></div>
               <div><label className="label" htmlFor="countries">Countries (codes)</label><input id="countries" name="countries" defaultValue={(editing.countries ?? ["DE"]).join(", ")} placeholder="DE, AT, NL" className="input" /></div>
-              <div><label className="label" htmlFor="postal_prefixes">Postcodes (local delivery)</label><input id="postal_prefixes" name="postal_prefixes" defaultValue={(editing.postal_prefixes ?? []).join(", ")} placeholder="676, 6765" className="input" /></div>
+              <div><label className="label" htmlFor="max_distance_km">Local delivery: radius around the shop (km)</label><input id="max_distance_km" name="max_distance_km" inputMode="decimal" defaultValue={editing.max_distance_km != null ? String(editing.max_distance_km).replace(".", ",") : ""} placeholder="e.g. 5 – checked from the customer's address" className="input" /></div>
+              <div><label className="label" htmlFor="postal_prefixes">Postcodes (local delivery, only used without a radius)</label><input id="postal_prefixes" name="postal_prefixes" defaultValue={(editing.postal_prefixes ?? []).join(", ")} placeholder="676, 6765" className="input" /></div>
             </div>
             <Toggle name="active" defaultChecked={editing.active} label="Offer at checkout" />
             <div className="fixed bottom-0 right-0 z-10 w-full max-w-xl border-t border-line bg-white/95 px-5 py-3 backdrop-blur">

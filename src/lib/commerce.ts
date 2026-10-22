@@ -16,12 +16,21 @@ export async function getShippingArea(): Promise<{ abroad: boolean }> {
 }
 
 /** Packaging settings plus the frozen courier price, for the cart illustration. */
-export async function getFrozenInfo(): Promise<{ pack: FrozenPack; courier: number | null }> {
-  const [pack, { data }] = await Promise.all([
+export type LocalDelivery = { radius: number; freeFrom: number | null; price: number };
+export type FrozenInfo = { pack: FrozenPack; courier: number | null; local: LocalDelivery | null };
+
+export async function getFrozenInfo(): Promise<FrozenInfo> {
+  const [pack, { data }, { data: loc }] = await Promise.all([
     getFrozenPack(),
     supabaseAdmin().from("shipping_methods").select("price").eq("type", "frozen").eq("active", true).order("price").limit(1),
+    supabaseAdmin().from("shipping_methods").select("price, free_from, max_distance_km").eq("type", "local").eq("active", true).order("price").limit(1),
   ]);
-  return { pack, courier: data?.[0] ? Number(data[0].price) : null };
+  const l = loc?.[0];
+  return {
+    pack,
+    courier: data?.[0] ? Number(data[0].price) : null,
+    local: l ? { radius: Number(l.max_distance_km) || 0, freeFrom: l.free_from != null ? Number(l.free_from) : null, price: Number(l.price) } : null,
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
