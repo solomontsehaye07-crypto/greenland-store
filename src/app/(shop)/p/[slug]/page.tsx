@@ -304,7 +304,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             <h2 className="h-section">{ui("youMayLike", lang)}</h2>
             {cat && <Link href={`/c/${cat.slug}`} className="link-more">{ui("seeAll", lang)}</Link>}
           </div>
-          <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }}>
+          <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }} motion="step">
             {related.map((r) => <ProductCard key={r.id} p={r} lang={lang} />)}
           </Rail>
         </section>
@@ -312,7 +312,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       {favourites.length > 0 && (
         <section className="reveal mt-20">
           <h2 className="h-section mb-7">{ui("favourites", lang)}</h2>
-          <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }}>
+          <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }} motion="glide">
             {favourites.filter((f) => f.id !== p.id).map((r) => <ProductCard key={r.id} p={r} lang={lang} />)}
           </Rail>
         </section>

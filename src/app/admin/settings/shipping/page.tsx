@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { money } from "@/lib/format";
 import { getFrozenPack, getPickupSettings, getShippingArea, pickupSlots } from "@/lib/commerce";
 import { getDhl } from "@/lib/dhl";
-import { getGiftSetting, getQtyTiers } from "@/lib/perks";
+import { getGiftSetting, getQtyTiers, nationwideFreeFrom } from "@/lib/perks";
 import { Card, Notice, PageHead, SidePanel, Toggle } from "@/components/admin/ui";
 import { saveDhlSettings, saveFrozenPack, saveGift, saveQtyTiers, saveShippingArea, savePickup, saveShippingMethod, toggleShippingMethod } from "../actions";
 
@@ -44,7 +44,7 @@ export default async function ShippingSettings({ searchParams }: { searchParams:
   const { data: giftProduct } = gift.product_id
     ? await supabaseAdmin().from("products").select("sku, title, title_de, slug, price, stock, status, is_dropship").eq("id", gift.product_id).maybeSingle()
     : { data: null };
-  const freeFrom = Math.min(...methods.filter((m) => m.active && m.type !== "pickup" && m.free_from != null).map((m) => Number(m.free_from)));
+  const freeFrom = nationwideFreeFrom(methods.filter((m) => m.active && m.free_from != null) as { free_from: unknown; type: string; countries?: string[] }[]) ?? NaN;
   const editing: M | undefined = edit === "new" ? { type: "parcel", active: true, countries: ["DE"], price: 0, min_order: 0, sort: (methods.at(-1)?.sort ?? 0) + 10 } : methods.find((m) => String(m.id) === edit);
 
   return (

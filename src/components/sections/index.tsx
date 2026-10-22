@@ -13,9 +13,10 @@ import { Icon } from "../icons";
 import { img, imgSet } from "@/lib/img";
 import { Markdown } from "../markdown";
 import { ProductCard, ProductGrid } from "../product-card";
-import { Rail } from "./rail";
+import { AutoScrollList, Rail, type RailMotion } from "./rail";
 import { NewsletterForm } from "./newsletter-form";
 import { getGoogleReviews } from "@/lib/google-reviews";
+import { nationwideFreeFrom } from "@/lib/perks";
 import { Stars } from "../reviews";
 
 type D = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -75,11 +76,67 @@ function Head({ title, text, lang, link, center }: { title?: unknown; text?: unk
 }
 
 // ---------- hero: headline on deep green, three columns of products drifting past ----------
-/** Headline split into words that rise one after another (see .hero-in in globals.css). */
-const words = (t: string) =>
-  t.split(/(\s+)/).map((w, i) =>
-    /^\s+$/.test(w) ? w : <span key={i} style={{ animationDelay: `${0.12 + i * 0.045}s` }}>{w}</span>
+/**
+ * Headline as fixed lines, so it never jumps between one and two lines while the web font loads.
+ * A line break typed in the title wins; otherwise the words are split into two balanced lines.
+ * Each word rises in on its own (see .hero-in in globals.css).
+ */
+const words = (t: string) => {
+  const typed = t.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  let lines = typed;
+  if (typed.length === 1) {
+    const w = typed[0].split(/\s+/);
+    if (w.length > 1) {
+      const total = typed[0].length;
+      let best = 1;
+      let bestDiff = Infinity;
+      for (let i = 1; i < w.length; i++) {
+        const diff = Math.abs(w.slice(0, i).join(" ").length * 2 - total);
+        if (diff < bestDiff) [best, bestDiff] = [i, diff];
+      }
+      lines = [w.slice(0, best).join(" "), w.slice(best).join(" ")];
+    }
+  }
+  let n = 0;
+  return lines.map((line, li) => (
+    <span key={li} className="hero-line">
+      {line.split(/\s+/).map((word, wi) => (
+        <span key={wi} className="hero-word" style={{ animationDelay: `${0.12 + n++ * 0.06}s` }}>
+          {word}
+          {wi < line.split(/\s+/).length - 1 ? "\u00a0" : ""}
+        </span>
+      ))}
+    </span>
+  ));
+};
+
+/** Background photos that fade into each other (hero setting "slides"). Builds its own keyframes for any count. */
+function HeroSlides({ slides }: { slides: { image: string; position?: string }[] }) {
+  const n = slides.length;
+  const each = 7; // seconds per photo
+  const fade = (1.6 / (n * each)) * 100;
+  const show = 100 / n;
+  const css = `@keyframes hero-slide-${n}{0%{opacity:0;transform:scale(1.1)}${fade.toFixed(2)}%{opacity:1}${show.toFixed(2)}%{opacity:1}${(show + fade).toFixed(2)}%{opacity:0;transform:scale(1)}100%{opacity:0;transform:scale(1)}}`;
+  return (
+    <div className="hero-slides" aria-hidden>
+      <style dangerouslySetInnerHTML={{ __html: css }} />
+      {slides.map((sl, i) => (
+        <div
+          key={sl.image + i}
+          className="hero-slide"
+          style={{
+            backgroundImage: `url("${img(sl.image, 1800).replace(/"/g, "%22")}")`,
+            backgroundPosition: sl.position || "center",
+            animation: `hero-slide-${n} ${n * each}s linear infinite`,
+            animationDelay: `${i * each}s`,
+            // the first photo is there from the start, before any animation runs
+            opacity: i === 0 ? 1 : 0,
+          }}
+        />
+      ))}
+    </div>
   );
+}
 
 async function Hero({ d, lang }: { d: D; lang: Lang }) {
   let strip: { image: string; href?: string; label?: string }[] = (d.images ?? []).filter((x: D) => x.image);
@@ -88,16 +145,16 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
     showProducts && d.autoFill !== false && strip.length < 18 ? getRecommended(24 - strip.length) : Promise.resolve([]),
     getCountryCounts(),
     supabasePublic().from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
-    supabasePublic().from("shipping_methods").select("free_from, type").eq("active", true).not("free_from", "is", null),
+    supabasePublic().from("shipping_methods").select("free_from, type, countries").eq("active", true).not("free_from", "is", null),
   ]);
   strip = [...strip, ...rec.filter((p) => p.image_url).map((p) => ({ image: p.image_url as string, href: `/p/${p.slug}`, label: lang === "de" ? p.title_de || p.title : p.title }))];
   const cols = [0, 1, 2].map((c) => strip.filter((_, i) => i % 3 === c));
   const products = count ?? 0;
-  const freeFrom = Math.min(...(ship ?? []).filter((m) => m.type !== "pickup").map((m) => Number(m.free_from)));
+  const freeFrom = nationwideFreeFrom(ship ?? []) ?? NaN;
   const stats = [
     { n: products > 50 ? `${Math.floor(products / 50) * 50}+` : String(products), l: lang === "de" ? "Produkte" : "products" },
     { n: String(countries.length), l: lang === "de" ? "Herkunftsländer" : "countries of origin" },
-    ...(Number.isFinite(freeFrom) ? [{ n: `${freeFrom.toLocaleString("de-DE")} €`, l: lang === "de" ? "ab hier versandkostenfrei" : "free delivery from here" }] : []),
+    ...(Number.isFinite(freeFrom) ? [{ n: `${lang === "de" ? "ab" : "from"} ${freeFrom.toLocaleString("de-DE")} €`, l: lang === "de" ? "versandkostenfrei" : "free delivery" }] : []),
   ];
 
   const tile = (im: { image: string; href?: string; label?: string }, key: string, hidden: boolean, cls: string) => (
@@ -109,12 +166,14 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
     </li>
   );
   const moving = showProducts && strip.length >= 6 && !d.photoHero;
+  const slides: { image: string; position?: string }[] = (d.slides ?? []).filter((x: D) => typeof x?.image === "string" && /^https?:\/\//.test(x.image)).slice(0, 5);
 
   if (d.photoHero !== false && !moving) {
     // full-bleed photo hero: headline bottom-left over the picture, like a food magazine cover
     return (
-      <section className="hero hero-photo-layout">
+      <section className={`hero hero-photo-layout ${slides.length > 1 ? "has-slides" : ""}`}>
         <div className="hero-photo" aria-hidden />
+        {slides.length > 1 && <HeroSlides slides={slides} />}
         <div className={`${WRAP} relative flex min-h-[34rem] flex-col justify-end pb-12 pt-28 sm:min-h-[38rem] lg:min-h-[44rem] lg:pb-16`}>
           <div className="hero-in max-w-2xl">
             <h1 className="hero-title hero-title-xl" style={{ textWrap: "balance" }}>{words(L(d.title, lang))}</h1>
@@ -123,14 +182,14 @@ async function Hero({ d, lang }: { d: D; lang: Lang }) {
               {L(d.cta1Label, lang) && <SmartLink href={d.cta1Href} className="btn btn-hero h-12 px-7 text-[0.9375rem]">{L(d.cta1Label, lang)}<Icon name="arrowR" size={16} /></SmartLink>}
               {L(d.cta2Label, lang) && <SmartLink href={d.cta2Href} className="btn btn-hero-glass h-12 px-7 text-[0.9375rem]">{L(d.cta2Label, lang)}</SmartLink>}
             </div>
-            <ul className="mt-9 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+            <dl className="hero-stats-panel mt-9">
               {stats.map((st) => (
-                <li key={st.l} className="flex items-baseline gap-2">
-                  <span className="display text-2xl font-semibold" style={{ color: "var(--hero-accent)" }}>{st.n}</span>
-                  <span className="opacity-85">{st.l}</span>
-                </li>
+                <div key={st.l}>
+                  <dt className="mt-1.5 text-[0.75rem] leading-snug text-white/85 sm:text-sm">{st.l}</dt>
+                  <dd className="display text-[1.5rem] font-semibold leading-none sm:text-[2rem]">{st.n}</dd>
+                </div>
               ))}
-            </ul>
+            </dl>
           </div>
         </div>
       </section>
@@ -251,7 +310,7 @@ async function Products({ d, lang }: { d: D; lang: Lang }) {
         {d.layout === "grid" ? (
           <ProductGrid products={products} lang={lang} />
         ) : (
-          <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }}>
+          <Rail labels={{ prev: ui("prev", lang), next: ui("next", lang) }} motion={(["off", "step", "back", "glide"].includes(d.motion) ? d.motion : "step") as RailMotion}>
             {products.map((p, i) => <ProductCard key={p.id} p={p} lang={lang} badge={badge && i < 3 ? badge : undefined} />)}
           </Rail>
         )}
@@ -288,7 +347,7 @@ async function Offers({ d, lang }: { d: D; lang: Lang }) {
             <Link href="/shop?sale=1" className="pill-link">{lang === "de" ? "Alle Angebote" : "All offers"}<Icon name="arrowR" size={14} /></Link>
           </div>
         </div>
-        <ul className="offers-grid">
+        <AutoScrollList className="offers-grid" motion="step">
           {items.map((p) => (
             <li key={p.id} className="offer-card group">
               <Link href={`/p/${p.slug}`} className="relative block aspect-square overflow-hidden rounded-xl bg-white">
@@ -309,7 +368,7 @@ async function Offers({ d, lang }: { d: D; lang: Lang }) {
               </div>
             </li>
           ))}
-        </ul>
+        </AutoScrollList>
       </div>
     </section>
   );

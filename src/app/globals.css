@@ -469,7 +469,23 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
   .hero-in > :nth-child(2) { animation-delay: .3s; }
   .hero-in > :nth-child(3) { animation-delay: .45s; }
   .hero-in > :nth-child(4) { animation-delay: .6s; }
-  .hero-in .hero-title > span { display: inline-block; animation: rise .9s cubic-bezier(.2,.7,.2,1) both; }
+  /* the headline is built as fixed lines (see words() in sections/index.tsx), so it cannot re-wrap on font load */
+  .hero-in .hero-title { max-width: none; }
+  .hero-line { display: block; }
+  .hero-word { display: inline-block; animation: rise .9s cubic-bezier(.2,.7,.2,1) both; }
+
+  /* fading background photos */
+  .hero-slides { position: absolute; inset: 0; overflow: hidden; }
+  .hero-slide { position: absolute; inset: 0; background-size: cover; will-change: opacity, transform; }
+  .hero-slides::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(0 0 0 / .25) 0%, rgb(0 0 0 / .1) 35%, rgb(0 0 0 / .7) 100%); }
+  .hero-photo-layout.has-slides .hero-photo { animation: none; }
+
+  /* hero numbers: one calm glass panel, same spacing for all three, readable on any photo */
+  .hero-stats-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 34rem; border-radius: 1.25rem; background: rgb(12 30 21 / .55); border: 1px solid rgb(255 255 255 / .16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .hero-stats-panel > div { display: flex; flex-direction: column-reverse; justify-content: flex-end; padding: .9rem 1rem; }
+  .hero-stats-panel > div + div { border-left: 1px solid rgb(255 255 255 / .16); }
+  .hero-stats-panel dd { color: var(--hero-accent); text-shadow: 0 1px 12px rgb(0 0 0 / .35); }
+  @media (min-width: 640px) { .hero-stats-panel > div { padding: 1.1rem 1.4rem; } }
 
   /* cards glide in one after another (--i is set per card by components/reveal.tsx) */
   /* an animation with "backwards" fill, so once it is done the card is free again for the tap feedback below */
@@ -489,7 +505,7 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-photo-layout .hero-photo, .hero-in > *, .hero-in .hero-title > span, .card-add.is-added, .cart-bump { animation: none !important; }
+  .hero-photo-layout .hero-photo, .hero-in > *, .hero-word, .hero-slide, .card-add.is-added, .cart-bump { animation: none !important; }
   .reveal-item:not([data-shown="true"]) { opacity: 1; }
   .reveal-item[data-shown="true"] { animation: none; }
   .flag-strip { overflow-x: auto; }
@@ -498,3 +514,6 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
 
 /* outside the layer: the base .marquee-track animation shorthand is unlayered and would win */
 .marquee-track.marquee-rev { animation-direction: reverse; }
+
+/* a gliding row moves by fractions of a pixel; snapping would undo every step */
+.rail.rail-glide { scroll-snap-type: none; }

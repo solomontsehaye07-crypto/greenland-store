@@ -3,7 +3,7 @@ import { supabaseAdmin } from "./supabase";
 import { DEFAULT_TIERS, sanitizeTiers, type TierConfig } from "./tiers";
 
 // Cart rewards shown in the cart drawer, the cart page and at checkout:
-//  - free delivery from the lowest "free from" value of the active delivery options (not pickup)
+//  - free delivery from the nationwide parcel option's "free from" value (see nationwideFreeFrom)
 //  - one free gift product once the cart reaches a threshold (settings key public.gift)
 //  - quantity discounts per line (settings key public.qty_tiers, see lib/tiers.ts)
 // Thresholds are judged on the value of the goods after discounts, like the server does.
@@ -49,15 +49,25 @@ export async function activeGift(): Promise<(GiftProduct & { threshold: number; 
   };
 }
 
+/**
+ * The "free delivery from" value customers see: the one of the nationwide parcel delivery in Germany
+ * (local delivery in Kaiserslautern has its own, lower value and is not what most customers get).
+ */
+export function nationwideFreeFrom(methods: { free_from: unknown; type: string; countries?: string[] | null }[]): number | null {
+  const ok = (m: { free_from: unknown }) => Number.isFinite(Number(m.free_from)) && Number(m.free_from) > 0;
+  const parcel = methods.filter((m) => m.type === "parcel" && ok(m) && (!m.countries?.length || m.countries.includes("DE")));
+  const pool = parcel.length ? parcel : methods.filter((m) => m.type !== "pickup" && m.type !== "local" && ok(m));
+  return pool.length ? Math.min(...pool.map((m) => Number(m.free_from))) : null;
+}
+
 export async function getCartPerks(): Promise<CartPerks> {
   const [{ data: ship }, gift, tiers] = await Promise.all([
-    supabaseAdmin().from("shipping_methods").select("free_from, type").eq("active", true).not("free_from", "is", null),
+    supabaseAdmin().from("shipping_methods").select("free_from, type, countries").eq("active", true).not("free_from", "is", null),
     activeGift(),
     getQtyTiers(),
   ]);
-  const values = (ship ?? []).filter((m) => m.type !== "pickup").map((m) => Number(m.free_from)).filter((n) => Number.isFinite(n) && n > 0);
   return {
-    freeFrom: values.length ? Math.min(...values) : null,
+    freeFrom: nationwideFreeFrom(ship ?? []),
     gift: gift ? { id: gift.id, title: gift.title, title_de: gift.title_de, slug: gift.slug, image_url: gift.image_url, value: gift.value, threshold: gift.threshold } : null,
     tiers,
   };
