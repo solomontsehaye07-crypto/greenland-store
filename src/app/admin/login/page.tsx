@@ -33,7 +33,7 @@ function Login() {
   return (
     <div className="mx-auto max-w-sm px-4 pt-20 sm:pt-28">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/brand/greenland-mark.svg" alt="" className="h-9 w-auto" />
+      <img src="/brand/greenland-mark.svg?v=3" alt="" className="h-9 w-auto" />
       <h1 className="display mt-5 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">Staff sign in</h1>
       {denied && <p className="mt-3 rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">This account has no access to the admin.</p>}
       {linkError && <p className="mt-3 rounded-xl bg-danger/10 px-3 py-2 text-sm text-danger">{linkError}</p>}

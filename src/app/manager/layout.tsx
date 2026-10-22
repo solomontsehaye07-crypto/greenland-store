@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   manifest: "/manager/manifest.webmanifest",
   robots: { index: false },
   appleWebApp: { capable: true, title: "GL Manager", statusBarStyle: "black-translucent" },
-  icons: { apple: "/brand/greenland-icon-512.png" },
+  icons: { apple: "/brand/greenland-icon-512.png?v=3" },
   other: { "apple-mobile-web-app-capable": "yes" },
 };
 export const viewport: Viewport = { themeColor: "#1D5C3F", width: "device-width", initialScale: 1, viewportFit: "cover" };
@@ -37,7 +37,7 @@ export default async function ManagerLayout({ children }: { children: React.Reac
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/greenland-mark.svg" alt="" className="h-7 w-auto" />
+            <img src="/brand/greenland-mark.svg?v=3" alt="" className="h-7 w-auto" />
             <div className="leading-tight">
               <p className="text-sm font-semibold">{hello}{profile.full_name ? <span data-no-translate>, {profile.full_name.split(" ")[0]}</span> : ""}</p>
               <p className="text-[0.6875rem] text-muted" data-no-translate>{new Date().toLocaleDateString(lang === "ti" ? "ti-ER" : "de-DE", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Berlin" })}</p>

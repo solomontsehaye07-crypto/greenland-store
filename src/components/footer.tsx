@@ -45,7 +45,11 @@ export async function Footer() {
       </div>
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
         <div className="max-w-xs">
-          {site.logo ? (
+          {site.logo?.startsWith("/brand/greenland-logo.svg") ? (
+            // our own logo has a version for dark backgrounds (cream and amber) – no white box needed
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/brand/greenland-logo-dark.svg?v=3" alt={name} width={176} height={51} className="h-12 w-auto" loading="lazy" />
+          ) : site.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={site.logo} alt={name} className="h-20 w-auto rounded-xl bg-white p-2" loading="lazy" />
           ) : (

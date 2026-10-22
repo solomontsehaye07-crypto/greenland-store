@@ -14,8 +14,8 @@ export function GET() {
       background_color: "#121513",
       theme_color: "#1D5C3F",
       icons: [
-        { src: "/brand/greenland-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-        { src: "/brand/greenland-icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        { src: "/brand/greenland-icon-512.png?v=3", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/brand/greenland-icon-512.png?v=3", sizes: "512x512", type: "image/png", purpose: "maskable" },
       ],
     }),
     { headers: { "Content-Type": "application/manifest+json" } }

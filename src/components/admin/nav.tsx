@@ -147,7 +147,7 @@ export function AdminNav({ email, signOut, role, prefs }: { email: string; signO
         <div className="flex items-center justify-between pr-3">
           <Link href="/admin" className="flex items-center gap-2.5 px-5 py-5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/brand/greenland-mark.svg" alt="" className="h-7 w-auto" />
+            <img src="/brand/greenland-mark.svg?v=3" alt="" className="h-7 w-auto" />
             <span className="display text-[0.9375rem] font-semibold">Greenland admin</span>
           </Link>
           <MagnifierToggle />
@@ -162,7 +162,7 @@ export function AdminNav({ email, signOut, role, prefs }: { email: string; signO
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-3 lg:hidden">
         <Link href="/admin" className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/greenland-mark.svg" alt="" className="h-6 w-auto" />
+          <img src="/brand/greenland-mark.svg?v=3" alt="" className="h-6 w-auto" />
           <span className="display text-sm font-semibold">Admin</span>
         </Link>
         <div className="flex items-center gap-1">

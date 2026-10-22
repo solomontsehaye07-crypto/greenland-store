@@ -21,7 +21,7 @@ export async function Header() {
   const announcements = (site.announcements ?? []).map((a) => tx(a.text, lang)).filter(Boolean);
   const catTitle = (c: { title: string; title_de: string | null }) => (lang === "de" ? c.title_de || c.title : c.title);
   // the full logo with the name; the default one is trimmed top and bottom so the text is readable at header size
-  const logoSrc = site.headerLogo || (site.logo?.startsWith("/brand/greenland-logo.svg") ? "/brand/greenland-logo-header.svg" : site.logo) || site.icon;
+  const logoSrc = site.headerLogo || (site.logo?.startsWith("/brand/greenland-logo.svg") ? "/brand/greenland-logo-header.svg?v=3" : site.logo) || site.icon;
   const logo = logoSrc ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={logoSrc} alt={name} width={176} height={51} className="h-9 w-auto sm:h-12 lg:h-[3.4rem]" />
