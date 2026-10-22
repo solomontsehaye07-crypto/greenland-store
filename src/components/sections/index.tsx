@@ -447,6 +447,7 @@ function Usp({ d, lang }: { d: D; lang: Lang }) {
 
 // ---------- story ----------
 function Story({ d, lang }: { d: D; lang: Lang }) {
+  if (d.layout === "portrait") return <StoryPortrait d={d} lang={lang} />;
   const right = d.imageSide === "right";
   const tone = band(d.color, "forest", true);
   const dark = isDark(tone);
@@ -477,6 +478,51 @@ function Story({ d, lang }: { d: D; lang: Lang }) {
           {L(d.ctaLabel, lang) && <SmartLink href={d.ctaHref} className={`btn mt-8 h-11 px-6 ${dark ? "btn-saffron" : "btn-primary"}`}>{L(d.ctaLabel, lang)}</SmartLink>}
         </div>
       </div>
+    </section>
+  );
+}
+
+/** Personal story: large photo, the owner's words as a quote, signature and a timeline of milestones. */
+function StoryPortrait({ d, lang }: { d: D; lang: Lang }) {
+  const tone = band(d.color, "sand");
+  const right = d.imageSide === "right";
+  const milestones: D[] = (d.milestones ?? []).filter((m: D) => m?.year);
+  const paras = L(d.text, lang).split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+  return (
+    <section className={`${tone} story-portrait py-16 sm:py-24`}>
+      <div className={`${WRAP} grid items-center gap-10 md:grid-cols-[minmax(0,7fr)_minmax(0,6fr)] md:gap-16`}>
+        {d.image && (
+          <figure className={`relative ${right ? "md:order-2" : ""}`}>
+            <span aria-hidden className="absolute -inset-3 -z-0 rotate-[-2deg] rounded-[2.25rem] bg-terra/15 sm:-inset-4" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={d.image} alt={d.signature ? String(d.signature) : ""} loading="lazy" className="relative aspect-[4/3] w-full rounded-[2rem] object-cover shadow-[0_30px_60px_-30px_rgba(60,30,10,.45)]" />
+          </figure>
+        )}
+        <div className="max-w-xl">
+          <h2 className="h-section text-[2rem] sm:text-[2.6rem]" style={{ textWrap: "balance" }}>{L(d.title, lang)}</h2>
+          <blockquote className="relative mt-6 pl-6 sm:pl-8">
+            <span aria-hidden className="display absolute -left-1 -top-4 text-6xl leading-none text-terra sm:-left-2">“</span>
+            {paras.map((p, i) => (
+              <p key={i} className={`${i ? "mt-4" : ""} display text-[1.2rem] leading-relaxed text-ink sm:text-[1.35rem]`}>{p}</p>
+            ))}
+            {d.signature && <footer className="mt-5 text-sm font-semibold text-terra">— {String(d.signature)}</footer>}
+          </blockquote>
+          {L(d.ctaLabel, lang) && <SmartLink href={d.ctaHref} className="btn btn-primary mt-8 h-11 px-6">{L(d.ctaLabel, lang)}</SmartLink>}
+        </div>
+      </div>
+      {milestones.length > 0 && (
+        <div className={`${WRAP} mt-14 sm:mt-16`}>
+          <ol className="story-timeline">
+            {milestones.map((m, i) => (
+              <li key={i}>
+                <span className="story-dot" aria-hidden />
+                <span className="display block text-2xl font-semibold tabular-nums text-forest sm:text-[1.75rem]">{String(m.year)}</span>
+                <span className="mt-1 block text-sm leading-snug text-muted">{L(m.text, lang)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </section>
   );
 }

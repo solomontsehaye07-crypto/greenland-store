@@ -309,6 +309,8 @@ export const SECTION_DEFS: SectionDef[] = [
       { key: "ctaHref", label: "Button link", kind: "plain" },
       { key: "imageSide", label: "Photo side", kind: "select", options: [{ value: "left", label: "Left" }, { value: "right", label: "Right" }] },
       { key: "photo", label: "It is a photo of people or a place (fill the frame instead of showing a product on white)", kind: "toggle" },
+      { key: "layout", label: "Design", kind: "select", options: [{ value: "classic", label: "Classic (photo beside text)" }, { value: "portrait", label: "Personal story (large photo, quote, timeline)" }] },
+      { key: "signature", label: "Signed by (personal story design, e.g. Makda Meharena)", kind: "plain" },
       {
         key: "milestones",
         label: "Milestones (optional, e.g. 2003 – arrived in Germany)",

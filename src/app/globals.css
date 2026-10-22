@@ -517,3 +517,16 @@ input:checked + span[style*="--b"] { background: var(--b); color: #fff; }
 
 /* a gliding row moves by fractions of a pixel; snapping would undo every step */
 .rail.rail-glide { scroll-snap-type: none; }
+
+/* personal story section: timeline of milestones (vertical on phones, horizontal from tablet up) */
+@layer components {
+  .story-timeline { position: relative; display: grid; gap: 1.5rem; padding-left: 1.75rem; }
+  .story-timeline::before { content: ""; position: absolute; left: .4rem; top: .5rem; bottom: .5rem; width: 2px; background: color-mix(in srgb, var(--terra) 35%, transparent); }
+  .story-timeline li { position: relative; }
+  .story-dot { position: absolute; left: -1.75rem; top: .55rem; width: .85rem; height: .85rem; border-radius: 9999px; background: var(--paper); border: 3px solid var(--terra); }
+  @media (min-width: 640px) {
+    .story-timeline { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2rem; padding-left: 0; padding-top: 2rem; }
+    .story-timeline::before { left: 0; right: 0; top: .4rem; bottom: auto; width: auto; height: 2px; }
+    .story-dot { left: 0; top: -2rem; }
+  }
+}
